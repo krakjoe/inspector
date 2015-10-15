@@ -100,5 +100,12 @@ ZEND_RETURN     T1      -       -
 ZEND_RETURN     null    -       -
 ```
 
+TODO
+====
+
+ * jmp target operands
+ * extended values (sometimes fetch type, sometimes relative jmp)
+ * tests
+
 **This extension is experimental, and requires PHP7**
 
