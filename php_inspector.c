@@ -82,6 +82,7 @@ static zend_function_entry php_inspector_methods[] = {
 static zend_function_entry php_inspector_node_methods[] = {
 	PHP_ME(Node, getType, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Node, getOperand, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Node, getExtendedValue, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 

@@ -109,7 +109,6 @@ ZEND_RETURN     null    -       -
 TODO
 ====
 
- * extended values (sometimes fetch type, sometimes relative jmp)
  * tests
 
 **This extension is experimental, and requires PHP7**

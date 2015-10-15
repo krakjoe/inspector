@@ -4,14 +4,14 @@ use Inspector\Node;
 use Inspector\Operand;
 
 function printConstant($mixed) {
-	if (strlen($mixed) > 8) {
+	if ($mixed && strlen($mixed) > 8) {
 		printf(
 			"%s...\t", substr(str_replace(
 			"\n",
 			"\\n",
 			$mixed
 		), 0, 8));
-	} else printf("%s\t", $mixed ?: "null");
+	} else printf("%s\t", $mixed ?: "-");
 }
 
 function printOperand(Operand $op) {
@@ -29,19 +29,23 @@ function printOperand(Operand $op) {
 }
 
 function printInspector(Inspector $inspector) {
-	printf("OPCODE\t\tOP1\tOP2\tRESULT\n");
+	printf("OPCODE\t\tOP1\tOP2\tRESULT\tEXT\n");
 	foreach ($inspector as $opline) {
 		printf("%s\t", $opline->getType());
 		printOperand($opline->getOperand(NODE::OP1));
 		printOperand($opline->getOperand(NODE::OP2));
 		printOperand($opline->getOperand(NODE::RESULT));
+		printf("%s\t", $opline->getExtendedValue() ?: "-");
 		printf("\n");
 	}
 }
 
-printInspector(new Inspector(function($a, $b){
-	if ($a + $b > 100) {
-		return true;
+printInspector(new Inspector(function($a, $b) : int {
+	$a = (int) $a;
+	$b = (int) $b;
+	while ($a++ + $b < 100) {
+		(int)$b--;
 	}
+	return $a + $b;
 }));
 ?>

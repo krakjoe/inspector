@@ -43,4 +43,5 @@ zend_object* php_inspector_node_create(zend_class_entry *ce);
 
 PHP_METHOD(Node, getType);
 PHP_METHOD(Node, getOperand);
+PHP_METHOD(Node, getExtendedValue);
 #endif

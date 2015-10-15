@@ -101,5 +101,34 @@ PHP_METHOD(Node, getOperand) {
 		break;
 	}
 #undef NEW_OPERAND
+} 
+
+PHP_METHOD(Node, getExtendedValue) {
+	php_inspector_node_t *node = 
+		php_inspector_node_this();
+	php_inspector_t *inspector = 
+		php_inspector_fetch_from(Z_OBJ(node->inspector));
+
+	switch (node->opline->opcode) {
+		case ZEND_TYPE_CHECK:
+		case ZEND_CAST:
+			RETURN_STRING(zend_get_type_by_const(node->opline->extended_value));
+		break;
+
+		case ZEND_JMPZNZ:
+		case ZEND_FE_FETCH_R:
+		case ZEND_FE_FETCH_RW:
+			RETURN_LONG(ZEND_OFFSET_TO_OPLINE_NUM(inspector->ops, node->opline, node->opline->extended_value));
+		break;
+
+		case ZEND_FETCH_CLASS_NAME:
+			switch (node->opline->extended_value) {
+				case ZEND_FETCH_CLASS_DEFAULT: RETURN_STRING("default"); break;
+				case ZEND_FETCH_CLASS_SELF: RETURN_STRING("self"); break;
+				case ZEND_FETCH_CLASS_STATIC: RETURN_STRING("static"); break;
+				case ZEND_FETCH_CLASS_PARENT: RETURN_STRING("parent"); break;
+			}
+		break;
+	}
 } /* }}} */
 #endif
