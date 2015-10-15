@@ -27,6 +27,7 @@ namespace Inspector
 
 		public function getType() : string;
 		public function getOperand(int which) : Operand;
+		public function getExtendedValue() : mixed;
 	}
 
 	class Operand {
