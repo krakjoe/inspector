@@ -27,6 +27,7 @@ namespace Inspector
 
 	class Operand {
 		public function isUnused() : bool;
+		public function isExtendedTypeUnused() : bool;
 		public function isCompiledVariable() : bool;
 		public function isTemporaryVariable() : bool;
 		public function isVariable() : bool;
