@@ -37,6 +37,10 @@ function printExtendedValue($value) {
 }
 
 function printInspector(Inspector $inspector) {
+	var_dump($inspector->getStatics());
+	var_dump($inspector->getConstants());
+	var_dump($inspector->getVariables());
+
 	foreach ($inspector as $opline) {
 		printOpcode($opline->getType());
 		printOperand($opline->getOperand(NODE::OP1));
@@ -47,8 +51,11 @@ function printInspector(Inspector $inspector) {
 }
 
 printInspector(new Inspector(function($a, $b) : int {
-	static $tests = [];
-	
+	static $tests = [1,2,3,4,5];
+
+	$tests[] = $a;
+	$tests[] = $b;
+
 	$a = (int) $a;
 	$b = (int) $b;
 	while ($a++ + $b < 100) {

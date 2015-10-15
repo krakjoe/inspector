@@ -18,6 +18,10 @@ namespace Inspector
 		public function __construct(string function);
 		public function __construct(string scope, string method);
 		public function __construct(Closure closure);
+
+		public function getStatics() : array;
+		public function getConstants() : array;
+		public function getVariables() : array;
 	}
 
 	class Node {

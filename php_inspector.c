@@ -70,11 +70,50 @@ InvalidArgumentException:
 	} else goto InvalidArgumentException;
 
 	php_inspector_construct(getThis(), found);
+} 
+
+PHP_METHOD(Inspector, getStatics) {
+	php_inspector_t *inspector = php_inspector_this();
+	
+	if (inspector->ops->static_variables) {
+		RETURN_ARR(zend_array_dup(inspector->ops->static_variables));
+	}
+}
+
+PHP_METHOD(Inspector, getConstants) {
+	php_inspector_t *inspector = php_inspector_this();
+
+	if (inspector->ops->last_literal) {
+		uint32_t it = 0;
+
+		array_init(return_value);
+		for (it = 0; it < inspector->ops->last_literal; it++) {
+			if (add_next_index_zval(return_value, &inspector->ops->literals[it]))
+				Z_TRY_ADDREF(inspector->ops->literals[it]);
+		}
+	}
+} 
+
+PHP_METHOD(Inspector, getVariables) {
+	php_inspector_t *inspector = php_inspector_this();
+
+	if (inspector->ops->last_var) {
+		uint32_t it = 0;
+		
+		array_init(return_value);
+		for (it = 0; it < inspector->ops->last_var; it++) {
+			add_next_index_str(return_value, 
+				zend_string_copy(inspector->ops->vars[it]));
+		}
+	}
 } /* }}} */
 
 /* {{{ */
 static zend_function_entry php_inspector_methods[] = {
 	PHP_ME(Inspector, __construct, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Inspector, getStatics, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Inspector, getConstants, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Inspector, getVariables, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
