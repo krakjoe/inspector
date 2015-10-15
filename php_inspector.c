@@ -25,6 +25,7 @@
 #include "php.h"
 #include "php_ini.h"
 #include "zend_closures.h"
+#include "zend_interfaces.h"
 
 #include "ext/standard/info.h"
 #include "ext/spl/spl_exceptions.h"
@@ -152,6 +153,7 @@ PHP_MINIT_FUNCTION(inspector)
 		zend_register_internal_class(&ce);
 	php_inspector_ce->create_object = php_inspector_create;
 	php_inspector_ce->get_iterator  = php_inspector_iterate;
+	zend_class_implements(php_inspector_ce, 1, zend_ce_traversable);
 
 	memcpy(&php_inspector_handlers, 
 		zend_get_std_object_handlers(), sizeof(zend_object_handlers));
