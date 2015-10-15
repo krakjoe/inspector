@@ -1,0 +1,9 @@
+// $Id$
+// vim:ft=javascript
+
+ARG_ENABLE("inspector", "enable inspector support", "no");
+
+if (PHP_INSPECTOR != "no") {
+	EXTENSION("inspector", "php_inspector.c inspector.c iterator.c node.c", PHP_EXTNAME_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+}
+
