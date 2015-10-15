@@ -86,18 +86,18 @@ PHP_METHOD(Node, getOperand) {
 		return;
 	}
 
-#define NEW_OPERAND(t, o) php_inspector_operand_construct(return_value, getThis(), t, o)
+#define NEW_OPERAND(n, t, o) php_inspector_operand_construct(return_value, getThis(), n, t, o)
 	switch (operand) {
 		case PHP_INSPECTOR_NODE_OP1: 
-			NEW_OPERAND(node->opline->op1_type, &node->opline->op1); 
+			NEW_OPERAND(operand, node->opline->op1_type, &node->opline->op1); 
 		break;
 
 		case PHP_INSPECTOR_NODE_OP2: 
-			NEW_OPERAND(node->opline->op2_type, &node->opline->op2); 
+			NEW_OPERAND(operand, node->opline->op2_type, &node->opline->op2); 
 		break;
 
 		case PHP_INSPECTOR_NODE_RESULT: 
-			NEW_OPERAND(node->opline->result_type, &node->opline->result); 
+			NEW_OPERAND(operand, node->opline->result_type, &node->opline->result); 
 		break;
 	}
 #undef NEW_OPERAND

@@ -42,12 +42,13 @@ void php_inspector_operand_destroy(zend_object *object) {
 		zval_ptr_dtor(&operand->node);
 }
 
-void php_inspector_operand_construct(zval *object, zval *node, zend_uchar type, znode_op *op) {
+void php_inspector_operand_construct(zval *object, zval *node, uint32_t which, zend_uchar type, znode_op *op) {
 	php_inspector_operand_t *operand;
 	
 	object_init_ex(object, php_inspector_operand_ce);
 	operand = php_inspector_operand_fetch(object);
 	ZVAL_COPY(&operand->node, node);
+	operand->which = which;
 	operand->type = type;
 	operand->op = op;
 }
@@ -64,6 +65,41 @@ zend_object* php_inspector_operand_create(zend_class_entry *ce) {
 	
 	return &operand->std;
 } /* }}} */
+
+PHP_METHOD(Operand, isJumpTarget) {
+	php_inspector_operand_t *operand = 
+		php_inspector_operand_this();
+	php_inspector_node_t *node =
+		php_inspector_node_fetch_from(Z_OBJ(operand->node));
+
+	switch(node->opline->opcode) {
+		case ZEND_JMP:
+		case ZEND_FAST_CALL:
+		case ZEND_DECLARE_ANON_CLASS:
+		case ZEND_DECLARE_ANON_INHERITED_CLASS:
+			if (operand->which == PHP_INSPECTOR_NODE_OP1) {
+				RETURN_TRUE;
+			}
+		break;
+
+		case ZEND_JMPZNZ:
+		case ZEND_JMPZ:
+		case ZEND_JMPNZ:
+		case ZEND_JMPZ_EX:
+		case ZEND_JMP_SET:
+		case ZEND_COALESCE:
+		case ZEND_NEW:
+		case ZEND_FE_RESET_R:
+		case ZEND_FE_RESET_RW:
+		case ZEND_ASSERT_CHECK:
+			if (operand->which == PHP_INSPECTOR_NODE_OP2) {
+				RETURN_TRUE;
+			}
+		break;
+	}
+	
+	RETURN_FALSE;
+}
 
 PHP_METHOD(Operand, isUnused) {
 	php_inspector_operand_t *operand = 
@@ -107,7 +143,14 @@ PHP_METHOD(Operand, isConstant) {
 	RETURN_BOOL(operand->type & IS_CONST);
 }
 
-PHP_METHOD(Operand, getConstantValue) {
+PHP_METHOD(Operand, getWhich) {
+	php_inspector_operand_t *operand = 
+		php_inspector_operand_this();
+
+	RETURN_LONG(operand->which);
+}
+
+PHP_METHOD(Operand, getValue) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
@@ -123,7 +166,7 @@ PHP_METHOD(Operand, getConstantValue) {
 	}
 }
 
-PHP_METHOD(Operand, getVariableName) {
+PHP_METHOD(Operand, getName) {
 	php_inspector_operand_t *operand = php_inspector_operand_this();
 
 	if (operand->type & IS_CV) {
@@ -136,7 +179,7 @@ PHP_METHOD(Operand, getVariableName) {
 	}
 }
 
-PHP_METHOD(Operand, getVariableNumber) {
+PHP_METHOD(Operand, getNumber) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 	php_inspector_node_t *node = 
@@ -144,12 +187,46 @@ PHP_METHOD(Operand, getVariableNumber) {
 	php_inspector_t *inspector = 
 		php_inspector_fetch_from(Z_OBJ(node->inspector));
 
-	if (operand->type & IS_CONST) {
-		ZEND_PASS_TWO_UNDO_CONSTANT(inspector->ops, *operand->op);
-		ZVAL_LONG(return_value, operand->op->num);
-		ZEND_PASS_TWO_UPDATE_CONSTANT(inspector->ops, *operand->op);
-	} else if (operand->type & IS_TMP_VAR|IS_VAR) {
-		ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num - inspector->ops->last_var));
-	} else ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num));
+	switch(node->opline->opcode) {
+		case ZEND_JMP:
+		case ZEND_FAST_CALL:
+		case ZEND_DECLARE_ANON_CLASS:
+		case ZEND_DECLARE_ANON_INHERITED_CLASS:
+			if (operand->which == PHP_INSPECTOR_NODE_OP1) {
+				ZEND_PASS_TWO_UNDO_JMP_TARGET(inspector->ops, node->opline, *operand->op);
+				ZVAL_LONG(return_value, operand->op->num);
+				ZEND_PASS_TWO_UPDATE_JMP_TARGET(inspector->ops, node->opline, *operand->op);
+				break;
+			}
+		
+		case ZEND_JMPZNZ:
+		case ZEND_JMPZ:
+		case ZEND_JMPNZ:
+		case ZEND_JMPZ_EX:
+		case ZEND_JMP_SET:
+		case ZEND_COALESCE:
+		case ZEND_NEW:
+		case ZEND_FE_RESET_R:
+		case ZEND_FE_RESET_RW:
+		case ZEND_ASSERT_CHECK:
+			if (operand->which == PHP_INSPECTOR_NODE_OP2) {
+				ZEND_PASS_TWO_UNDO_JMP_TARGET(inspector->ops, node->opline, *operand->op);
+				ZVAL_LONG(return_value, operand->op->num);
+				ZEND_PASS_TWO_UPDATE_JMP_TARGET(inspector->ops, node->opline, *operand->op);
+				break;
+			}
+
+		default: {
+			if (operand->type & IS_CONST) {
+				ZEND_PASS_TWO_UNDO_CONSTANT(inspector->ops, *operand->op);
+				ZVAL_LONG(return_value, operand->op->num);
+				ZEND_PASS_TWO_UPDATE_CONSTANT(inspector->ops, *operand->op);
+			} else if (operand->type & IS_TMP_VAR|IS_VAR) {
+				ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num - inspector->ops->last_var));
+			} else if (operand->type & IS_CV) {
+				ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num));
+			}
+		}	
+	}
 }
 #endif

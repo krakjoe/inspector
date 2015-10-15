@@ -21,6 +21,7 @@
 #define HAVE_INSPECTOR_OPERAND_H
 typedef struct _php_inspector_operand_t {
 	zval node;
+	uint32_t which;
 	zend_uchar type;
 	znode_op *op;
 	zend_object std;
@@ -34,7 +35,7 @@ zend_class_entry *php_inspector_operand_ce;
 #define php_inspector_operand_this() php_inspector_operand_fetch(getThis())
 
 void php_inspector_operand_destroy(zend_object *object);
-void php_inspector_operand_construct(zval *object, zval *node, zend_uchar type, znode_op *operand);
+void php_inspector_operand_construct(zval *object, zval *node, uint32_t which, zend_uchar type, znode_op *operand);
 zend_object* php_inspector_operand_create(zend_class_entry *ce);
 
 PHP_METHOD(Operand, isUnused);
@@ -43,7 +44,9 @@ PHP_METHOD(Operand, isCompiledVariable);
 PHP_METHOD(Operand, isTemporaryVariable);
 PHP_METHOD(Operand, isVariable);
 PHP_METHOD(Operand, isConstant);
-PHP_METHOD(Operand, getConstantValue);
-PHP_METHOD(Operand, getVariableName);
-PHP_METHOD(Operand, getVariableNumber);
+PHP_METHOD(Operand, isJumpTarget);
+PHP_METHOD(Operand, getWhich);
+PHP_METHOD(Operand, getValue);
+PHP_METHOD(Operand, getName);
+PHP_METHOD(Operand, getNumber);
 #endif

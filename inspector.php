@@ -16,13 +16,15 @@ function printConstant($mixed) {
 
 function printOperand(Operand $op) {
 	if ($op->isConstant()) {
-		printConstant($op->getConstantValue());
+		printConstant($op->getValue());
 	} else if ($op->isCompiledVariable()) {
-		printf("\$%s\t", $op->getVariableName());
+		printf("\$%s\t", $op->getName());
 	} else if ($op->isTemporaryVariable()) {
-		printf("T%d\t", $op->getVariableNumber());
+		printf("T%d\t", $op->getNumber());
 	} else if($op->isVariable()) {
-		printf("V%d\t", $op->getVariableNumber());
+		printf("V%d\t", $op->getNumber());
+	} else if ($op->isJumpTarget()) {
+		printf("J%d\t", $op->getNumber());
 	} else printf("-\t");
 }
 
@@ -38,6 +40,8 @@ function printInspector(Inspector $inspector) {
 }
 
 printInspector(new Inspector(function($a, $b){
-	return $a + $b;
+	if ($a + $b > 100) {
+		return true;
+	}
 }));
 ?>

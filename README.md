@@ -21,8 +21,12 @@ namespace Inspector
 	}
 
 	class Node {
+		const OP1;
+		const OP2;
+		const RESULT;
+
 		public function getType() : string;
-		public function getOperand(int operand) : Operand;
+		public function getOperand(int which) : Operand;
 	}
 
 	class Operand {
@@ -32,9 +36,11 @@ namespace Inspector
 		public function isTemporaryVariable() : bool;
 		public function isVariable() : bool;
 		public function isConstant() : bool;
-		public function getConstantValue() : mixed;
-		public function getVariableName() : string;
-		public function getVariableNumber() : int;
+		public function isJumpTarget() : bool;
+		public function getWhich() : int;
+		public function getValue() : mixed;
+		public function getName() : string;
+		public function getNumber() : int;
 	}
 }
 ```
@@ -63,13 +69,13 @@ function printConstant($mixed) {
 
 function printOperand(Operand $op) {
 	if ($op->isConstant()) {
-		printConstant($op->getConstantValue());
+		printConstant($op->getValue());
 	} else if ($op->isCompiledVariable()) {
-		printf("\$%s\t", $op->getVariableName());
+		printf("\$%s\t", $op->getName());
 	} else if ($op->isTemporaryVariable()) {
-		printf("T%d\t", $op->getVariableNumber());
+		printf("T%d\t", $op->getNumber());
 	} else if($op->isVariable()) {
-		printf("V%d\t", $op->getVariableNumber());
+		printf("V%d\t", $op->getNumber());
 	} else printf("-\t");
 }
 
@@ -103,7 +109,6 @@ ZEND_RETURN     null    -       -
 TODO
 ====
 
- * jmp target operands
  * extended values (sometimes fetch type, sometimes relative jmp)
  * tests
 

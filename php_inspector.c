@@ -93,9 +93,11 @@ static zend_function_entry php_inspector_operand_methods[] = {
 	PHP_ME(Operand, isTemporaryVariable, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Operand, isVariable, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Operand, isConstant, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Operand, getConstantValue, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Operand, getVariableName, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Operand, getVariableNumber, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isJumpTarget, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, getWhich, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, getValue, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, getName, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, getNumber, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
