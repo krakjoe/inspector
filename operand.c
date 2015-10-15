@@ -36,7 +36,7 @@
 void php_inspector_operand_destroy(zend_object *object) {
 	php_inspector_operand_t *operand = php_inspector_operand_fetch_from(object);
 
-	zend_object_std_dtor(object);	
+	zend_object_std_dtor(object);
 
 	if (Z_TYPE(operand->node) != IS_UNDEF)
 		zval_ptr_dtor(&operand->node);

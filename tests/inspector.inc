@@ -45,18 +45,3 @@ function printInspector(Inspector $inspector) {
 		printExtendedValue($opline->getExtendedValue());
 	}
 }
-
-printInspector(new Inspector(function($a, $b) : int {
-	static $tests = [];
-	
-	$a = (int) $a;
-	$b = (int) $b;
-	while ($a++ + $b < 100) {
-		(int)$b--;
-	}
-
-	$a[0] += $b;
-
-	return $a + $b;
-}));
-?>

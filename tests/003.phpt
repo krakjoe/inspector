@@ -10,11 +10,11 @@ require_once(sprintf("%s/inspector.inc", dirname(__FILE__)));
 
 use Inspector\Inspector;
 
-printInspector(new Inspector(function($a, $b) {return $a + $b;}));
+printInspector(new Inspector(function($a, $b) {return $a / $b;}));
 ?>
 --EXPECTF--
 RECV%w-%w-%w$a%w-
 RECV%w-%w-%w$b%w-
-ADD%w$a%w$b%wT1%w-
+DIV%w$a%w$b%wT1%w-
 RETURN%wT1%w-%w-%w-
 RETURN%w-%w-%w-%w-
