@@ -120,7 +120,8 @@ PHP_METHOD(Node, getExtendedValue) {
 		case ZEND_FE_FETCH_RW:
 			RETURN_LONG(ZEND_OFFSET_TO_OPLINE_NUM(inspector->ops, node->opline, node->opline->extended_value));
 		break;
-
+		
+		case ZEND_FETCH_CLASS:
 		case ZEND_FETCH_CLASS_NAME:
 			switch (node->opline->extended_value) {
 				case ZEND_FETCH_CLASS_DEFAULT: RETURN_STRING("default"); break;
@@ -142,9 +143,17 @@ PHP_METHOD(Node, getExtendedValue) {
 		case ZEND_ASSIGN_BW_AND:
 		case ZEND_ASSIGN_BW_XOR:
 		case ZEND_ASSIGN_POW:
+		case ZEND_INCLUDE_OR_EVAL:
 			if (node->opline->extended_value) {
 				RETURN_STRING(zend_get_opcode_name(node->opline->extended_value));
 			}
+		break;
+
+		case ZEND_ASSIGN_REF:
+		case ZEND_RETURN_BY_REF:
+			if (node->opline->extended_value == ZEND_RETURNS_FUNCTION) {
+				RETURN_STRING("function");
+			} else RETURN_STRING("value");
 		break;
 
 		case ZEND_FETCH_R:
@@ -161,6 +170,20 @@ PHP_METHOD(Node, getExtendedValue) {
 				case ZEND_FETCH_LEXICAL: RETURN_STRING("lexical"); break;
 				case ZEND_FETCH_GLOBAL: RETURN_STRING("global"); break;
 			}
+		break;
+
+		case ZEND_ROPE_END:
+		case ZEND_ROPE_ADD:
+		case ZEND_INIT_METHOD_CALL:
+		case ZEND_INIT_FCALL_BY_NAME:
+		case ZEND_INIT_DYNAMIC_CALL:
+		case ZEND_INIT_USER_CALL:
+		case ZEND_INIT_NS_FCALL_BY_NAME:
+		case ZEND_INIT_FCALL:
+		case ZEND_CATCH:
+		case ZEND_NEW:
+		case ZEND_TICKS:
+			RETURN_LONG(node->opline->extended_value);
 		break;
 	}
 } /* }}} */

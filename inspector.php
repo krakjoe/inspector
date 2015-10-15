@@ -41,6 +41,9 @@ function printInspector(Inspector $inspector) {
 }
 
 printInspector(new Inspector(function($a, $b) : int {
+	static $tests = [];
+	
+	$tests[0] = (function(){})();
 	$a = (int) $a;
 	$b = (int) $b;
 	while ($a++ + $b < 100) {
