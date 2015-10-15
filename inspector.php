@@ -46,6 +46,9 @@ printInspector(new Inspector(function($a, $b) : int {
 	while ($a++ + $b < 100) {
 		(int)$b--;
 	}
+
+	$a[0] += $b;
+
 	return $a + $b;
 }));
 ?>

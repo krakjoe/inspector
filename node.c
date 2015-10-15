@@ -129,6 +129,39 @@ PHP_METHOD(Node, getExtendedValue) {
 				case ZEND_FETCH_CLASS_PARENT: RETURN_STRING("parent"); break;
 			}
 		break;
+
+		case ZEND_ASSIGN_ADD:
+		case ZEND_ASSIGN_SUB:
+		case ZEND_ASSIGN_MUL:
+		case ZEND_ASSIGN_DIV:
+		case ZEND_ASSIGN_MOD:
+		case ZEND_ASSIGN_SL:
+		case ZEND_ASSIGN_SR:
+		case ZEND_ASSIGN_CONCAT:
+		case ZEND_ASSIGN_BW_OR:
+		case ZEND_ASSIGN_BW_AND:
+		case ZEND_ASSIGN_BW_XOR:
+		case ZEND_ASSIGN_POW:
+			if (node->opline->extended_value) {
+				RETURN_STRING(zend_get_opcode_name(node->opline->extended_value));
+			}
+		break;
+
+		case ZEND_FETCH_R:
+		case ZEND_FETCH_W:
+		case ZEND_FETCH_RW:
+		case ZEND_FETCH_FUNC_ARG:
+		case ZEND_FETCH_UNSET:
+		case ZEND_FETCH_IS:
+			switch (node->opline->extended_value & ZEND_FETCH_TYPE_MASK) {
+				case ZEND_FETCH_STATIC: RETURN_STRING("static"); break;
+				case ZEND_FETCH_GLOBAL_LOCK: RETURN_STRING("global"); break;
+				case ZEND_FETCH_LOCAL: RETURN_STRING("local"); break;
+				case ZEND_FETCH_STATIC_MEMBER: RETURN_STRING("member"); break;
+				case ZEND_FETCH_LEXICAL: RETURN_STRING("lexical"); break;
+				case ZEND_FETCH_GLOBAL: RETURN_STRING("global"); break;
+			}
+		break;
 	}
 } /* }}} */
 #endif
