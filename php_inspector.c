@@ -55,7 +55,7 @@ InvalidArgumentException:
 			return;
 		} break;
 
-		case 2: if (zend_parse_paramters(ZEND_NUM_ARGS(), "CS", &scope, &function) != SUCCESS) {
+		case 2: if (zend_parse_parameters(ZEND_NUM_ARGS(), "Cz", &scope, &function) != SUCCESS) {
 			return;
 		} break;
 		
