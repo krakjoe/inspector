@@ -57,13 +57,11 @@ function printConstant($mixed) {
 			"\\n",
 			$mixed
 		), 0, 8));
-	} else printf("%s\t", $mixed);
+	} else printf("%s\t", $mixed ?: "null");
 }
 
 function printOperand(Operand $op) {
-	if ($op->isUnused()) {
-		printf("-\t");
-	} else if ($op->isConstant()) {
+	if ($op->isConstant()) {
 		printConstant($op->getConstantValue());
 	} else if ($op->isCompiledVariable()) {
 		printf("\$%s\t", $op->getVariableName());
@@ -71,7 +69,7 @@ function printOperand(Operand $op) {
 		printf("T%d\t", $op->getVariableNumber());
 	} else if($op->isVariable()) {
 		printf("V%d\t", $op->getVariableNumber());
-	}
+	} else printf("-\t");
 }
 
 function printInspector(Inspector $inspector) {
@@ -98,7 +96,7 @@ ZEND_RECV       -       -       $a
 ZEND_RECV       -       -       $b
 ZEND_ADD        $a      $b      T1
 ZEND_RETURN     T1      -       -
-ZEND_RETURN             -       -
+ZEND_RETURN     null    -       -
 ```
 
 **This extension is experimental, and requires PHP7**

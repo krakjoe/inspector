@@ -38,6 +38,7 @@ void php_inspector_operand_construct(zval *object, zval *node, zend_uchar type, 
 zend_object* php_inspector_operand_create(zend_class_entry *ce);
 
 PHP_METHOD(Operand, isUnused);
+PHP_METHOD(Operand, isExtendedTypeUnused);
 PHP_METHOD(Operand, isCompiledVariable);
 PHP_METHOD(Operand, isTemporaryVariable);
 PHP_METHOD(Operand, isVariable);

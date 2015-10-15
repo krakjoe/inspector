@@ -72,6 +72,13 @@ PHP_METHOD(Operand, isUnused) {
 	RETURN_BOOL(operand->type & IS_UNUSED);
 }
 
+PHP_METHOD(Operand, isExtendedTypeUnused) {
+	php_inspector_operand_t *operand = 
+		php_inspector_operand_this();
+
+	RETURN_BOOL(operand->type & EXT_TYPE_UNUSED);
+}
+
 PHP_METHOD(Operand, isCompiledVariable) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();

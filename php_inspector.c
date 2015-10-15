@@ -88,6 +88,7 @@ static zend_function_entry php_inspector_node_methods[] = {
 /* {{{ */
 static zend_function_entry php_inspector_operand_methods[] = {
 	PHP_ME(Operand, isUnused, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isExtendedTypeUnused, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Operand, isCompiledVariable, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Operand, isTemporaryVariable, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Operand, isVariable, NULL, ZEND_ACC_PUBLIC)
