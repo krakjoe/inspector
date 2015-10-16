@@ -31,86 +31,50 @@
 #include "ext/spl/spl_exceptions.h"
 #include "php_inspector.h"
 
-#include "inspector.h"
+#include "scope.h"
 #include "iterator.h"
 #include "opline.h"
 #include "operand.h"
 
 /* {{{ */
-PHP_METHOD(Inspector, __construct)
-{
-	zend_class_entry *scope = NULL;
-	zval *function = NULL;
-	zend_function *found = NULL;
-
-	if (0) {
-InvalidArgumentException:
-		zend_throw_exception_ex(spl_ce_InvalidArgumentException, 0,
-			"%s expects (Closure closure) or (string function) or (string class, string method)",
-			ZSTR_VAL(EX(func)->common.function_name));
-		return;
-	}
-
-	switch (ZEND_NUM_ARGS()) {
-		case 1: if (zend_parse_parameters(ZEND_NUM_ARGS(), "z", &function) != SUCCESS) {
-			return;
-		} break;
-
-		case 2: if (zend_parse_parameters(ZEND_NUM_ARGS(), "Cz", &scope, &function) != SUCCESS) {
-			return;
-		} break;
-		
-		default:
-			goto InvalidArgumentException;
-	}
-
-	if (Z_TYPE_P(function) == IS_STRING) {
-		found = php_inspector_find(scope, Z_STR_P(function));	
-	} else if (Z_TYPE_P(function) == IS_OBJECT && instanceof_function(Z_OBJCE_P(function), zend_ce_closure)) {
-		found = (zend_function*) zend_get_closure_method_def(function);
-	} else goto InvalidArgumentException;
-
-	php_inspector_construct(getThis(), found);
-}
-
-PHP_METHOD(Inspector, getStatics) {
-	php_inspector_t *inspector = php_inspector_this();
+PHP_METHOD(Scope, getStatics) {
+	php_inspector_scope_t *scope = php_inspector_scope_this();
 	
-	if (inspector->ops->static_variables) {
-		RETURN_ARR(zend_array_dup(inspector->ops->static_variables));
+	if (scope->ops->static_variables) {
+		RETURN_ARR(zend_array_dup(scope->ops->static_variables));
 	}
 }
 
-PHP_METHOD(Inspector, getConstants) {
-	php_inspector_t *inspector = php_inspector_this();
+PHP_METHOD(Scope, getConstants) {
+	php_inspector_scope_t *scope = php_inspector_scope_this();
 
-	if (inspector->ops->last_literal) {
+	if (scope->ops->last_literal) {
 		uint32_t it = 0;
 
 		array_init(return_value);
-		for (it = 0; it < inspector->ops->last_literal; it++) {
-			if (add_next_index_zval(return_value, &inspector->ops->literals[it]) == SUCCESS)
-				Z_TRY_ADDREF(inspector->ops->literals[it]);
+		for (it = 0; it < scope->ops->last_literal; it++) {
+			if (add_next_index_zval(return_value, &scope->ops->literals[it]) == SUCCESS)
+				Z_TRY_ADDREF(scope->ops->literals[it]);
 		}
 	}
 } 
 
-PHP_METHOD(Inspector, getVariables) {
-	php_inspector_t *inspector = php_inspector_this();
+PHP_METHOD(Scope, getVariables) {
+	php_inspector_scope_t *scope = php_inspector_scope_this();
 
-	if (inspector->ops->last_var) {
+	if (scope->ops->last_var) {
 		uint32_t it = 0;
 		
 		array_init(return_value);
-		for (it = 0; it < inspector->ops->last_var; it++) {
+		for (it = 0; it < scope->ops->last_var; it++) {
 			add_next_index_str(return_value, 
-				zend_string_copy(inspector->ops->vars[it]));
+				zend_string_copy(scope->ops->vars[it]));
 		}
 	}
 } /* }}} */
 
 /* {{{ */
-PHP_METHOD(FileInspector, __construct)
+PHP_METHOD(File, __construct)
 {
 	zend_string *filename = NULL;
 	zend_file_handle fh;
@@ -160,23 +124,130 @@ InvalidArgumentException:
 	}
 
 	ops = zend_compile_file(&fh, ZEND_REQUIRE);
-	php_inspector_construct(getThis(), (zend_function*) ops);
+	php_inspector_scope_construct(getThis(), (zend_function*) ops);
 	zend_destroy_file_handle(&fh);
 	destroy_op_array(ops);
 	efree(ops);
 }
 
 static zend_function_entry php_inspector_file_methods[] = {
-	PHP_ME(FileInspector, __construct, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(File, __construct, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
 /* {{{ */
-static zend_function_entry php_inspector_methods[] = {
-	PHP_ME(Inspector, __construct, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Inspector, getStatics, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Inspector, getConstants, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Inspector, getVariables, NULL, ZEND_ACC_PUBLIC)
+PHP_METHOD(Global, __construct)
+{
+	zend_string *name = NULL;
+	zend_function *function = NULL;
+
+	if (0) {
+InvalidArgumentException:
+		zend_throw_exception_ex(spl_ce_InvalidArgumentException, 0,
+			"%s expects (string filename)",
+			ZSTR_VAL(EX(func)->common.function_name));
+		return;
+	}
+
+	switch (ZEND_NUM_ARGS()) {
+		case 1: if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &name) != SUCCESS) {
+			return;
+		} break;
+		
+		default:
+			goto InvalidArgumentException;
+	}
+
+	if (!(function = php_inspector_scope_find(NULL, name))) {
+		zend_throw_exception_ex(spl_ce_RuntimeException, 0,
+			"cannot find function %s",
+			ZSTR_VAL(name));
+		return;
+	}
+
+	php_inspector_scope_construct(getThis(), function);
+}
+
+static zend_function_entry php_inspector_global_methods[] = {
+	PHP_ME(Global, __construct, NULL, ZEND_ACC_PUBLIC)
+	PHP_FE_END
+}; /* }}} */
+
+/* {{{ */
+PHP_METHOD(Closure, __construct)
+{
+	zval *closure;
+
+	if (0) {
+InvalidArgumentException:
+		zend_throw_exception_ex(spl_ce_InvalidArgumentException, 0,
+			"%s expects (Closure closure)",
+			ZSTR_VAL(EX(func)->common.function_name));
+		return;
+	}
+
+	switch (ZEND_NUM_ARGS()) {
+		case 1: if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &closure, zend_ce_closure) != SUCCESS) {
+			return;
+		} break;
+		
+		default:
+			goto InvalidArgumentException;
+	}
+
+	php_inspector_scope_construct(getThis(), (zend_function*) zend_get_closure_method_def(closure));
+}
+
+static zend_function_entry php_inspector_closure_methods[] = {
+	PHP_ME(Closure, __construct, NULL, ZEND_ACC_PUBLIC)
+	PHP_FE_END
+}; /* }}} */
+
+/* {{{ */
+PHP_METHOD(Method, __construct)
+{
+	zend_class_entry *clazz = NULL;
+	zend_string *method = NULL;
+	zend_function *function = NULL;
+
+	if (0) {
+InvalidArgumentException:
+		zend_throw_exception_ex(spl_ce_InvalidArgumentException, 0,
+			"%s expects (string class, string method)",
+			ZSTR_VAL(EX(func)->common.function_name));
+		return;
+	}
+
+	switch (ZEND_NUM_ARGS()) {
+		case 1: if (zend_parse_parameters(ZEND_NUM_ARGS(), "CS", &clazz, &method) != SUCCESS) {
+			return;
+		} break;
+		
+		default:
+			goto InvalidArgumentException;
+	}
+
+	if (!(function = php_inspector_scope_find(clazz, method))) {
+		zend_throw_exception_ex(spl_ce_RuntimeException, 0,
+			"cannot find function %s::%s",
+			ZSTR_VAL(clazz->name), ZSTR_VAL(method));
+		return;
+	}
+
+	php_inspector_scope_construct(getThis(), function);
+}
+
+static zend_function_entry php_inspector_method_methods[] = {
+	PHP_ME(Method, __construct, NULL, ZEND_ACC_PUBLIC)
+	PHP_FE_END
+}; /* }}} */
+
+/* {{{ */
+static zend_function_entry php_inspector_scope_methods[] = {
+	PHP_ABSTRACT_ME(Scope, __construct, NULL)
+	PHP_ME(Scope, getStatics, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getConstants, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getVariables, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
@@ -210,21 +281,30 @@ PHP_MINIT_FUNCTION(inspector)
 {
 	zend_class_entry ce;
 	
-	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Inspector", php_inspector_methods);
-	php_inspector_ce = 
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Scope", php_inspector_scope_methods);
+	php_inspector_scope_ce = 
 		zend_register_internal_class(&ce);
-	php_inspector_ce->create_object = php_inspector_create;
-	php_inspector_ce->get_iterator  = php_inspector_iterate;
-	zend_class_implements(php_inspector_ce, 1, zend_ce_traversable);
+	php_inspector_scope_ce->create_object = php_inspector_scope_create;
+	php_inspector_scope_ce->get_iterator  = php_inspector_iterate;
 
-	INIT_NS_CLASS_ENTRY(ce, "Inspector", "FileInspector", php_inspector_file_methods);
-	php_inspector_file_ce = 
-		zend_register_internal_class_ex(&ce, php_inspector_ce);
+	zend_class_implements(php_inspector_scope_ce, 1, zend_ce_traversable);
 
-	memcpy(&php_inspector_handlers, 
+	memcpy(&php_inspector_scope_handlers, 
 		zend_get_std_object_handlers(), sizeof(zend_object_handlers));
-	php_inspector_handlers.offset = XtOffsetOf(php_inspector_t, std);
-	php_inspector_handlers.free_obj = php_inspector_destroy;
+	php_inspector_scope_handlers.offset = XtOffsetOf(php_inspector_scope_t, std);
+	php_inspector_scope_handlers.free_obj = php_inspector_scope_destroy;
+
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "File", php_inspector_file_methods);
+	php_inspector_file_ce = 
+		zend_register_internal_class_ex(&ce, php_inspector_scope_ce);
+
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Global", php_inspector_global_methods);
+	php_inspector_global_ce = 
+		zend_register_internal_class_ex(&ce, php_inspector_scope_ce);
+
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Closure", php_inspector_closure_methods);
+	php_inspector_closure_ce = 
+		zend_register_internal_class_ex(&ce, php_inspector_scope_ce);
 
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Opline", php_inspector_opline_methods);
 	php_inspector_opline_ce = 

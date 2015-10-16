@@ -17,8 +17,8 @@
 */
 
 /* $Id$ */
-#ifndef HAVE_INSPECTOR
-#define HAVE_INSPECTOR
+#ifndef HAVE_INSPECTOR_SCOPE
+#define HAVE_INSPECTOR_SCOPE
 
 #include "php.h"
 #include "php_ini.h"
@@ -28,22 +28,22 @@
 #include "ext/spl/spl_exceptions.h"
 #include "php_inspector.h"
 
-#include "inspector.h"
+#include "scope.h"
 
 /* {{{ */
-zend_object* php_inspector_create(zend_class_entry *ce) {
-	php_inspector_t *inspector = ecalloc(1, sizeof(php_inspector_t) + zend_object_properties_size(ce));
+zend_object* php_inspector_scope_create(zend_class_entry *ce) {
+	php_inspector_scope_t *scope = ecalloc(1, sizeof(php_inspector_scope_t) + zend_object_properties_size(ce));
 
-	zend_object_std_init(&inspector->std, ce);	
-	object_properties_init(&inspector->std, ce);
+	zend_object_std_init(&scope->std, ce);	
+	object_properties_init(&scope->std, ce);
 
-	inspector->std.handlers = &php_inspector_handlers;	
+	scope->std.handlers = &php_inspector_scope_handlers;	
 
-	return &inspector->std;
+	return &scope->std;
 } /* }}} */
 
 /* {{{ */
-zend_function* php_inspector_find(zend_class_entry *scope, zend_string *name) {
+zend_function* php_inspector_scope_find(zend_class_entry *scope, zend_string *name) {
 	zend_string *lower = zend_string_tolower(name);
 	zend_function *found = zend_hash_find_ptr(
 		scope ? 
@@ -55,8 +55,8 @@ zend_function* php_inspector_find(zend_class_entry *scope, zend_string *name) {
 } /* }}} */
 
 /* {{{ */
-void php_inspector_construct(zval *object, zend_function *function) {
-	php_inspector_t *inspector = php_inspector_fetch(object);
+void php_inspector_scope_construct(zval *object, zend_function *function) {
+	php_inspector_scope_t *scope = php_inspector_scope_fetch(object);
 
 	if (function->type != ZEND_USER_FUNCTION) {
 		if (function->common.scope) {
@@ -73,22 +73,22 @@ void php_inspector_construct(zval *object, zend_function *function) {
 		return;
 	}
 
-	inspector->ops = emalloc(sizeof(zend_op_array));
+	scope->ops = emalloc(sizeof(zend_op_array));
 	memcpy(
-		inspector->ops, function, sizeof(zend_op_array));
-	function_add_ref((zend_function*)inspector->ops);
+		scope->ops, function, sizeof(zend_op_array));
+	function_add_ref((zend_function*)scope->ops);
 } /* }}} */
 
 /* {{{ */
-void php_inspector_destroy(zend_object *object) {
-	php_inspector_t *inspector = 
-		php_inspector_fetch_from(object);
+void php_inspector_scope_destroy(zend_object *object) {
+	php_inspector_scope_t *scope = 
+		php_inspector_scope_fetch_from(object);
 
 	zend_object_std_dtor(object);
 
-	if (inspector->ops) {
-		destroy_op_array(inspector->ops);
-		efree(inspector->ops);
+	if (scope->ops) {
+		destroy_op_array(scope->ops);
+		efree(scope->ops);
 	}
 }
 /* }}} */

@@ -17,24 +17,26 @@
 */
 
 /* $Id$ */
-#ifndef HAVE_INSPECTOR_H
-#define HAVE_INSPECTOR_H
+#ifndef HAVE_INSPECTOR_SCOPE_H
+#define HAVE_INSPECTOR_SCOPE_H
 
-typedef struct _php_inspector_t {
+typedef struct _php_inspector_scope_t {
 	zend_op_array *ops;
 	zend_object std;
-} php_inspector_t;
+} php_inspector_scope_t;
 
-zend_object_handlers php_inspector_handlers;
-zend_class_entry *php_inspector_ce;
+zend_object_handlers php_inspector_scope_handlers;
+zend_class_entry *php_inspector_scope_ce;
 zend_class_entry *php_inspector_file_ce;
+zend_class_entry *php_inspector_global_ce;
+zend_class_entry *php_inspector_closure_ce;
 
-#define php_inspector_fetch_from(o) ((php_inspector_t*) (((char*)o) - XtOffsetOf(php_inspector_t, std)))
-#define php_inspector_fetch(z) php_inspector_fetch_from(Z_OBJ_P(z))
-#define php_inspector_this() php_inspector_fetch(getThis())
+#define php_inspector_scope_fetch_from(o) ((php_inspector_scope_t*) (((char*)o) - XtOffsetOf(php_inspector_scope_t, std)))
+#define php_inspector_scope_fetch(z) php_inspector_scope_fetch_from(Z_OBJ_P(z))
+#define php_inspector_scope_this() php_inspector_scope_fetch(getThis())
 
-void php_inspector_destroy(zend_object *object);
-void php_inspector_construct(zval *object, zend_function *function);
-zend_function* php_inspector_find(zend_class_entry *scope, zend_string *name);
-zend_object* php_inspector_create(zend_class_entry *ce);
+void php_inspector_scope_destroy(zend_object *object);
+void php_inspector_scope_construct(zval *object, zend_function *function);
+zend_function* php_inspector_scope_find(zend_class_entry *scope, zend_string *name);
+zend_object* php_inspector_scope_create(zend_class_entry *ce);
 #endif

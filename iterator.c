@@ -28,7 +28,7 @@
 #include "ext/spl/spl_exceptions.h"
 #include "php_inspector.h"
 
-#include "inspector.h"
+#include "scope.h"
 #include "iterator.h"
 #include "opline.h"
 
@@ -39,19 +39,19 @@ void php_inspector_iterator_dtor(php_inspector_iterator_t* iterator) {
 }
 
 int php_inspector_iterator_validate(php_inspector_iterator_t* iterator) {
-	php_inspector_t *inspector = 
-		php_inspector_fetch_from(Z_OBJ(iterator->object));	
-	return (inspector->ops->last > iterator->opline) ? SUCCESS : FAILURE;
+	php_inspector_scope_t *scope = 
+		php_inspector_scope_fetch_from(Z_OBJ(iterator->object));	
+	return (scope->ops->last > iterator->opline) ? SUCCESS : FAILURE;
 }
 
 zval* php_inspector_iterator_current_data(php_inspector_iterator_t* iterator) {
-	php_inspector_t *inspector = php_inspector_fetch_from(Z_OBJ(iterator->object));
+	php_inspector_scope_t *scope = php_inspector_scope_fetch_from(Z_OBJ(iterator->object));
 
 	if (Z_TYPE(iterator->zit.data) != IS_UNDEF) {
 		zval_ptr_dtor(&iterator->zit.data);
 	}
 
-	php_inspector_opline_construct(&iterator->zit.data, &iterator->object, &inspector->ops->opcodes[iterator->opline]);
+	php_inspector_opline_construct(&iterator->zit.data, &iterator->object, &scope->ops->opcodes[iterator->opline]);
 	
 	if (Z_ISUNDEF(iterator->zit.data)) {
 		return &EG(uninitialized_zval);

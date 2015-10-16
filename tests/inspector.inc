@@ -1,5 +1,5 @@
 <?php
-use Inspector\Inspector;
+use Inspector\Scope;
 use Inspector\Opline;
 use Inspector\Operand;
 
@@ -36,7 +36,7 @@ function printExtendedValue($value) {
 	printf("%s\n", $value ?: "-");
 }
 
-function printInspector(Inspector $inspector) {
+function printInspector(Scope $inspector) {
 	foreach ($inspector as $opline) {
 		printOpcode($opline->getType());
 		printOperand($opline->getOperand(OPLINE::OP1));

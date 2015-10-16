@@ -8,9 +8,9 @@ opcache.enable_cli=0
 <?php 
 require_once(sprintf("%s/inspector.inc", dirname(__FILE__)));
 
-use Inspector\Inspector;
+use Inspector\Closure;
 
-printInspector(new Inspector(function($a, $b) {return $a *= $b;}));
+printInspector(new Closure(function($a, $b) {return $a *= $b;}));
 ?>
 --EXPECTF--
 RECV%w-%w-%w$a%w-

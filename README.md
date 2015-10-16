@@ -14,17 +14,25 @@ The following API is provided:
 ```php
 namespace Inspector 
 {
-	class Inspector implements Traversable {
-		public function __construct(string function);
-		public function __construct(string scope, string method);
-		public function __construct(Closure closure);
-
+	abstract class Scope implements Traversable {
 		public function getStatics() : array;
 		public function getConstants() : array;
 		public function getVariables() : array;
 	}
+	
+	class Global extends Scope {
+		public function __construct(string function);
+	}
 
-	class FileInspector extends Inspector {
+	class Method extends Scope {
+		public function __construct(string class, string method);
+	}
+
+	class Closure extends Scope {
+		public function __construct(Closure closure);
+	}
+
+	class File extends Scope {
 		public function __construct(string filename);
 	}
 

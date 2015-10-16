@@ -28,7 +28,7 @@
 #include "ext/spl/spl_exceptions.h"
 #include "php_inspector.h"
 
-#include "inspector.h"
+#include "scope.h"
 #include "opline.h"
 #include "operand.h"
 
@@ -101,13 +101,13 @@ PHP_METHOD(Opline, getOperand) {
 		break;
 	}
 #undef NEW_OPERAND
-} 
+}
 
 PHP_METHOD(Opline, getExtendedValue) {
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_this();
-	php_inspector_t *inspector = 
-		php_inspector_fetch_from(Z_OBJ(opline->inspector));
+	php_inspector_scope_t *scope = 
+		php_inspector_scope_fetch_from(Z_OBJ(opline->inspector));
 
 	switch (opline->opline->opcode) {
 		case ZEND_TYPE_CHECK:
@@ -118,7 +118,7 @@ PHP_METHOD(Opline, getExtendedValue) {
 		case ZEND_JMPZNZ:
 		case ZEND_FE_FETCH_R:
 		case ZEND_FE_FETCH_RW:
-			RETURN_LONG(ZEND_OFFSET_TO_OPLINE_NUM(inspector->ops, opline->opline, opline->opline->extended_value));
+			RETURN_LONG(ZEND_OFFSET_TO_OPLINE_NUM(scope->ops, opline->opline, opline->opline->extended_value));
 		break;
 		
 		case ZEND_FETCH_CLASS:

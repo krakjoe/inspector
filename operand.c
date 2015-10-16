@@ -28,7 +28,7 @@
 #include "ext/spl/spl_exceptions.h"
 #include "php_inspector.h"
 
-#include "inspector.h"
+#include "scope.h"
 #include "opline.h"
 #include "operand.h"
 
@@ -157,12 +157,12 @@ PHP_METHOD(Operand, getValue) {
 	if (operand->type & IS_CONST) {
 		php_inspector_opline_t *opline = 
 			php_inspector_opline_fetch_from(Z_OBJ(operand->opline));
-		php_inspector_t *inspector = 
-			php_inspector_fetch_from(Z_OBJ(opline->inspector));
+		php_inspector_scope_t *scope = 
+			php_inspector_scope_fetch_from(Z_OBJ(opline->inspector));
 
-		ZEND_PASS_TWO_UNDO_CONSTANT(inspector->ops, *operand->op);
-		ZVAL_COPY(return_value, &inspector->ops->literals[operand->op->num]);
-		ZEND_PASS_TWO_UPDATE_CONSTANT(inspector->ops, *operand->op);
+		ZEND_PASS_TWO_UNDO_CONSTANT(scope->ops, *operand->op);
+		ZVAL_COPY(return_value, &scope->ops->literals[operand->op->num]);
+		ZEND_PASS_TWO_UPDATE_CONSTANT(scope->ops, *operand->op);
 	}
 }
 
@@ -172,10 +172,10 @@ PHP_METHOD(Operand, getName) {
 	if (operand->type & IS_CV) {
 		php_inspector_opline_t *opline = 
 			php_inspector_opline_fetch_from(Z_OBJ(operand->opline));
-		php_inspector_t *inspector = 
-			php_inspector_fetch_from(Z_OBJ(opline->inspector));
+		php_inspector_scope_t *scope = 
+			php_inspector_scope_fetch_from(Z_OBJ(opline->inspector));
 		
-		RETURN_STR(zend_string_copy(inspector->ops->vars[EX_VAR_TO_NUM(operand->op->var)]));
+		RETURN_STR(zend_string_copy(scope->ops->vars[EX_VAR_TO_NUM(operand->op->var)]));
 	}
 }
 
@@ -184,8 +184,8 @@ PHP_METHOD(Operand, getNumber) {
 		php_inspector_operand_this();
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_fetch_from(Z_OBJ(operand->opline));
-	php_inspector_t *inspector = 
-		php_inspector_fetch_from(Z_OBJ(opline->inspector));
+	php_inspector_scope_t *scope = 
+		php_inspector_scope_fetch_from(Z_OBJ(opline->inspector));
 
 	switch(opline->opline->opcode) {
 		case ZEND_JMP:
@@ -193,9 +193,9 @@ PHP_METHOD(Operand, getNumber) {
 		case ZEND_DECLARE_ANON_CLASS:
 		case ZEND_DECLARE_ANON_INHERITED_CLASS:
 			if (operand->which == PHP_INSPECTOR_OPLINE_OP1) {
-				ZEND_PASS_TWO_UNDO_JMP_TARGET(inspector->ops, opline->opline, *operand->op);
+				ZEND_PASS_TWO_UNDO_JMP_TARGET(scope->ops, opline->opline, *operand->op);
 				ZVAL_LONG(return_value, operand->op->num);
-				ZEND_PASS_TWO_UPDATE_JMP_TARGET(inspector->ops, opline->opline, *operand->op);
+				ZEND_PASS_TWO_UPDATE_JMP_TARGET(scope->ops, opline->opline, *operand->op);
 				break;
 			}
 		
@@ -210,19 +210,19 @@ PHP_METHOD(Operand, getNumber) {
 		case ZEND_FE_RESET_RW:
 		case ZEND_ASSERT_CHECK:
 			if (operand->which == PHP_INSPECTOR_OPLINE_OP2) {
-				ZEND_PASS_TWO_UNDO_JMP_TARGET(inspector->ops, opline->opline, *operand->op);
+				ZEND_PASS_TWO_UNDO_JMP_TARGET(scope->ops, opline->opline, *operand->op);
 				ZVAL_LONG(return_value, operand->op->num);
-				ZEND_PASS_TWO_UPDATE_JMP_TARGET(inspector->ops, opline->opline, *operand->op);
+				ZEND_PASS_TWO_UPDATE_JMP_TARGET(scope->ops, opline->opline, *operand->op);
 				break;
 			}
 
 		default: {
 			if (operand->type & IS_CONST) {
-				ZEND_PASS_TWO_UNDO_CONSTANT(inspector->ops, *operand->op);
+				ZEND_PASS_TWO_UNDO_CONSTANT(scope->ops, *operand->op);
 				ZVAL_LONG(return_value, operand->op->num);
-				ZEND_PASS_TWO_UPDATE_CONSTANT(inspector->ops, *operand->op);
+				ZEND_PASS_TWO_UPDATE_CONSTANT(scope->ops, *operand->op);
 			} else if (operand->type & IS_TMP_VAR|IS_VAR) {
-				ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num - inspector->ops->last_var));
+				ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num - scope->ops->last_var));
 			} else if (operand->type & IS_CV) {
 				ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num));
 			}
