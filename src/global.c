@@ -32,21 +32,8 @@ PHP_METHOD(Global, __construct)
 	zend_string *name = NULL;
 	zend_function *function = NULL;
 
-	if (0) {
-InvalidArgumentException:
-		zend_throw_exception_ex(spl_ce_InvalidArgumentException, 0,
-			"%s expects (string filename)",
-			ZSTR_VAL(EX(func)->common.function_name));
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "S", &name) != SUCCESS) {
 		return;
-	}
-
-	switch (ZEND_NUM_ARGS()) {
-		case 1: if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &name) != SUCCESS) {
-			return;
-		} break;
-		
-		default:
-			goto InvalidArgumentException;
 	}
 
 	if (!(function = php_inspector_scope_find(NULL, name))) {

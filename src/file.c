@@ -35,21 +35,8 @@ PHP_METHOD(File, __construct)
 	zend_file_handle fh;
 	zend_op_array *ops = NULL;
 
-	if (0) {
-InvalidArgumentException:
-		zend_throw_exception_ex(spl_ce_InvalidArgumentException, 0,
-			"%s expects (string filename)",
-			ZSTR_VAL(EX(func)->common.function_name));
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "S", &filename) != SUCCESS) {
 		return;
-	}
-
-	switch (ZEND_NUM_ARGS()) {
-		case 1: if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filename) != SUCCESS) {
-			return;
-		} break;
-		
-		default:
-			goto InvalidArgumentException;
 	}
 
 	if (zend_hash_exists(&EG(included_files), filename)) {

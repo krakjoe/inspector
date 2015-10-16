@@ -34,21 +34,8 @@ PHP_METHOD(Closure, __construct)
 {
 	zval *closure;
 
-	if (0) {
-InvalidArgumentException:
-		zend_throw_exception_ex(spl_ce_InvalidArgumentException, 0,
-			"%s expects (Closure closure)",
-			ZSTR_VAL(EX(func)->common.function_name));
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "O", &closure, zend_ce_closure) != SUCCESS) {
 		return;
-	}
-
-	switch (ZEND_NUM_ARGS()) {
-		case 1: if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &closure, zend_ce_closure) != SUCCESS) {
-			return;
-		} break;
-		
-		default:
-			goto InvalidArgumentException;
 	}
 
 	php_inspector_scope_construct(getThis(), (zend_function*) zend_get_closure_method_def(closure));
