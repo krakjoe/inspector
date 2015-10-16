@@ -2,9 +2,9 @@ Inspector
 ========
 *Inspector allows you to programmatically inspect PHP code*
 
-There are many tools that dump or print opcodes, but none of these tools allow programmatic interaction.
+There are many tools that dump or print opcodes, but none of these tools allow programmatic inspection.
 
-Inspector provides an OO API to walk through the opcodes of a given function or file, accessing their operands.
+If you don't know what any of this is for, move on ... this is not for you ;)
 
 API
 ===
@@ -138,7 +138,8 @@ ZEND_RETURN     null    -       -
 TODO
 ====
 
+ * moar Scope
+ * moar Entry
  * tests (started)
 
 **This extension is experimental, and requires PHP7**
-
