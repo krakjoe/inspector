@@ -28,11 +28,11 @@
 #include "opline.h"
 #include "operand.h"
 
-zend_object_handlers php_inspector_operand_handlers;
+static zend_object_handlers php_inspector_operand_handlers;
 zend_class_entry *php_inspector_operand_ce;
 
 /* {{{ */
-void php_inspector_operand_destroy(zend_object *object) {
+static void php_inspector_operand_destroy(zend_object *object) {
 	php_inspector_operand_t *operand = php_inspector_operand_fetch_from(object);
 
 	zend_object_std_dtor(object);
@@ -52,7 +52,7 @@ void php_inspector_operand_construct(zval *object, zval *opline, uint32_t which,
 	operand->op = op;
 }
 
-zend_object* php_inspector_operand_create(zend_class_entry *ce) {
+static zend_object* php_inspector_operand_create(zend_class_entry *ce) {
 	php_inspector_operand_t *operand = 
 		ecalloc(1, sizeof(php_inspector_operand_t) + zend_object_properties_size(ce));
 
@@ -66,7 +66,7 @@ zend_object* php_inspector_operand_create(zend_class_entry *ce) {
 } /* }}} */
 
 /* {{{ */
-PHP_METHOD(Operand, isJumpTarget) {
+static PHP_METHOD(Operand, isJumpTarget) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 	php_inspector_opline_t *opline =
@@ -101,56 +101,56 @@ PHP_METHOD(Operand, isJumpTarget) {
 	RETURN_FALSE;
 }
 
-PHP_METHOD(Operand, isUnused) {
+static PHP_METHOD(Operand, isUnused) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
 	RETURN_BOOL(operand->type & IS_UNUSED);
 }
 
-PHP_METHOD(Operand, isExtendedTypeUnused) {
+static PHP_METHOD(Operand, isExtendedTypeUnused) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
 	RETURN_BOOL(operand->type & EXT_TYPE_UNUSED);
 }
 
-PHP_METHOD(Operand, isCompiledVariable) {
+static PHP_METHOD(Operand, isCompiledVariable) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
 	RETURN_BOOL(operand->type & IS_CV);
 }
 
-PHP_METHOD(Operand, isTemporaryVariable) {
+static PHP_METHOD(Operand, isTemporaryVariable) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
 	RETURN_BOOL(operand->type & IS_TMP_VAR);
 }
 
-PHP_METHOD(Operand, isVariable) {
+static PHP_METHOD(Operand, isVariable) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
 	RETURN_BOOL(operand->type & IS_VAR);
 }
 
-PHP_METHOD(Operand, isConstant) {
+static PHP_METHOD(Operand, isConstant) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
 	RETURN_BOOL(operand->type & IS_CONST);
 }
 
-PHP_METHOD(Operand, getWhich) {
+static PHP_METHOD(Operand, getWhich) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
 	RETURN_LONG(operand->which);
 }
 
-PHP_METHOD(Operand, getValue) {
+static PHP_METHOD(Operand, getValue) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
@@ -166,7 +166,7 @@ PHP_METHOD(Operand, getValue) {
 	}
 }
 
-PHP_METHOD(Operand, getName) {
+static PHP_METHOD(Operand, getName) {
 	php_inspector_operand_t *operand = php_inspector_operand_this();
 
 	if (operand->type & IS_CV) {
@@ -179,7 +179,7 @@ PHP_METHOD(Operand, getName) {
 	}
 }
 
-PHP_METHOD(Operand, getNumber) {
+static PHP_METHOD(Operand, getNumber) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 	php_inspector_opline_t *opline = 
@@ -230,7 +230,7 @@ PHP_METHOD(Operand, getNumber) {
 	}
 } 
 
-PHP_METHOD(Operand, getOpline) {
+static PHP_METHOD(Operand, getOpline) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
@@ -250,7 +250,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_opline_arginfo, 0, 0, IS
 ZEND_END_ARG_INFO()
 
 /* {{{ */
-zend_function_entry php_inspector_operand_methods[] = {
+static zend_function_entry php_inspector_operand_methods[] = {
 	PHP_ME(Operand, isUnused, Operand_returns_bool_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Operand, isExtendedTypeUnused, Operand_returns_bool_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Operand, isCompiledVariable, Operand_returns_bool_arginfo, ZEND_ACC_PUBLIC)

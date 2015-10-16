@@ -18,7 +18,7 @@ namespace Inspector
 		public function getStatics() : array;
 		public function getConstants() : array;
 		public function getVariables() : array;
-		public function getOpline(int) : Opline;
+		public function getOpline(int num) : Opline;
 		public function count() : int;
 	}
 	

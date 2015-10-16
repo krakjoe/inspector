@@ -29,7 +29,7 @@
 zend_class_entry *php_inspector_file_ce;
 
 /* {{{ */
-PHP_METHOD(File, __construct)
+static PHP_METHOD(File, __construct)
 {
 	zend_string *filename = NULL;
 	zend_file_handle fh;
@@ -72,8 +72,12 @@ PHP_METHOD(File, __construct)
 	efree(ops);
 }
 
+ZEND_BEGIN_ARG_INFO_EX(File_construct_arginfo, 0, 0, 1)
+	ZEND_ARG_TYPE_INFO(0, filename, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 static zend_function_entry php_inspector_file_methods[] = {
-	PHP_ME(File, __construct, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(File, __construct, File_construct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 

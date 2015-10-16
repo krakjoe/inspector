@@ -30,7 +30,7 @@
 zend_class_entry *php_inspector_closure_ce;
 
 /* {{{ */
-PHP_METHOD(Closure, __construct)
+static PHP_METHOD(Closure, __construct)
 {
 	zval *closure;
 
@@ -41,8 +41,12 @@ PHP_METHOD(Closure, __construct)
 	php_inspector_scope_construct(getThis(), (zend_function*) zend_get_closure_method_def(closure));
 }
 
+ZEND_BEGIN_ARG_INFO_EX(Closure_construct_arginfo, 0, 0, 1)
+	ZEND_ARG_OBJ_INFO(0, closure, Closure, 0)
+ZEND_END_ARG_INFO()
+
 static zend_function_entry php_inspector_closure_methods[] = {
-	PHP_ME(Closure, __construct, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Closure, __construct, Closure_construct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; 
 

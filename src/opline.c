@@ -29,11 +29,11 @@
 #include "opline.h"
 #include "operand.h"
 
-zend_object_handlers php_inspector_opline_handlers;
+static zend_object_handlers php_inspector_opline_handlers;
 zend_class_entry *php_inspector_opline_ce;
 
 /* {{{ */
-void php_inspector_opline_destroy(zend_object *object) {
+static void php_inspector_opline_destroy(zend_object *object) {
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_fetch_from(object);
 
@@ -53,7 +53,7 @@ void php_inspector_opline_construct(zval *object, zval *scope, zend_op *zopline)
 	opline->opline = zopline;
 }
 
-zend_object* php_inspector_opline_create(zend_class_entry *ce) {
+static zend_object* php_inspector_opline_create(zend_class_entry *ce) {
 	php_inspector_opline_t *opline = ecalloc(1, sizeof(php_inspector_opline_t) + zend_object_properties_size(ce));
 
 	zend_object_std_init(&opline->std, ce);	
@@ -67,7 +67,7 @@ zend_object* php_inspector_opline_create(zend_class_entry *ce) {
 } /* }}} */
 
 /* {{{ */
-PHP_METHOD(Opline, getType) {
+static PHP_METHOD(Opline, getType) {
 	php_inspector_opline_t *opline = php_inspector_opline_this();
 	const char *name;
 	
@@ -78,7 +78,7 @@ PHP_METHOD(Opline, getType) {
 	}
 }
 
-PHP_METHOD(Opline, getOperand) {
+static PHP_METHOD(Opline, getOperand) {
 	php_inspector_opline_t *opline = php_inspector_opline_this();
 	zend_long operand = PHP_INSPECTOR_OPLINE_INVALID;
 	
@@ -112,7 +112,7 @@ PHP_METHOD(Opline, getOperand) {
 #undef NEW_OPERAND
 }
 
-PHP_METHOD(Opline, getExtendedValue) {
+static PHP_METHOD(Opline, getExtendedValue) {
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_this();
 	php_inspector_scope_t *scope = 
@@ -197,7 +197,7 @@ PHP_METHOD(Opline, getExtendedValue) {
 	}
 } 
 
-PHP_METHOD(Opline, getScope) {
+static PHP_METHOD(Opline, getScope) {
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_this();
 	
@@ -215,7 +215,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getScope_arginfo, 0, 0, IS_OBJECT
 ZEND_END_ARG_INFO()
 
 /* {{{ */
-zend_function_entry php_inspector_opline_methods[] = {
+static zend_function_entry php_inspector_opline_methods[] = {
 	PHP_ME(Opline, getType, Opline_getType_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Opline, getOperand, Opline_getOperand_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Opline, getExtendedValue, NULL, ZEND_ACC_PUBLIC)

@@ -27,7 +27,7 @@
 zend_class_entry *php_inspector_global_ce;
 
 /* {{{ */
-PHP_METHOD(Global, __construct)
+static PHP_METHOD(Global, __construct)
 {
 	zend_string *name = NULL;
 	zend_function *function = NULL;
@@ -46,8 +46,12 @@ PHP_METHOD(Global, __construct)
 	php_inspector_scope_construct(getThis(), function);
 }
 
+ZEND_BEGIN_ARG_INFO_EX(Global_construct_arginfo, 0, 0, 1)
+	ZEND_ARG_TYPE_INFO(0, function, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 static zend_function_entry php_inspector_global_methods[] = {
-	PHP_ME(Global, __construct, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Global, __construct, Global_construct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
