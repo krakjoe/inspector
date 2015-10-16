@@ -25,19 +25,14 @@ typedef struct _php_inspector_scope_t {
 	zend_object std;
 } php_inspector_scope_t;
 
-zend_object_handlers php_inspector_scope_handlers;
-zend_class_entry *php_inspector_scope_ce;
-zend_class_entry *php_inspector_file_ce;
-zend_class_entry *php_inspector_global_ce;
-zend_class_entry *php_inspector_closure_ce;
-
 #define php_inspector_scope_fetch_from(o) ((php_inspector_scope_t*) (((char*)o) - XtOffsetOf(php_inspector_scope_t, std)))
 #define php_inspector_scope_fetch(z) php_inspector_scope_fetch_from(Z_OBJ_P(z))
 #define php_inspector_scope_this() php_inspector_scope_fetch(getThis())
 
-void php_inspector_scope_destroy(zend_object *object);
 void php_inspector_scope_construct(zval *object, zend_function *function);
-zend_object* php_inspector_scope_create(zend_class_entry *ce);
-
 zend_function* php_inspector_scope_find(zend_class_entry *scope, zend_string *name);
+
+PHP_MINIT_FUNCTION(scope);
+
+extern zend_class_entry *php_inspector_scope_ce;
 #endif

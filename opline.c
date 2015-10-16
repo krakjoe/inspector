@@ -32,6 +32,8 @@
 #include "opline.h"
 #include "operand.h"
 
+zend_object_handlers php_inspector_opline_handlers;
+
 /* {{{ */
 void php_inspector_opline_destroy(zend_object *object) {
 	php_inspector_opline_t *opline = 
@@ -186,5 +188,33 @@ PHP_METHOD(Opline, getExtendedValue) {
 			RETURN_LONG(opline->opline->extended_value);
 		break;
 	}
+} /* }}} */
+
+/* {{{ */
+zend_function_entry php_inspector_opline_methods[] = {
+	PHP_ME(Opline, getType, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Opline, getOperand, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Opline, getExtendedValue, NULL, ZEND_ACC_PUBLIC)
+	PHP_FE_END
+}; /* }}} */
+
+/* {{{ */
+PHP_MINIT_FUNCTION(opline) {
+	zend_class_entry ce;
+	
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Opline", php_inspector_opline_methods);
+	php_inspector_opline_ce = 
+		zend_register_internal_class(&ce);
+	php_inspector_opline_ce->create_object = php_inspector_opline_create;
+	zend_declare_class_constant_long(php_inspector_opline_ce, ZEND_STRL("OP1"), PHP_INSPECTOR_OPLINE_OP1);
+	zend_declare_class_constant_long(php_inspector_opline_ce, ZEND_STRL("OP2"), PHP_INSPECTOR_OPLINE_OP2);
+	zend_declare_class_constant_long(php_inspector_opline_ce, ZEND_STRL("RESULT"), PHP_INSPECTOR_OPLINE_RESULT);
+
+	memcpy(&php_inspector_opline_handlers, 
+		zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+	php_inspector_opline_handlers.offset = XtOffsetOf(php_inspector_opline_t, std);
+	php_inspector_opline_handlers.free_obj = php_inspector_opline_destroy;
+	
+	return SUCCESS;
 } /* }}} */
 #endif

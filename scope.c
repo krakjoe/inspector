@@ -23,12 +23,17 @@
 #include "php.h"
 #include "php_ini.h"
 #include "zend_closures.h"
+#include "zend_interfaces.h"
 
 #include "ext/standard/info.h"
 #include "ext/spl/spl_exceptions.h"
 #include "php_inspector.h"
 
 #include "scope.h"
+#include "iterator.h"
+
+zend_object_handlers php_inspector_scope_handlers;
+zend_class_entry *php_inspector_scope_ce;
 
 /* {{{ */
 zend_object* php_inspector_scope_create(zend_class_entry *ce) {
@@ -92,4 +97,69 @@ void php_inspector_scope_destroy(zend_object *object) {
 	}
 }
 /* }}} */
+
+/* {{{ */
+PHP_METHOD(Scope, getStatics) {
+	php_inspector_scope_t *scope = php_inspector_scope_this();
+	
+	if (scope->ops->static_variables) {
+		RETURN_ARR(zend_array_dup(scope->ops->static_variables));
+	}
+}
+
+PHP_METHOD(Scope, getConstants) {
+	php_inspector_scope_t *scope = php_inspector_scope_this();
+
+	if (scope->ops->last_literal) {
+		uint32_t it = 0;
+
+		array_init(return_value);
+		for (it = 0; it < scope->ops->last_literal; it++) {
+			if (add_next_index_zval(return_value, &scope->ops->literals[it]) == SUCCESS)
+				Z_TRY_ADDREF(scope->ops->literals[it]);
+		}
+	}
+} 
+
+PHP_METHOD(Scope, getVariables) {
+	php_inspector_scope_t *scope = php_inspector_scope_this();
+
+	if (scope->ops->last_var) {
+		uint32_t it = 0;
+		
+		array_init(return_value);
+		for (it = 0; it < scope->ops->last_var; it++) {
+			add_next_index_str(return_value, 
+				zend_string_copy(scope->ops->vars[it]));
+		}
+	}
+} /* }}} */
+
+/* {{{ */
+zend_function_entry php_inspector_scope_methods[] = {
+	PHP_ABSTRACT_ME(Scope, __construct, NULL)
+	PHP_ME(Scope, getStatics, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getConstants, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getVariables, NULL, ZEND_ACC_PUBLIC)
+	PHP_FE_END
+}; /* }}} */
+
+/* {{{ */
+PHP_MINIT_FUNCTION(scope) {
+	zend_class_entry ce;
+
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Scope", php_inspector_scope_methods);
+	php_inspector_scope_ce = 
+		zend_register_internal_class(&ce);
+	php_inspector_scope_ce->create_object = php_inspector_scope_create;
+	php_inspector_scope_ce->get_iterator  = php_inspector_iterate;
+	zend_class_implements(php_inspector_scope_ce, 1, zend_ce_traversable);
+
+	memcpy(&php_inspector_scope_handlers, 
+		zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+	php_inspector_scope_handlers.offset = XtOffsetOf(php_inspector_scope_t, std);
+	php_inspector_scope_handlers.free_obj = php_inspector_scope_destroy;
+
+	return SUCCESS;
+} /* }}} */
 #endif

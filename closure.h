@@ -17,23 +17,48 @@
 */
 
 /* $Id$ */
-#ifndef HAVE_INSPECTOR_OPERAND_H
-#define HAVE_INSPECTOR_OPERAND_H
-typedef struct _php_inspector_operand_t {
-	zval opline;
-	uint32_t which;
-	zend_uchar type;
-	znode_op *op;
-	zend_object std;
-} php_inspector_operand_t;
+#ifndef HAVE_INSPECTOR_CLOSURE_H
+#define HAVE_INSPECTOR_CLOSURE_H
 
-zend_class_entry *php_inspector_operand_ce;
+zend_class_entry *php_inspector_closure_ce;
 
-#define php_inspector_operand_fetch_from(o) ((php_inspector_operand_t*) (((char*)o) - XtOffsetOf(php_inspector_operand_t, std)))
-#define php_inspector_operand_fetch(z) php_inspector_operand_fetch_from(Z_OBJ_P(z))
-#define php_inspector_operand_this() php_inspector_operand_fetch(getThis())
+/* {{{ */
+PHP_METHOD(Closure, __construct)
+{
+	zval *closure;
 
-void php_inspector_operand_construct(zval *object, zval *opline, uint32_t which, zend_uchar type, znode_op *operand);
+	if (0) {
+InvalidArgumentException:
+		zend_throw_exception_ex(spl_ce_InvalidArgumentException, 0,
+			"%s expects (Closure closure)",
+			ZSTR_VAL(EX(func)->common.function_name));
+		return;
+	}
 
-PHP_MINIT_FUNCTION(operand);
+	switch (ZEND_NUM_ARGS()) {
+		case 1: if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &closure, zend_ce_closure) != SUCCESS) {
+			return;
+		} break;
+		
+		default:
+			goto InvalidArgumentException;
+	}
+
+	php_inspector_scope_construct(getThis(), (zend_function*) zend_get_closure_method_def(closure));
+}
+
+static zend_function_entry php_inspector_closure_methods[] = {
+	PHP_ME(Closure, __construct, NULL, ZEND_ACC_PUBLIC)
+	PHP_FE_END
+}; 
+
+PHP_MINIT_FUNCTION(closure) {
+	zend_class_entry ce;
+	
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Closure", php_inspector_closure_methods);
+	php_inspector_closure_ce = 
+		zend_register_internal_class_ex(&ce, php_inspector_scope_ce);
+	
+	return SUCCESS;
+} /* }}} */
 #endif

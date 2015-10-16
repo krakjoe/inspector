@@ -32,6 +32,8 @@
 #include "opline.h"
 #include "operand.h"
 
+zend_object_handlers php_inspector_operand_handlers;
+
 /* {{{ */
 void php_inspector_operand_destroy(zend_object *object) {
 	php_inspector_operand_t *operand = php_inspector_operand_fetch_from(object);
@@ -66,6 +68,7 @@ zend_object* php_inspector_operand_create(zend_class_entry *ce) {
 	return &operand->std;
 } /* }}} */
 
+/* {{{ */
 PHP_METHOD(Operand, isJumpTarget) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
@@ -228,5 +231,38 @@ PHP_METHOD(Operand, getNumber) {
 			}
 		}	
 	}
-}
+} /* }}} */
+
+/* {{{ */
+zend_function_entry php_inspector_operand_methods[] = {
+	PHP_ME(Operand, isUnused, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isExtendedTypeUnused, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isCompiledVariable, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isTemporaryVariable, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isVariable, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isConstant, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isJumpTarget, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, getWhich, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, getValue, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, getName, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, getNumber, NULL, ZEND_ACC_PUBLIC)
+	PHP_FE_END
+}; /* }}} */
+
+/* {{{ */
+PHP_MINIT_FUNCTION(operand) {
+	zend_class_entry ce;
+
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Operand", php_inspector_operand_methods);
+	php_inspector_operand_ce = 
+		zend_register_internal_class(&ce);
+	php_inspector_operand_ce->create_object = php_inspector_operand_create;
+
+	memcpy(&php_inspector_operand_handlers, 
+		zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+	php_inspector_operand_handlers.offset = XtOffsetOf(php_inspector_operand_t, std);
+	php_inspector_operand_handlers.free_obj = php_inspector_operand_destroy;
+
+	return SUCCESS;
+} /* }}} */
 #endif
