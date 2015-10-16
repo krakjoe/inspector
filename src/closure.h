@@ -17,22 +17,10 @@
 */
 
 /* $Id$ */
-#ifndef HAVE_INSPECTOR_SCOPE_H
-#define HAVE_INSPECTOR_SCOPE_H
+#ifndef HAVE_INSPECTOR_CLOSURE_H
+#define HAVE_INSPECTOR_CLOSURE_H
 
-typedef struct _php_inspector_scope_t {
-	zend_op_array *ops;
-	zend_object std;
-} php_inspector_scope_t;
+extern zend_class_entry *php_inspector_closure_ce;
 
-#define php_inspector_scope_fetch_from(o) ((php_inspector_scope_t*) (((char*)o) - XtOffsetOf(php_inspector_scope_t, std)))
-#define php_inspector_scope_fetch(z) php_inspector_scope_fetch_from(Z_OBJ_P(z))
-#define php_inspector_scope_this() php_inspector_scope_fetch(getThis())
-
-void php_inspector_scope_construct(zval *object, zend_function *function);
-zend_function* php_inspector_scope_find(zend_class_entry *scope, zend_string *name);
-
-PHP_MINIT_FUNCTION(scope);
-
-extern zend_class_entry *php_inspector_scope_ce;
+PHP_MINIT_FUNCTION(closure);
 #endif

@@ -17,23 +17,10 @@
 */
 
 /* $Id$ */
-#ifndef HAVE_INSPECTOR_OPERAND_H
-#define HAVE_INSPECTOR_OPERAND_H
-typedef struct _php_inspector_operand_t {
-	zval opline;
-	uint32_t which;
-	zend_uchar type;
-	znode_op *op;
-	zend_object std;
-} php_inspector_operand_t;
+#ifndef HAVE_INSPECTOR_FILE_H
+#define HAVE_INSPECTOR_FILE_H
 
-zend_class_entry *php_inspector_operand_ce;
+extern zend_class_entry *php_inspector_file_ce;
 
-#define php_inspector_operand_fetch_from(o) ((php_inspector_operand_t*) (((char*)o) - XtOffsetOf(php_inspector_operand_t, std)))
-#define php_inspector_operand_fetch(z) php_inspector_operand_fetch_from(Z_OBJ_P(z))
-#define php_inspector_operand_this() php_inspector_operand_fetch(getThis())
-
-void php_inspector_operand_construct(zval *object, zval *opline, uint32_t which, zend_uchar type, znode_op *operand);
-
-PHP_MINIT_FUNCTION(operand);
+PHP_MINIT_FUNCTION(file);
 #endif

@@ -29,6 +29,7 @@
 #include "operand.h"
 
 zend_object_handlers php_inspector_operand_handlers;
+zend_class_entry *php_inspector_operand_ce;
 
 /* {{{ */
 void php_inspector_operand_destroy(zend_object *object) {

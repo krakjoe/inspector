@@ -30,15 +30,15 @@
 #include "ext/spl/spl_exceptions.h"
 #include "php_inspector.h"
 
-#include "scope.h"
-#include "iterator.h"
-#include "opline.h"
-#include "operand.h"
+#include "src/scope.h"
+#include "src/iterator.h"
+#include "src/opline.h"
+#include "src/operand.h"
 
-#include "file.h"
-#include "global.h"
-#include "method.h"
-#include "closure.h"
+#include "src/file.h"
+#include "src/global.h"
+#include "src/method.h"
+#include "src/closure.h"
 
 /* {{{ PHP_MINIT_FUNCTION
  */
