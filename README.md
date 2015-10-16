@@ -39,6 +39,7 @@ namespace Inspector
 	}
 
 	final class Entry implements Traversable, Countable {
+		public function __construct(string class);
 		public function getMethod(string name) : Method;
 	}
 

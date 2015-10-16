@@ -224,6 +224,7 @@ PHP_MINIT_FUNCTION(entry) {
 		zend_register_internal_class(&ce);
 	php_inspector_entry_ce->create_object = php_inspector_entry_create;
 	php_inspector_entry_ce->get_iterator  = php_inspector_entry_iterate;
+	php_inspector_entry_ce->ce_flags |= ZEND_ACC_FINAL;
 	zend_class_implements(php_inspector_entry_ce, 2, zend_ce_traversable, spl_ce_Countable);
 
 	memcpy(&php_inspector_entry_handlers, 
