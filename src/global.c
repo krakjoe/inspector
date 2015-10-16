@@ -70,6 +70,7 @@ PHP_MINIT_FUNCTION(global) {
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Global", php_inspector_global_methods);
 	php_inspector_global_ce = 
 		zend_register_internal_class_ex(&ce, php_inspector_scope_ce);
+	php_inspector_global_ce->ce_flags |= ZEND_ACC_FINAL;
 
 	return SUCCESS;
 }  /* }}} */

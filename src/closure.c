@@ -65,7 +65,8 @@ PHP_MINIT_FUNCTION(closure) {
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Closure", php_inspector_closure_methods);
 	php_inspector_closure_ce = 
 		zend_register_internal_class_ex(&ce, php_inspector_scope_ce);
-	
+	php_inspector_closure_ce->ce_flags |= ZEND_ACC_FINAL;
+
 	return SUCCESS;
 } /* }}} */
 #endif

@@ -20,23 +20,23 @@ namespace Inspector
 		public function getVariables() : array;
 	}
 	
-	class Global extends Scope {
+	final class Global extends Scope {
 		public function __construct(string function);
 	}
 
-	class Method extends Scope {
+	final class Method extends Scope {
 		public function __construct(string class, string method);
 	}
 
-	class Closure extends Scope {
+	final class Closure extends Scope {
 		public function __construct(Closure closure);
 	}
 
-	class File extends Scope {
+	final class File extends Scope {
 		public function __construct(string filename);
 	}
 
-	class Opline {
+	final class Opline {
 		const OP1;
 		const OP2;
 		const RESULT;
@@ -46,7 +46,7 @@ namespace Inspector
 		public function getExtendedValue() : mixed;
 	}
 
-	class Operand {
+	final class Operand {
 		public function isUnused() : bool;
 		public function isExtendedTypeUnused() : bool;
 		public function isCompiledVariable() : bool;

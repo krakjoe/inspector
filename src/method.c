@@ -71,6 +71,7 @@ PHP_MINIT_FUNCTION(method) {
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Method", php_inspector_method_methods);
 	php_inspector_method_ce = 
 		zend_register_internal_class_ex(&ce, php_inspector_scope_ce);
+	php_inspector_method_ce->ce_flags |= ZEND_ACC_FINAL;
 
 	return SUCCESS;
 } /* }}} */

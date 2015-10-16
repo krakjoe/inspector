@@ -96,6 +96,7 @@ PHP_MINIT_FUNCTION(file) {
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "File", php_inspector_file_methods);
 	php_inspector_file_ce = 
 		zend_register_internal_class_ex(&ce, php_inspector_scope_ce);
+	php_inspector_file_ce->ce_flags |= ZEND_ACC_FINAL;
 
 	return SUCCESS;
 } /* }}} */

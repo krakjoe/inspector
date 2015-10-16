@@ -230,19 +230,28 @@ PHP_METHOD(Operand, getNumber) {
 	}
 } /* }}} */
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_bool_arginfo, 0, 0, _IS_BOOL, NULL, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_int_arginfo, 0, 0, IS_LONG, NULL, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_string_or_null_arginfo, 0, 0, IS_STRING, NULL, 1)
+ZEND_END_ARG_INFO()
+
 /* {{{ */
 zend_function_entry php_inspector_operand_methods[] = {
-	PHP_ME(Operand, isUnused, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Operand, isExtendedTypeUnused, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Operand, isCompiledVariable, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Operand, isTemporaryVariable, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Operand, isVariable, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Operand, isConstant, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Operand, isJumpTarget, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Operand, getWhich, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isUnused, Operand_returns_bool_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isExtendedTypeUnused, Operand_returns_bool_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isCompiledVariable, Operand_returns_bool_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isTemporaryVariable, Operand_returns_bool_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isVariable, Operand_returns_bool_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isConstant, Operand_returns_bool_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, isJumpTarget, Operand_returns_bool_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, getWhich, Operand_returns_int_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Operand, getValue, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Operand, getName, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Operand, getNumber, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, getName, Operand_returns_string_or_null_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, getNumber, Operand_returns_int_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
@@ -254,6 +263,7 @@ PHP_MINIT_FUNCTION(operand) {
 	php_inspector_operand_ce = 
 		zend_register_internal_class(&ce);
 	php_inspector_operand_ce->create_object = php_inspector_operand_create;
+	php_inspector_operand_ce->ce_flags |= ZEND_ACC_FINAL;
 
 	memcpy(&php_inspector_operand_handlers, 
 		zend_get_std_object_handlers(), sizeof(zend_object_handlers));

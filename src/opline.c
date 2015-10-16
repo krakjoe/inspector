@@ -187,10 +187,17 @@ PHP_METHOD(Opline, getExtendedValue) {
 	}
 } /* }}} */
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getType_arginfo, 0, 0, IS_STRING, NULL, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getOperand_arginfo, 0, 1, IS_OBJECT, "Inspector\\Operand", 0)
+	ZEND_ARG_TYPE_INFO(0, which, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
 /* {{{ */
 zend_function_entry php_inspector_opline_methods[] = {
-	PHP_ME(Opline, getType, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Opline, getOperand, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Opline, getType, Opline_getType_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Opline, getOperand, Opline_getOperand_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Opline, getExtendedValue, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
@@ -203,6 +210,8 @@ PHP_MINIT_FUNCTION(opline) {
 	php_inspector_opline_ce = 
 		zend_register_internal_class(&ce);
 	php_inspector_opline_ce->create_object = php_inspector_opline_create;
+	php_inspector_opline_ce->ce_flags |= ZEND_ACC_FINAL;
+
 	zend_declare_class_constant_long(php_inspector_opline_ce, ZEND_STRL("OP1"), PHP_INSPECTOR_OPLINE_OP1);
 	zend_declare_class_constant_long(php_inspector_opline_ce, ZEND_STRL("OP2"), PHP_INSPECTOR_OPLINE_OP2);
 	zend_declare_class_constant_long(php_inspector_opline_ce, ZEND_STRL("RESULT"), PHP_INSPECTOR_OPLINE_RESULT);

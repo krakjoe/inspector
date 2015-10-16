@@ -101,16 +101,17 @@ PHP_METHOD(Scope, getStatics) {
 	
 	if (scope->ops->static_variables) {
 		RETURN_ARR(zend_array_dup(scope->ops->static_variables));
-	}
+	} else array_init(return_value);
 }
 
 PHP_METHOD(Scope, getConstants) {
 	php_inspector_scope_t *scope = php_inspector_scope_this();
 
+	array_init(return_value);
+
 	if (scope->ops->last_literal) {
 		uint32_t it = 0;
 
-		array_init(return_value);
 		for (it = 0; it < scope->ops->last_literal; it++) {
 			if (add_next_index_zval(return_value, &scope->ops->literals[it]) == SUCCESS)
 				Z_TRY_ADDREF(scope->ops->literals[it]);
@@ -121,10 +122,11 @@ PHP_METHOD(Scope, getConstants) {
 PHP_METHOD(Scope, getVariables) {
 	php_inspector_scope_t *scope = php_inspector_scope_this();
 
+	array_init(return_value);
+
 	if (scope->ops->last_var) {
 		uint32_t it = 0;
 		
-		array_init(return_value);
 		for (it = 0; it < scope->ops->last_var; it++) {
 			add_next_index_str(return_value, 
 				zend_string_copy(scope->ops->vars[it]));
@@ -132,12 +134,15 @@ PHP_METHOD(Scope, getVariables) {
 	}
 } /* }}} */
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getArray_arginfo, 0, 0, IS_ARRAY, NULL, 0)
+ZEND_END_ARG_INFO()
+
+
 /* {{{ */
 zend_function_entry php_inspector_scope_methods[] = {
-	PHP_ABSTRACT_ME(Scope, __construct, NULL)
-	PHP_ME(Scope, getStatics, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Scope, getConstants, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Scope, getVariables, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getStatics, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getConstants, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getVariables, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
@@ -148,6 +153,7 @@ PHP_MINIT_FUNCTION(scope) {
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Scope", php_inspector_scope_methods);
 	php_inspector_scope_ce = 
 		zend_register_internal_class(&ce);
+	php_inspector_scope_ce->ce_flags |= ZEND_ACC_EXPLICIT_ABSTRACT_CLASS;
 	php_inspector_scope_ce->create_object = php_inspector_scope_create;
 	php_inspector_scope_ce->get_iterator  = php_inspector_iterate;
 	zend_class_implements(php_inspector_scope_ce, 1, zend_ce_traversable);
