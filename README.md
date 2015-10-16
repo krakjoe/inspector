@@ -12,7 +12,7 @@ API
 The following API is provided:
 
 ```php
-namespace Inspector 
+namespace Inspector
 {
 	abstract class Scope implements Traversable, Countable {
 		public function getStatics() : array;

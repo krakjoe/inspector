@@ -31,7 +31,6 @@
 #include "php_inspector.h"
 
 #include "src/scope.h"
-#include "src/iterator.h"
 #include "src/opline.h"
 #include "src/operand.h"
 

@@ -28,7 +28,22 @@
 #include "php_inspector.h"
 
 #include "scope.h"
-#include "iterator.h"
+
+typedef struct _php_inspector_iterator_t {
+	zend_object_iterator zit;
+	zval object;
+	uint32_t opline;
+} php_inspector_iterator_t;
+
+zend_object_iterator_funcs php_inspector_iterator_funcs;
+
+zend_object_iterator* php_inspector_iterate(zend_class_entry *ce, zval *object, int by_ref);
+void php_inspector_iterator_dtor(php_inspector_iterator_t* iterator);
+int php_inspector_iterator_validate(php_inspector_iterator_t* iterator);
+zval* php_inspector_iterator_current_data(php_inspector_iterator_t* iterator);
+void php_inspector_iterator_current_key(php_inspector_iterator_t* iterator, zval* result);
+void php_inspector_iterator_move_forward(php_inspector_iterator_t* iterator);
+void php_inspector_iterator_rewind(php_inspector_iterator_t* iterator);
 
 zend_object_handlers php_inspector_scope_handlers;
 zend_class_entry *php_inspector_scope_ce;
@@ -97,6 +112,63 @@ void php_inspector_scope_destroy(zend_object *object) {
 /* }}} */
 
 /* {{{ */
+void php_inspector_iterator_dtor(php_inspector_iterator_t* iterator) {
+	zval_ptr_dtor(&iterator->object);
+	if (Z_TYPE(iterator->zit.data) != IS_UNDEF)
+		zval_ptr_dtor(&iterator->zit.data);
+}
+
+int php_inspector_iterator_validate(php_inspector_iterator_t* iterator) {
+	php_inspector_scope_t *scope = 
+		php_inspector_scope_fetch_from(Z_OBJ(iterator->object));	
+	return (scope->ops->last > iterator->opline) ? SUCCESS : FAILURE;
+}
+
+zval* php_inspector_iterator_current_data(php_inspector_iterator_t* iterator) {
+	php_inspector_scope_t *scope = php_inspector_scope_fetch_from(Z_OBJ(iterator->object));
+
+	if (Z_TYPE(iterator->zit.data) != IS_UNDEF) {
+		zval_ptr_dtor(&iterator->zit.data);
+	}
+
+	php_inspector_opline_construct(&iterator->zit.data, &iterator->object, &scope->ops->opcodes[iterator->opline]);
+	
+	if (Z_ISUNDEF(iterator->zit.data)) {
+		return &EG(uninitialized_zval);
+	}
+
+    return &iterator->zit.data;
+}
+
+void php_inspector_iterator_current_key(php_inspector_iterator_t* iterator, zval* result) { ZVAL_LONG(result, iterator->opline); }
+void php_inspector_iterator_move_forward(php_inspector_iterator_t* iterator) { iterator->opline++; }
+void php_inspector_iterator_rewind(php_inspector_iterator_t* iterator) { iterator->opline = 0; }
+
+zend_object_iterator_funcs php_inspector_iterator_funcs = {
+    (void (*) (zend_object_iterator*)) 				php_inspector_iterator_dtor,
+    (int (*)(zend_object_iterator *)) 				php_inspector_iterator_validate,
+    (zval* (*)(zend_object_iterator *)) 			php_inspector_iterator_current_data,
+    (void (*)(zend_object_iterator *, zval *)) 		php_inspector_iterator_current_key,
+    (void (*)(zend_object_iterator *))				php_inspector_iterator_move_forward,
+    (void (*)(zend_object_iterator *)) 				php_inspector_iterator_rewind
+};
+
+zend_object_iterator* php_inspector_iterate(zend_class_entry *ce, zval *object, int by_ref) {
+    php_inspector_iterator_t *iterator = 
+		(php_inspector_iterator_t*) ecalloc(1, sizeof(php_inspector_iterator_t));
+	
+    zend_iterator_init((zend_object_iterator*)iterator);
+
+	ZVAL_COPY(&iterator->object, object);
+	ZVAL_UNDEF(&iterator->zit.data);
+
+    iterator->zit.funcs = &php_inspector_iterator_funcs;
+
+    return (zend_object_iterator*) iterator;
+}
+/* }}} */
+
+/* {{{ */
 PHP_METHOD(Scope, getStatics) {
 	php_inspector_scope_t *scope = php_inspector_scope_this();
 	
@@ -133,7 +205,7 @@ PHP_METHOD(Scope, getVariables) {
 				zend_string_copy(scope->ops->vars[it]));
 		}
 	}
-} 
+}
 
 PHP_METHOD(Scope, getOpline) {
 	php_inspector_scope_t *scope = 
