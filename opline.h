@@ -38,7 +38,7 @@ zend_class_entry *php_inspector_opline_ce;
 #define php_inspector_opline_this() php_inspector_opline_fetch(getThis())
 
 void php_inspector_opline_destroy(zend_object *object);
-void php_inspector_opline_construct(zval *object, zval *inspector, zend_op *opline);
+void php_inspector_opline_construct(zval *object, zval *scope, zend_op *opline);
 zend_object* php_inspector_opline_create(zend_class_entry *ce);
 
 PHP_METHOD(Opline, getType);

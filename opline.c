@@ -43,14 +43,14 @@ void php_inspector_opline_destroy(zend_object *object) {
 		zval_ptr_dtor(&opline->scope);	
 }
 
-void php_inspector_opline_construct(zval *object, zval *inspector, zend_op *o) {
+void php_inspector_opline_construct(zval *object, zval *scope, zend_op *zopline) {
 	php_inspector_opline_t *opline = NULL;
-		
+
 	object_init_ex(object, php_inspector_opline_ce);
 
 	opline = php_inspector_opline_fetch(object);
-	ZVAL_COPY(&opline->scope, inspector);
-	opline->opline = o;	
+	ZVAL_COPY(&opline->scope, scope);
+	opline->opline = zopline;
 }
 
 zend_object* php_inspector_opline_create(zend_class_entry *ce) {
