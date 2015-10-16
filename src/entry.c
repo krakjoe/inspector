@@ -201,17 +201,35 @@ static PHP_METHOD(Entry, getMethod) {
 	object_init_ex(return_value, php_inspector_method_ce);
 	php_inspector_scope_construct(return_value, function);
 }
+
+static PHP_METHOD(Entry, getMethods) {
+	php_inspector_entry_t *entry = 
+		php_inspector_entry_this();
+	zend_string *name;
+	zend_function *function;
+
+	array_init(return_value);
+
+	ZEND_HASH_FOREACH_STR_KEY_PTR(&entry->entry->function_table, name, function) {
+		add_next_index_str(return_value, zend_string_copy(name));
+	} ZEND_HASH_FOREACH_END();
+}
 /* }}} */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Entry_getMethod_arginfo, 0, 1, IS_OBJECT, "Inspector\\Method", 1)
 	ZEND_ARG_TYPE_INFO(0, method, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Entry_getMethods_arginfo, 0, 0, IS_ARRAY, NULL, 0)
+ZEND_END_ARG_INFO()
+
+
 /* {{{ */
 static zend_function_entry php_inspector_entry_methods[] = {
 	PHP_ME(Entry, __construct, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Entry, count, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Entry, getMethod, Entry_getMethod_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Entry, getMethods, Entry_getMethods_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
