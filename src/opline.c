@@ -190,7 +190,7 @@ PHP_METHOD(Opline, getExtendedValue) {
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getType_arginfo, 0, 0, IS_STRING, NULL, 1)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getOperand_arginfo, 0, 1, IS_OBJECT, "Inspector\\Operand", 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getOperand_arginfo, 0, 1, IS_OBJECT, "Inspector\\Operand", 1)
 	ZEND_ARG_TYPE_INFO(0, which, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
