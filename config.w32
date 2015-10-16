@@ -4,6 +4,11 @@
 ARG_ENABLE("inspector", "enable inspector support", "no");
 
 if (PHP_INSPECTOR != "no") {
-	EXTENSION("inspector", "php_inspector.c scope.c iterator.c opline.c operand.c", PHP_EXTNAME_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+	EXTENSION("inspector", "php_inspector.c", PHP_EXTNAME_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+	ADD_SOURCES(
+		"ext/inspector/src",
+		"scope.c iterator.c opline.c operand.c closure.c file.c global.c method.c", 
+		"inspector"
+	);
 }
 
