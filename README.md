@@ -28,7 +28,7 @@ namespace Inspector
 		public function __construct(string filename);
 	}
 
-	class Node {
+	class Opline {
 		const OP1;
 		const OP2;
 		const RESULT;
@@ -62,7 +62,7 @@ Making stuff look nice is not my forte, all the same, here is some simple code u
 
 ```php
 use Inspector\Inspector;
-use Inspector\Node;
+use Inspector\Opline;
 use Inspector\Operand;
 
 function printConstant($mixed) {
@@ -92,9 +92,9 @@ function printInspector(Inspector $inspector) {
 	printf("OPCODE\t\tOP1\tOP2\tRESULT\n");
 	foreach ($inspector as $opline) {
 		printf("%s\t", $opline->getType());
-		printOperand($opline->getOperand(NODE::OP1));
-		printOperand($opline->getOperand(NODE::OP2));
-		printOperand($opline->getOperand(NODE::RESULT));
+		printOperand($opline->getOperand(OPLINE::OP1));
+		printOperand($opline->getOperand(OPLINE::OP2));
+		printOperand($opline->getOperand(OPLINE::RESULT));
 		printf("\n");
 	}
 }
