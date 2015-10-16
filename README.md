@@ -44,6 +44,7 @@ namespace Inspector
 		public function getType() : string;
 		public function getOperand(int which) : Operand;
 		public function getExtendedValue() : mixed;
+		public function getScope() : Scope;
 	}
 
 	final class Operand {
@@ -58,6 +59,7 @@ namespace Inspector
 		public function getValue() : mixed;
 		public function getName() : string;
 		public function getNumber() : int;
+		public function getOpline() : Opline;
 	}
 }
 ```

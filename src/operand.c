@@ -228,6 +228,13 @@ PHP_METHOD(Operand, getNumber) {
 			}
 		}	
 	}
+} 
+
+PHP_METHOD(Operand, getOpline) {
+	php_inspector_operand_t *operand = 
+		php_inspector_operand_this();
+
+	ZVAL_COPY(return_value, &operand->opline);
 } /* }}} */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_bool_arginfo, 0, 0, _IS_BOOL, NULL, 0)
@@ -237,6 +244,9 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_int_arginfo, 0, 0, IS_LO
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_string_or_null_arginfo, 0, 0, IS_STRING, NULL, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_opline_arginfo, 0, 0, IS_OBJECT, "Inspector\\Opline", 0)
 ZEND_END_ARG_INFO()
 
 /* {{{ */
@@ -252,6 +262,7 @@ zend_function_entry php_inspector_operand_methods[] = {
 	PHP_ME(Operand, getValue, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Operand, getName, Operand_returns_string_or_null_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Operand, getNumber, Operand_returns_int_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Operand, getOpline, Operand_returns_opline_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 

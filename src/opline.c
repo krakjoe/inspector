@@ -195,6 +195,13 @@ PHP_METHOD(Opline, getExtendedValue) {
 			RETURN_LONG(opline->opline->extended_value);
 		break;
 	}
+} 
+
+PHP_METHOD(Opline, getScope) {
+	php_inspector_opline_t *opline = 
+		php_inspector_opline_this();
+	
+	ZVAL_COPY(return_value, &opline->scope);
 } /* }}} */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getType_arginfo, 0, 0, IS_STRING, NULL, 1)
@@ -204,11 +211,15 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getOperand_arginfo, 0, 1, IS_OBJE
 	ZEND_ARG_TYPE_INFO(0, which, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getScope_arginfo, 0, 0, IS_OBJECT, "Inspector\\Scope", 0)
+ZEND_END_ARG_INFO()
+
 /* {{{ */
 zend_function_entry php_inspector_opline_methods[] = {
 	PHP_ME(Opline, getType, Opline_getType_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Opline, getOperand, Opline_getOperand_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Opline, getExtendedValue, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Opline, getScope, Opline_getScope_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
