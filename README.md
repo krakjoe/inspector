@@ -38,6 +38,10 @@ namespace Inspector
 		public function __construct(string filename);
 	}
 
+	final class Entry implements Traversable, Countable {
+		public function getMethod(string name) : Method;
+	}
+
 	final class Opline {
 		const OP1;
 		const OP2;

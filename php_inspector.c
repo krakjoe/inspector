@@ -38,6 +38,7 @@
 #include "src/global.h"
 #include "src/method.h"
 #include "src/closure.h"
+#include "src/entry.h"
 
 /* {{{ PHP_MINIT_FUNCTION
  */
@@ -50,6 +51,7 @@ PHP_MINIT_FUNCTION(inspector)
 	PHP_MINIT(closure)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(opline)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(operand)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_MINIT(entry)(INIT_FUNC_ARGS_PASSTHRU);
 
 	return SUCCESS;
 }

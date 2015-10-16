@@ -35,7 +35,7 @@ typedef struct _php_inspector_scope_iterator_t {
 	uint32_t opline;
 } php_inspector_scope_iterator_t;
 
-static zend_object_iterator* php_inspector_iterate(zend_class_entry *ce, zval *object, int by_ref);
+static zend_object_iterator* php_inspector_scope_iterate(zend_class_entry *ce, zval *object, int by_ref);
 
 static zend_object_handlers php_inspector_scope_handlers;
 zend_class_entry *php_inspector_scope_ce;
@@ -145,7 +145,7 @@ static zend_object_iterator_funcs php_inspector_scope_iterator_funcs = {
     (void (*)(zend_object_iterator *)) 				php_inspector_scope_iterator_rewind
 };
 
-static zend_object_iterator* php_inspector_iterate(zend_class_entry *ce, zval *object, int by_ref) {
+static zend_object_iterator* php_inspector_scope_iterate(zend_class_entry *ce, zval *object, int by_ref) {
     php_inspector_scope_iterator_t *iterator = 
 		(php_inspector_scope_iterator_t*) ecalloc(1, sizeof(php_inspector_scope_iterator_t));
 	
@@ -251,7 +251,7 @@ PHP_MINIT_FUNCTION(scope) {
 		zend_register_internal_class(&ce);
 	php_inspector_scope_ce->ce_flags |= ZEND_ACC_EXPLICIT_ABSTRACT_CLASS;
 	php_inspector_scope_ce->create_object = php_inspector_scope_create;
-	php_inspector_scope_ce->get_iterator  = php_inspector_iterate;
+	php_inspector_scope_ce->get_iterator  = php_inspector_scope_iterate;
 	zend_class_implements(php_inspector_scope_ce, 2, zend_ce_traversable, spl_ce_Countable);
 
 	memcpy(&php_inspector_scope_handlers, 
