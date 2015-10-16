@@ -21,11 +21,8 @@
 #define HAVE_INSPECTOR_SCOPE
 
 #include "php.h"
-#include "php_ini.h"
-#include "zend_closures.h"
 #include "zend_interfaces.h"
 
-#include "ext/standard/info.h"
 #include "ext/spl/spl_exceptions.h"
 #include "php_inspector.h"
 
