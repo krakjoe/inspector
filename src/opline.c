@@ -21,6 +21,7 @@
 #define HAVE_INSPECTOR_OPLINE
 
 #include "php.h"
+#include "ext/spl/spl_exceptions.h"
 
 #include "php_inspector.h"
 
@@ -85,7 +86,11 @@ PHP_METHOD(Opline, getOperand) {
 		return;
 	}
 
-#define NEW_OPERAND(n, t, o) php_inspector_operand_construct(return_value, getThis(), n, t, o)
+#define NEW_OPERAND(n, t, o) do { \
+	php_inspector_operand_construct(return_value, getThis(), n, t, o); \
+	return; \
+} while(0)
+
 	switch (operand) {
 		case PHP_INSPECTOR_OPLINE_OP1: 
 			NEW_OPERAND(operand, opline->opline->op1_type, &opline->opline->op1); 
@@ -98,6 +103,11 @@ PHP_METHOD(Opline, getOperand) {
 		case PHP_INSPECTOR_OPLINE_RESULT: 
 			NEW_OPERAND(operand, opline->opline->result_type, &opline->opline->result); 
 		break;
+
+		default:
+			zend_throw_exception_ex(spl_ce_RuntimeException, 0,
+				"the requested operand (%ld) is invalid", 
+				operand);
 	}
 #undef NEW_OPERAND
 }
