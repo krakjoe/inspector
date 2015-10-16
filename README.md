@@ -14,7 +14,7 @@ The following API is provided:
 ```php
 namespace Inspector 
 {
-	class Inspector {
+	class Inspector implements Traversable {
 		public function __construct(string function);
 		public function __construct(string scope, string method);
 		public function __construct(Closure closure);
