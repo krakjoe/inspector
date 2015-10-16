@@ -20,7 +20,7 @@
 #ifndef HAVE_INSPECTOR_OPERAND_H
 #define HAVE_INSPECTOR_OPERAND_H
 typedef struct _php_inspector_operand_t {
-	zval node;
+	zval opline;
 	uint32_t which;
 	zend_uchar type;
 	znode_op *op;
@@ -35,7 +35,7 @@ zend_class_entry *php_inspector_operand_ce;
 #define php_inspector_operand_this() php_inspector_operand_fetch(getThis())
 
 void php_inspector_operand_destroy(zend_object *object);
-void php_inspector_operand_construct(zval *object, zval *node, uint32_t which, zend_uchar type, znode_op *operand);
+void php_inspector_operand_construct(zval *object, zval *opline, uint32_t which, zend_uchar type, znode_op *operand);
 zend_object* php_inspector_operand_create(zend_class_entry *ce);
 
 PHP_METHOD(Operand, isUnused);

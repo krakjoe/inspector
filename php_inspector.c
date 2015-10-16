@@ -33,7 +33,7 @@
 
 #include "inspector.h"
 #include "iterator.h"
-#include "node.h"
+#include "opline.h"
 #include "operand.h"
 
 /* {{{ */
@@ -160,14 +160,11 @@ InvalidArgumentException:
 	}
 
 	ops = zend_compile_file(&fh, ZEND_REQUIRE);
-
-	zend_destroy_file_handle(&fh);
-	
 	php_inspector_construct(getThis(), (zend_function*) ops);
-
+	zend_destroy_file_handle(&fh);
 	destroy_op_array(ops);
 	efree(ops);
-} 
+}
 
 static zend_function_entry php_inspector_file_methods[] = {
 	PHP_ME(FileInspector, __construct, NULL, ZEND_ACC_PUBLIC)
@@ -184,10 +181,10 @@ static zend_function_entry php_inspector_methods[] = {
 }; /* }}} */
 
 /* {{{ */
-static zend_function_entry php_inspector_node_methods[] = {
-	PHP_ME(Node, getType, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Node, getOperand, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Node, getExtendedValue, NULL, ZEND_ACC_PUBLIC)
+static zend_function_entry php_inspector_opline_methods[] = {
+	PHP_ME(Opline, getType, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Opline, getOperand, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Opline, getExtendedValue, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
@@ -229,18 +226,18 @@ PHP_MINIT_FUNCTION(inspector)
 	php_inspector_handlers.offset = XtOffsetOf(php_inspector_t, std);
 	php_inspector_handlers.free_obj = php_inspector_destroy;
 
-	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Node", php_inspector_node_methods);
-	php_inspector_node_ce = 
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Opline", php_inspector_opline_methods);
+	php_inspector_opline_ce = 
 		zend_register_internal_class(&ce);
-	php_inspector_node_ce->create_object = php_inspector_node_create;
-	zend_declare_class_constant_long(php_inspector_node_ce, ZEND_STRL("OP1"), PHP_INSPECTOR_NODE_OP1);
-	zend_declare_class_constant_long(php_inspector_node_ce, ZEND_STRL("OP2"), PHP_INSPECTOR_NODE_OP2);
-	zend_declare_class_constant_long(php_inspector_node_ce, ZEND_STRL("RESULT"), PHP_INSPECTOR_NODE_RESULT);
+	php_inspector_opline_ce->create_object = php_inspector_opline_create;
+	zend_declare_class_constant_long(php_inspector_opline_ce, ZEND_STRL("OP1"), PHP_INSPECTOR_OPLINE_OP1);
+	zend_declare_class_constant_long(php_inspector_opline_ce, ZEND_STRL("OP2"), PHP_INSPECTOR_OPLINE_OP2);
+	zend_declare_class_constant_long(php_inspector_opline_ce, ZEND_STRL("RESULT"), PHP_INSPECTOR_OPLINE_RESULT);
 
-	memcpy(&php_inspector_node_handlers, 
+	memcpy(&php_inspector_opline_handlers, 
 		zend_get_std_object_handlers(), sizeof(zend_object_handlers));
-	php_inspector_node_handlers.offset = XtOffsetOf(php_inspector_node_t, std);
-	php_inspector_node_handlers.free_obj = php_inspector_node_destroy;
+	php_inspector_opline_handlers.offset = XtOffsetOf(php_inspector_opline_t, std);
+	php_inspector_opline_handlers.free_obj = php_inspector_opline_destroy;
 
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Operand", php_inspector_operand_methods);
 	php_inspector_operand_ce = 

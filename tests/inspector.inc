@@ -1,6 +1,6 @@
 <?php
 use Inspector\Inspector;
-use Inspector\Node;
+use Inspector\Opline;
 use Inspector\Operand;
 
 function printOpcode($name) {
@@ -39,9 +39,9 @@ function printExtendedValue($value) {
 function printInspector(Inspector $inspector) {
 	foreach ($inspector as $opline) {
 		printOpcode($opline->getType());
-		printOperand($opline->getOperand(NODE::OP1));
-		printOperand($opline->getOperand(NODE::OP2));
-		printOperand($opline->getOperand(NODE::RESULT));
+		printOperand($opline->getOperand(OPLINE::OP1));
+		printOperand($opline->getOperand(OPLINE::OP2));
+		printOperand($opline->getOperand(OPLINE::RESULT));
 		printExtendedValue($opline->getExtendedValue());
 	}
 }

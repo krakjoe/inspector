@@ -30,7 +30,7 @@
 
 #include "inspector.h"
 #include "iterator.h"
-#include "node.h"
+#include "opline.h"
 
 void php_inspector_iterator_dtor(php_inspector_iterator_t* iterator) {
 	zval_ptr_dtor(&iterator->object);
@@ -51,7 +51,7 @@ zval* php_inspector_iterator_current_data(php_inspector_iterator_t* iterator) {
 		zval_ptr_dtor(&iterator->zit.data);
 	}
 
-	php_inspector_node_construct(&iterator->zit.data, &iterator->object, &inspector->ops->opcodes[iterator->opline]);
+	php_inspector_opline_construct(&iterator->zit.data, &iterator->object, &inspector->ops->opcodes[iterator->opline]);
 	
 	if (Z_ISUNDEF(iterator->zit.data)) {
 		return &EG(uninitialized_zval);

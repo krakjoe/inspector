@@ -4,7 +4,7 @@ Inspector
 
 There are many tools that dump or print opcodes, but none of these tools allow programmatic interaction.
 
-Inspector provides an OO API to walk through the opcodes of a given function, accessing their operands.
+Inspector provides an OO API to walk through the opcodes of a given function or file, accessing their operands.
 
 API
 ===
@@ -118,7 +118,7 @@ ZEND_RETURN     null    -       -
 TODO
 ====
 
- * tests
+ * tests (started)
 
 **This extension is experimental, and requires PHP7**
 

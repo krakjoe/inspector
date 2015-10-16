@@ -29,7 +29,7 @@
 #include "php_inspector.h"
 
 #include "inspector.h"
-#include "node.h"
+#include "opline.h"
 #include "operand.h"
 
 /* {{{ */
@@ -38,16 +38,16 @@ void php_inspector_operand_destroy(zend_object *object) {
 
 	zend_object_std_dtor(object);
 
-	if (Z_TYPE(operand->node) != IS_UNDEF)
-		zval_ptr_dtor(&operand->node);
+	if (Z_TYPE(operand->opline) != IS_UNDEF)
+		zval_ptr_dtor(&operand->opline);
 }
 
-void php_inspector_operand_construct(zval *object, zval *node, uint32_t which, zend_uchar type, znode_op *op) {
+void php_inspector_operand_construct(zval *object, zval *opline, uint32_t which, zend_uchar type, znode_op *op) {
 	php_inspector_operand_t *operand;
 	
 	object_init_ex(object, php_inspector_operand_ce);
 	operand = php_inspector_operand_fetch(object);
-	ZVAL_COPY(&operand->node, node);
+	ZVAL_COPY(&operand->opline, opline);
 	operand->which = which;
 	operand->type = type;
 	operand->op = op;
@@ -61,7 +61,7 @@ zend_object* php_inspector_operand_create(zend_class_entry *ce) {
 	object_properties_init(&operand->std, ce);
 
 	operand->std.handlers = &php_inspector_operand_handlers;	
-	ZVAL_UNDEF(&operand->node);
+	ZVAL_UNDEF(&operand->opline);
 	
 	return &operand->std;
 } /* }}} */
@@ -69,15 +69,15 @@ zend_object* php_inspector_operand_create(zend_class_entry *ce) {
 PHP_METHOD(Operand, isJumpTarget) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
-	php_inspector_node_t *node =
-		php_inspector_node_fetch_from(Z_OBJ(operand->node));
+	php_inspector_opline_t *opline =
+		php_inspector_opline_fetch_from(Z_OBJ(operand->opline));
 
-	switch(node->opline->opcode) {
+	switch(opline->opline->opcode) {
 		case ZEND_JMP:
 		case ZEND_FAST_CALL:
 		case ZEND_DECLARE_ANON_CLASS:
 		case ZEND_DECLARE_ANON_INHERITED_CLASS:
-			if (operand->which == PHP_INSPECTOR_NODE_OP1) {
+			if (operand->which == PHP_INSPECTOR_OPLINE_OP1) {
 				RETURN_TRUE;
 			}
 		break;
@@ -92,7 +92,7 @@ PHP_METHOD(Operand, isJumpTarget) {
 		case ZEND_FE_RESET_R:
 		case ZEND_FE_RESET_RW:
 		case ZEND_ASSERT_CHECK:
-			if (operand->which == PHP_INSPECTOR_NODE_OP2) {
+			if (operand->which == PHP_INSPECTOR_OPLINE_OP2) {
 				RETURN_TRUE;
 			}
 		break;
@@ -155,10 +155,10 @@ PHP_METHOD(Operand, getValue) {
 		php_inspector_operand_this();
 
 	if (operand->type & IS_CONST) {
-		php_inspector_node_t *node = 
-			php_inspector_node_fetch_from(Z_OBJ(operand->node));
+		php_inspector_opline_t *opline = 
+			php_inspector_opline_fetch_from(Z_OBJ(operand->opline));
 		php_inspector_t *inspector = 
-			php_inspector_fetch_from(Z_OBJ(node->inspector));
+			php_inspector_fetch_from(Z_OBJ(opline->inspector));
 
 		ZEND_PASS_TWO_UNDO_CONSTANT(inspector->ops, *operand->op);
 		ZVAL_COPY(return_value, &inspector->ops->literals[operand->op->num]);
@@ -170,10 +170,10 @@ PHP_METHOD(Operand, getName) {
 	php_inspector_operand_t *operand = php_inspector_operand_this();
 
 	if (operand->type & IS_CV) {
-		php_inspector_node_t *node = 
-			php_inspector_node_fetch_from(Z_OBJ(operand->node));
+		php_inspector_opline_t *opline = 
+			php_inspector_opline_fetch_from(Z_OBJ(operand->opline));
 		php_inspector_t *inspector = 
-			php_inspector_fetch_from(Z_OBJ(node->inspector));
+			php_inspector_fetch_from(Z_OBJ(opline->inspector));
 		
 		RETURN_STR(zend_string_copy(inspector->ops->vars[EX_VAR_TO_NUM(operand->op->var)]));
 	}
@@ -182,20 +182,20 @@ PHP_METHOD(Operand, getName) {
 PHP_METHOD(Operand, getNumber) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
-	php_inspector_node_t *node = 
-		php_inspector_node_fetch_from(Z_OBJ(operand->node));
+	php_inspector_opline_t *opline = 
+		php_inspector_opline_fetch_from(Z_OBJ(operand->opline));
 	php_inspector_t *inspector = 
-		php_inspector_fetch_from(Z_OBJ(node->inspector));
+		php_inspector_fetch_from(Z_OBJ(opline->inspector));
 
-	switch(node->opline->opcode) {
+	switch(opline->opline->opcode) {
 		case ZEND_JMP:
 		case ZEND_FAST_CALL:
 		case ZEND_DECLARE_ANON_CLASS:
 		case ZEND_DECLARE_ANON_INHERITED_CLASS:
-			if (operand->which == PHP_INSPECTOR_NODE_OP1) {
-				ZEND_PASS_TWO_UNDO_JMP_TARGET(inspector->ops, node->opline, *operand->op);
+			if (operand->which == PHP_INSPECTOR_OPLINE_OP1) {
+				ZEND_PASS_TWO_UNDO_JMP_TARGET(inspector->ops, opline->opline, *operand->op);
 				ZVAL_LONG(return_value, operand->op->num);
-				ZEND_PASS_TWO_UPDATE_JMP_TARGET(inspector->ops, node->opline, *operand->op);
+				ZEND_PASS_TWO_UPDATE_JMP_TARGET(inspector->ops, opline->opline, *operand->op);
 				break;
 			}
 		
@@ -209,10 +209,10 @@ PHP_METHOD(Operand, getNumber) {
 		case ZEND_FE_RESET_R:
 		case ZEND_FE_RESET_RW:
 		case ZEND_ASSERT_CHECK:
-			if (operand->which == PHP_INSPECTOR_NODE_OP2) {
-				ZEND_PASS_TWO_UNDO_JMP_TARGET(inspector->ops, node->opline, *operand->op);
+			if (operand->which == PHP_INSPECTOR_OPLINE_OP2) {
+				ZEND_PASS_TWO_UNDO_JMP_TARGET(inspector->ops, opline->opline, *operand->op);
 				ZVAL_LONG(return_value, operand->op->num);
-				ZEND_PASS_TWO_UPDATE_JMP_TARGET(inspector->ops, node->opline, *operand->op);
+				ZEND_PASS_TWO_UPDATE_JMP_TARGET(inspector->ops, opline->opline, *operand->op);
 				break;
 			}
 
