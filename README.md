@@ -24,6 +24,10 @@ namespace Inspector
 		public function getVariables() : array;
 	}
 
+	class FileInspector extends Inspector {
+		public function __construct(string filename);
+	}
+
 	class Node {
 		const OP1;
 		const OP2;

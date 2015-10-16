@@ -27,6 +27,7 @@ typedef struct _php_inspector_t {
 
 zend_object_handlers php_inspector_handlers;
 zend_class_entry *php_inspector_ce;
+zend_class_entry *php_inspector_file_ce;
 
 #define php_inspector_fetch_from(o) ((php_inspector_t*) (((char*)o) - XtOffsetOf(php_inspector_t, std)))
 #define php_inspector_fetch(z) php_inspector_fetch_from(Z_OBJ_P(z))

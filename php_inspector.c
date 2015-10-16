@@ -71,7 +71,7 @@ InvalidArgumentException:
 	} else goto InvalidArgumentException;
 
 	php_inspector_construct(getThis(), found);
-} 
+}
 
 PHP_METHOD(Inspector, getStatics) {
 	php_inspector_t *inspector = php_inspector_this();
@@ -108,6 +108,71 @@ PHP_METHOD(Inspector, getVariables) {
 		}
 	}
 } /* }}} */
+
+/* {{{ */
+PHP_METHOD(FileInspector, __construct)
+{
+	zend_string *filename = NULL;
+	zend_file_handle fh;
+	zend_op_array *ops = NULL;
+
+	if (0) {
+InvalidArgumentException:
+		zend_throw_exception_ex(spl_ce_InvalidArgumentException, 0,
+			"%s expects (string filename)",
+			ZSTR_VAL(EX(func)->common.function_name));
+		return;
+	}
+
+	switch (ZEND_NUM_ARGS()) {
+		case 1: if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filename) != SUCCESS) {
+			return;
+		} break;
+		
+		default:
+			goto InvalidArgumentException;
+	}
+
+	if (zend_hash_exists(&EG(included_files), filename)) {
+		zend_throw_exception_ex(spl_ce_RuntimeException, 0,
+			"cannot load already included file %s",
+			ZSTR_VAL(filename));
+		return;
+	}
+
+	if (php_stream_open_for_zend_ex(ZSTR_VAL(filename), &fh, USE_PATH|STREAM_OPEN_FOR_INCLUDE) != SUCCESS) {
+		zend_throw_exception_ex(spl_ce_RuntimeException, 0,
+			"cannot open %s for parsing",
+			ZSTR_VAL(filename));
+		return;
+	}
+
+	if (!fh.opened_path) {
+		fh.opened_path = zend_string_copy(filename);	
+	}
+
+	if (!zend_hash_add_empty_element(&EG(included_files), fh.opened_path)) {
+		zend_throw_exception_ex(spl_ce_RuntimeException, 0,
+			"cannot add %s to included files table",
+			ZSTR_VAL(filename));
+		zend_file_handle_dtor(&fh);
+		return;
+	}
+
+	ops = zend_compile_file(&fh, ZEND_REQUIRE);
+
+	zend_destroy_file_handle(&fh);
+	
+	php_inspector_construct(getThis(), (zend_function*) ops);
+
+	destroy_op_array(ops);
+	efree(ops);
+} 
+
+static zend_function_entry php_inspector_file_methods[] = {
+	PHP_ME(FileInspector, __construct, NULL, ZEND_ACC_PUBLIC)
+	PHP_FE_END
+}; /* }}} */
 
 /* {{{ */
 static zend_function_entry php_inspector_methods[] = {
@@ -154,6 +219,10 @@ PHP_MINIT_FUNCTION(inspector)
 	php_inspector_ce->create_object = php_inspector_create;
 	php_inspector_ce->get_iterator  = php_inspector_iterate;
 	zend_class_implements(php_inspector_ce, 1, zend_ce_traversable);
+
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "FileInspector", php_inspector_file_methods);
+	php_inspector_file_ce = 
+		zend_register_internal_class_ex(&ce, php_inspector_ce);
 
 	memcpy(&php_inspector_handlers, 
 		zend_get_std_object_handlers(), sizeof(zend_object_handlers));
