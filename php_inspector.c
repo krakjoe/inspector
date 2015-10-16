@@ -89,7 +89,7 @@ PHP_METHOD(Inspector, getConstants) {
 
 		array_init(return_value);
 		for (it = 0; it < inspector->ops->last_literal; it++) {
-			if (add_next_index_zval(return_value, &inspector->ops->literals[it]))
+			if (add_next_index_zval(return_value, &inspector->ops->literals[it]) == SUCCESS)
 				Z_TRY_ADDREF(inspector->ops->literals[it]);
 		}
 	}
