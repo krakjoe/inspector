@@ -37,6 +37,7 @@ zend_class_entry *php_inspector_closure_ce;
 
 void php_inspector_scope_destroy(zend_object *object);
 void php_inspector_scope_construct(zval *object, zend_function *function);
-zend_function* php_inspector_scope_find(zend_class_entry *scope, zend_string *name);
 zend_object* php_inspector_scope_create(zend_class_entry *ce);
+
+zend_function* php_inspector_scope_find(zend_class_entry *scope, zend_string *name);
 #endif

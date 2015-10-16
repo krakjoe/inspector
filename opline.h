@@ -20,7 +20,7 @@
 #ifndef HAVE_INSPECTOR_OPLINE_H
 #define HAVE_INSPECTOR_OPLINE_H
 typedef struct _php_inspector_opline_t {
-	zval inspector;
+	zval scope;
 	zend_op *opline;
 	zend_object std;
 } php_inspector_opline_t;

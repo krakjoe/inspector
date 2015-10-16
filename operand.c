@@ -158,7 +158,7 @@ PHP_METHOD(Operand, getValue) {
 		php_inspector_opline_t *opline = 
 			php_inspector_opline_fetch_from(Z_OBJ(operand->opline));
 		php_inspector_scope_t *scope = 
-			php_inspector_scope_fetch_from(Z_OBJ(opline->inspector));
+			php_inspector_scope_fetch_from(Z_OBJ(opline->scope));
 
 		ZEND_PASS_TWO_UNDO_CONSTANT(scope->ops, *operand->op);
 		ZVAL_COPY(return_value, &scope->ops->literals[operand->op->num]);
@@ -173,7 +173,7 @@ PHP_METHOD(Operand, getName) {
 		php_inspector_opline_t *opline = 
 			php_inspector_opline_fetch_from(Z_OBJ(operand->opline));
 		php_inspector_scope_t *scope = 
-			php_inspector_scope_fetch_from(Z_OBJ(opline->inspector));
+			php_inspector_scope_fetch_from(Z_OBJ(opline->scope));
 		
 		RETURN_STR(zend_string_copy(scope->ops->vars[EX_VAR_TO_NUM(operand->op->var)]));
 	}
@@ -185,7 +185,7 @@ PHP_METHOD(Operand, getNumber) {
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_fetch_from(Z_OBJ(operand->opline));
 	php_inspector_scope_t *scope = 
-		php_inspector_scope_fetch_from(Z_OBJ(opline->inspector));
+		php_inspector_scope_fetch_from(Z_OBJ(opline->scope));
 
 	switch(opline->opline->opcode) {
 		case ZEND_JMP:

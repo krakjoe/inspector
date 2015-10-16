@@ -39,8 +39,8 @@ void php_inspector_opline_destroy(zend_object *object) {
 
 	zend_object_std_dtor(object);
 
-	if (Z_TYPE(opline->inspector) != IS_UNDEF)
-		zval_ptr_dtor(&opline->inspector);	
+	if (Z_TYPE(opline->scope) != IS_UNDEF)
+		zval_ptr_dtor(&opline->scope);	
 }
 
 void php_inspector_opline_construct(zval *object, zval *inspector, zend_op *o) {
@@ -49,7 +49,7 @@ void php_inspector_opline_construct(zval *object, zval *inspector, zend_op *o) {
 	object_init_ex(object, php_inspector_opline_ce);
 
 	opline = php_inspector_opline_fetch(object);
-	ZVAL_COPY(&opline->inspector, inspector);
+	ZVAL_COPY(&opline->scope, inspector);
 	opline->opline = o;	
 }
 
@@ -61,7 +61,7 @@ zend_object* php_inspector_opline_create(zend_class_entry *ce) {
 
 	opline->std.handlers = &php_inspector_opline_handlers;
 	
-	ZVAL_UNDEF(&opline->inspector);	
+	ZVAL_UNDEF(&opline->scope);	
 	
 	return &opline->std;
 } /* }}} */
@@ -107,7 +107,7 @@ PHP_METHOD(Opline, getExtendedValue) {
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_this();
 	php_inspector_scope_t *scope = 
-		php_inspector_scope_fetch_from(Z_OBJ(opline->inspector));
+		php_inspector_scope_fetch_from(Z_OBJ(opline->scope));
 
 	switch (opline->opline->opcode) {
 		case ZEND_TYPE_CHECK:

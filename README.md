@@ -69,7 +69,8 @@ Example
 Making stuff look nice is not my forte, all the same, here is some simple code using Inspector:
 
 ```php
-use Inspector\Inspector;
+use Inspector\Closure;
+use Inspector\Scope;
 use Inspector\Opline;
 use Inspector\Operand;
 
@@ -96,7 +97,7 @@ function printOperand(Operand $op) {
 	} else printf("-\t");
 }
 
-function printInspector(Inspector $inspector) {
+function printInspector(Scope $inspector) {
 	printf("OPCODE\t\tOP1\tOP2\tRESULT\n");
 	foreach ($inspector as $opline) {
 		printf("%s\t", $opline->getType());
@@ -107,7 +108,7 @@ function printInspector(Inspector $inspector) {
 	}
 }
 
-printInspector(new Inspector(function($a, $b){
+printInspector(new Closure(function($a, $b){
 	return $a + $b;
 }));
 ```
