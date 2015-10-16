@@ -14,10 +14,12 @@ The following API is provided:
 ```php
 namespace Inspector 
 {
-	abstract class Scope implements Traversable {
+	abstract class Scope implements Traversable, Countable {
 		public function getStatics() : array;
 		public function getConstants() : array;
 		public function getVariables() : array;
+		public function getOpline(int) : Opline;
+		public function count() : int;
 	}
 	
 	final class Global extends Scope {

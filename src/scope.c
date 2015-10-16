@@ -24,6 +24,7 @@
 #include "zend_interfaces.h"
 
 #include "ext/spl/spl_exceptions.h"
+#include "ext/spl/spl_iterators.h"
 #include "php_inspector.h"
 
 #include "scope.h"
@@ -132,17 +133,48 @@ PHP_METHOD(Scope, getVariables) {
 				zend_string_copy(scope->ops->vars[it]));
 		}
 	}
-} /* }}} */
+} 
+
+PHP_METHOD(Scope, getOpline) {
+	php_inspector_scope_t *scope = 
+		php_inspector_scope_this();
+	zend_long opline = -1;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "l", &opline) != SUCCESS) {
+		return;
+	}
+
+	if (opline < 0 || opline > scope->ops->last) {
+		zend_throw_exception_ex(spl_ce_RuntimeException, 0,
+			"opline %ld is out of bounds", opline);
+		return;
+	}
+
+	php_inspector_opline_construct(return_value, getThis(), &scope->ops->opcodes[opline]);
+}
+
+PHP_METHOD(Scope, count) {
+	php_inspector_scope_t *scope = 
+		php_inspector_scope_this();
+
+	RETURN_LONG(scope->ops->last);
+}
+/* }}} */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getArray_arginfo, 0, 0, IS_ARRAY, NULL, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getOpline_arginfo, 0, 1, IS_OBJECT, "Inspector\\Opline", 1)
+	ZEND_ARG_TYPE_INFO(0, num, IS_LONG, 0)
+ZEND_END_ARG_INFO()
 
 /* {{{ */
 zend_function_entry php_inspector_scope_methods[] = {
 	PHP_ME(Scope, getStatics, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getConstants, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getVariables, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getOpline, Scope_getOpline_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, count, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
@@ -156,7 +188,7 @@ PHP_MINIT_FUNCTION(scope) {
 	php_inspector_scope_ce->ce_flags |= ZEND_ACC_EXPLICIT_ABSTRACT_CLASS;
 	php_inspector_scope_ce->create_object = php_inspector_scope_create;
 	php_inspector_scope_ce->get_iterator  = php_inspector_iterate;
-	zend_class_implements(php_inspector_scope_ce, 1, zend_ce_traversable);
+	zend_class_implements(php_inspector_scope_ce, 2, zend_ce_traversable, spl_ce_Countable);
 
 	memcpy(&php_inspector_scope_handlers, 
 		zend_get_std_object_handlers(), sizeof(zend_object_handlers));
