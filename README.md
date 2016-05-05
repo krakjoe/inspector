@@ -37,7 +37,11 @@ namespace Inspector
 	}
 
 	final class File extends Scope {
-		public function __construct(string filename);
+		public function __construct(string filename [, bool clobber = false]);
+		public function getEntries() : ?array;
+		public function getGlobals() : ?array;
+		public function getGlobal(string name) : ?Global;
+		public function getEntry(string name) : ?Entry;
 	}
 
 	final class Entry implements Traversable, Countable {

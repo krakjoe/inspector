@@ -65,6 +65,38 @@ zend_function* php_inspector_scope_find(zend_class_entry *scope, zend_string *na
 } /* }}} */
 
 /* {{{ */
+void php_inspector_scope_save(zval *object, HashTable **tables, zval *values) {
+	php_inspector_scope_t *scope = php_inspector_scope_fetch(object);
+
+	tables[0] = CG(function_table);
+	tables[1] = CG(class_table);
+	ZVAL_COPY_VALUE(&values[0], &EG(user_error_handler));
+
+	zend_hash_init(&scope->symbols.functions, 
+		zend_hash_num_elements(CG(function_table)),
+		NULL, CG(function_table)->pDestructor, 
+		CG(function_table)->u.flags & HASH_FLAG_PERSISTENT);
+
+	CG(function_table) = &scope->symbols.functions;
+
+	zend_hash_init(&scope->symbols.classes, 
+		zend_hash_num_elements(CG(class_table)),
+		NULL, CG(class_table)->pDestructor, 
+		CG(class_table)->u.flags & HASH_FLAG_PERSISTENT);
+
+	CG(class_table) = &scope->symbols.classes;
+
+	ZVAL_UNDEF(&EG(user_error_handler));
+} /* }}} */
+
+/* {{{ */
+void php_inspector_scope_restore(zval *object, HashTable **tables, zval *values) {
+	CG(function_table) = tables[0];
+	CG(class_table) = tables[1];
+	ZVAL_COPY_VALUE(&EG(user_error_handler), &values[0]);
+} /* }}} */
+
+/* {{{ */
 void php_inspector_scope_construct(zval *object, zend_function *function) {
 	php_inspector_scope_t *scope = php_inspector_scope_fetch(object);
 
@@ -95,6 +127,14 @@ static void php_inspector_scope_destroy(zend_object *object) {
 		php_inspector_scope_fetch_from(object);
 
 	zend_object_std_dtor(object);
+
+	if (scope->symbols.functions.pDestructor) {
+		zend_hash_destroy(&scope->symbols.functions);
+	}
+	
+	if (scope->symbols.classes.pDestructor) {
+		zend_hash_destroy(&scope->symbols.classes);
+	}
 
 	if (scope->ops) {
 		destroy_op_array(scope->ops);

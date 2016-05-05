@@ -22,6 +22,10 @@
 
 typedef struct _php_inspector_scope_t {
 	zend_op_array *ops;
+	struct {
+		HashTable   functions;
+		HashTable   classes;
+	} symbols;
 	zend_object std;
 } php_inspector_scope_t;
 
@@ -33,6 +37,8 @@ extern zend_class_entry *php_inspector_scope_ce;
 
 void php_inspector_scope_construct(zval *object, zend_function *function);
 zend_function* php_inspector_scope_find(zend_class_entry *scope, zend_string *name);
+void php_inspector_scope_save(zval *object, HashTable **tables, zval *values);
+void php_inspector_scope_restore(zval *object, HashTable **tables, zval *values);
 
 PHP_MINIT_FUNCTION(inspector_scope);
 #endif

@@ -24,7 +24,7 @@
 extern zend_module_entry inspector_module_entry;
 #define phpext_inspector_ptr &inspector_module_entry
 
-#define PHP_INSPECTOR_VERSION "0.0.1"
+#define PHP_INSPECTOR_VERSION "0.0.2"
 #define PHP_INSPECTOR_EXTNAME "inspector"
 
 #ifdef PHP_WIN32
