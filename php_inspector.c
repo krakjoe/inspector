@@ -78,10 +78,18 @@ PHP_MINFO_FUNCTION(inspector)
 }
 /* }}} */
 
+static const zend_module_dep inspector_deps[] = {
+        ZEND_MOD_REQUIRED("SPL")
+        ZEND_MOD_END
+};
+
+
 /* {{{ inspector_module_entry
  */
 zend_module_entry inspector_module_entry = {
-	STANDARD_MODULE_HEADER,
+	STANDARD_MODULE_HEADER_EX,
+	NULL,
+	inspector_deps,
 	"inspector",
 	NULL,
 	PHP_MINIT(inspector),
