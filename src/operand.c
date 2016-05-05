@@ -112,7 +112,11 @@ static PHP_METHOD(Operand, isExtendedTypeUnused) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
+#if PHP_VERSION_ID <= 70000
 	RETURN_BOOL(operand->type & EXT_TYPE_UNUSED);
+#else
+	RETURN_BOOL(operand->type == IS_UNUSED);
+#endif
 }
 
 static PHP_METHOD(Operand, isCompiledVariable) {

@@ -172,11 +172,17 @@ static PHP_METHOD(Opline, getExtendedValue) {
 		case ZEND_FETCH_UNSET:
 		case ZEND_FETCH_IS:
 			switch (opline->opline->extended_value & ZEND_FETCH_TYPE_MASK) {
+#ifdef ZEND_FETCH_STATIC
 				case ZEND_FETCH_STATIC: RETURN_STRING("static"); break;
+#endif
 				case ZEND_FETCH_GLOBAL_LOCK: RETURN_STRING("global"); break;
 				case ZEND_FETCH_LOCAL: RETURN_STRING("local"); break;
+#ifdef ZEND_FETCH_STATIC_MEMBER
 				case ZEND_FETCH_STATIC_MEMBER: RETURN_STRING("member"); break;
+#endif
+#ifdef ZEND_FETCH_LEXICAL
 				case ZEND_FETCH_LEXICAL: RETURN_STRING("lexical"); break;
+#endif
 				case ZEND_FETCH_GLOBAL: RETURN_STRING("global"); break;
 			}
 		break;
