@@ -263,6 +263,20 @@ static PHP_METHOD(Scope, count) {
 
 	RETURN_LONG(scope->ops->last);
 }
+
+static PHP_METHOD(Scope, getLineStart) {
+	php_inspector_scope_t *scope = 
+		php_inspector_scope_this();
+
+	RETURN_LONG(scope->ops->line_start);
+}
+
+static PHP_METHOD(Scope, getLineEnd) {
+	php_inspector_scope_t *scope = 
+		php_inspector_scope_this();
+
+	RETURN_LONG(scope->ops->line_end);
+}
 /* }}} */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getArray_arginfo, 0, 0, IS_ARRAY, NULL, 0)
@@ -272,12 +286,20 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getOpline_arginfo, 0, 1, IS_OBJECT
 	ZEND_ARG_TYPE_INFO(0, num, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getLineStart_arginfo, 0, 0, IS_LONG, NULL, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getLineEnd_arginfo, 0, 0, IS_LONG, NULL, 0)
+ZEND_END_ARG_INFO()
+
 /* {{{ */
 static zend_function_entry php_inspector_scope_methods[] = {
 	PHP_ME(Scope, getStatics, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getConstants, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getVariables, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getOpline, Scope_getOpline_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getLineStart, Scope_getLineStart_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getLineEnd, Scope_getLineEnd_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, count, NULL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
