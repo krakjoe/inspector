@@ -21,6 +21,8 @@ namespace Inspector
 		public function getConstants() : array;
 		public function getVariables() : array;
 		public function getOpline(int num) : Opline;
+        public function getLineStart() : int;
+        public function getLineEnd() : int;
 		public function count() : int;
 	}
 	
