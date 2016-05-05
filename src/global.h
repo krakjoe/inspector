@@ -22,5 +22,5 @@
 
 extern zend_class_entry *php_inspector_global_ce;
 
-PHP_MINIT_FUNCTION(global);
+PHP_MINIT_FUNCTION(inspector_global);
 #endif

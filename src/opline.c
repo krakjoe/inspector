@@ -224,7 +224,7 @@ static zend_function_entry php_inspector_opline_methods[] = {
 }; /* }}} */
 
 /* {{{ */
-PHP_MINIT_FUNCTION(opline) {
+PHP_MINIT_FUNCTION(inspector_opline) {
 	zend_class_entry ce;
 	
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Opline", php_inspector_opline_methods);

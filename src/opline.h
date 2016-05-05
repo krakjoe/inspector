@@ -38,5 +38,5 @@ extern zend_class_entry *php_inspector_opline_ce;
 
 void php_inspector_opline_construct(zval *object, zval *scope, zend_op *opline);
 
-PHP_MINIT_FUNCTION(opline);
+PHP_MINIT_FUNCTION(inspector_opline);
 #endif

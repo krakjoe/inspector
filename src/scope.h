@@ -34,5 +34,5 @@ extern zend_class_entry *php_inspector_scope_ce;
 void php_inspector_scope_construct(zval *object, zend_function *function);
 zend_function* php_inspector_scope_find(zend_class_entry *scope, zend_string *name);
 
-PHP_MINIT_FUNCTION(scope);
+PHP_MINIT_FUNCTION(inspector_scope);
 #endif

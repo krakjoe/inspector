@@ -55,7 +55,7 @@ static zend_function_entry php_inspector_global_methods[] = {
 	PHP_FE_END
 };
 
-PHP_MINIT_FUNCTION(global) {
+PHP_MINIT_FUNCTION(inspector_global) {
 	zend_class_entry ce;
 
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Global", php_inspector_global_methods);

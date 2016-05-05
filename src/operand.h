@@ -35,5 +35,5 @@ extern zend_class_entry *php_inspector_operand_ce;
 
 void php_inspector_operand_construct(zval *object, zval *opline, uint32_t which, zend_uchar type, znode_op *operand);
 
-PHP_MINIT_FUNCTION(operand);
+PHP_MINIT_FUNCTION(inspector_operand);
 #endif

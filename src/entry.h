@@ -31,5 +31,5 @@ extern zend_class_entry *php_inspector_entry_ce;
 #define php_inspector_entry_fetch(z) php_inspector_entry_fetch_from(Z_OBJ_P(z))
 #define php_inspector_entry_this() php_inspector_entry_fetch(getThis())
 
-PHP_MINIT_FUNCTION(entry);
+PHP_MINIT_FUNCTION(inspector_entry);
 #endif

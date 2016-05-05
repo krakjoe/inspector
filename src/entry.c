@@ -234,7 +234,7 @@ static zend_function_entry php_inspector_entry_methods[] = {
 }; /* }}} */
 
 /* {{{ */
-PHP_MINIT_FUNCTION(entry) {
+PHP_MINIT_FUNCTION(inspector_entry) {
 	zend_class_entry ce;
 
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Entry", php_inspector_entry_methods);

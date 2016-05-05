@@ -50,7 +50,7 @@ static zend_function_entry php_inspector_closure_methods[] = {
 	PHP_FE_END
 }; 
 
-PHP_MINIT_FUNCTION(closure) {
+PHP_MINIT_FUNCTION(inspector_closure) {
 	zend_class_entry ce;
 	
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Closure", php_inspector_closure_methods);

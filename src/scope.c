@@ -243,7 +243,7 @@ static zend_function_entry php_inspector_scope_methods[] = {
 }; /* }}} */
 
 /* {{{ */
-PHP_MINIT_FUNCTION(scope) {
+PHP_MINIT_FUNCTION(inspector_scope) {
 	zend_class_entry ce;
 
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Scope", php_inspector_scope_methods);

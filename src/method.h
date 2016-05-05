@@ -22,5 +22,5 @@
 
 extern zend_class_entry *php_inspector_method_ce;
 
-PHP_MINIT_FUNCTION(method);
+PHP_MINIT_FUNCTION(inspector_method);
 #endif
