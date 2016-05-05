@@ -2,6 +2,8 @@ Inspector
 ========
 *Inspector allows you to programmatically inspect PHP code*
 
+[![Build Status](https://travis-ci.org/krakjoe/inspector.svg?branch=master)](https://travis-ci.org/krakjoe/inspector)
+
 There are many tools that dump or print opcodes, but none of these tools allow programmatic inspection.
 
 If you don't know what any of this is for, move on ... this is not for you ;)
