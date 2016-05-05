@@ -57,6 +57,7 @@ namespace Inspector
 		public function getType() : string;
 		public function getOperand(int which) : Operand;
 		public function getExtendedValue() : mixed;
+		public function getLine() : int;
 		public function getScope() : Scope;
 	}
 
