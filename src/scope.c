@@ -295,7 +295,7 @@ static PHP_METHOD(Scope, getName)
 		php_inspector_scope_this();
 
 	if (scope->ops->function_name) {
-		RETURN_STR(scope->ops->function_name);
+		RETURN_STR_COPY(scope->ops->function_name);
 	}
 }
 
