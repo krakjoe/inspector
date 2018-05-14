@@ -100,17 +100,23 @@ void php_inspector_frame_construct(zval *zv, zend_execute_data *execute_data) {
 		&frame->scope, (zend_op*) frame->frame->opline);
 	
 	frame->op1.p = zend_get_zval_ptr(
+#if PHP_VERSION_ID >= 70300
 			frame->frame->opline, 
+#endif
 			frame->frame->opline->op1_type, 
 			&frame->frame->opline->op1, 
 			frame->frame, &frame->op1.f, BP_VAR_RW);
 	frame->op2.p = zend_get_zval_ptr(
+#if PHP_VERSION_ID >= 70300
 			frame->frame->opline, 
+#endif
 			frame->frame->opline->op2_type, 
 			&frame->frame->opline->op2, 
 			frame->frame, &frame->op2.f, BP_VAR_RW);
 	frame->rv.p = zend_get_zval_ptr(
+#if PHP_VERSION_ID >= 70300
 			frame->frame->opline, 
+#endif
 			frame->frame->opline->result_type, 
 			&frame->frame->opline->result, 
 			frame->frame, &frame->rv.f, BP_VAR_RW);

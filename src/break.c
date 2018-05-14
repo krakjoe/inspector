@@ -150,7 +150,10 @@ static PHP_METHOD(BreakPoint, __construct)
 
 	ZVAL_COPY(&brk->opline, ol);
 
-	php_inspector_break_enable(brk);
+	if (!php_inspector_break_enable(brk)) {
+		zend_throw_exception_ex(spl_ce_RuntimeException, 0, 
+			"already a BreakPoint at that address");
+	}
 }
 
 PHP_METHOD(BreakPoint, getOpcode)
