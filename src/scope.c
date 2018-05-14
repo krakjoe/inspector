@@ -30,6 +30,7 @@
 
 #include "scope.h"
 #include "opline.h"
+#include "entry.h"
 
 typedef struct _php_inspector_scope_iterator_t {
 	zend_object_iterator zit;
@@ -252,9 +253,9 @@ static PHP_METHOD(Scope, getVariables) {
 static PHP_METHOD(Scope, getOpline) {
 	php_inspector_scope_t *scope = 
 		php_inspector_scope_this();
-	zend_long opline = -1;
+	zend_long opline = 0;
 
-	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "l", &opline) != SUCCESS) {
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "|l", &opline) != SUCCESS) {
 		return;
 	}
 
@@ -287,6 +288,31 @@ static PHP_METHOD(Scope, getLineEnd) {
 
 	RETURN_LONG(scope->ops->line_end);
 }
+
+static PHP_METHOD(Scope, getName) 
+{
+	php_inspector_scope_t *scope = 
+		php_inspector_scope_this();
+
+	if (scope->ops->function_name) {
+		RETURN_STR(scope->ops->function_name);
+	}
+}
+
+static PHP_METHOD(Scope, getEntry)
+{
+	php_inspector_scope_t *scope =
+		php_inspector_scope_this();
+
+	if (scope->ops->fn_flags & ZEND_ACC_CLOSURE) {
+		/* ?? */
+	} else if(scope->ops->scope) {
+		object_init_ex(
+			return_value, php_inspector_entry_ce);
+
+		php_inspector_entry_construct(return_value, scope->ops->scope);
+	}
+}
 /* }}} */
 
 #if PHP_VERSION_ID >= 70200
@@ -297,9 +323,9 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getArray_arginfo, 0, 0, IS_ARRAY, 
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Scope_getOpline_arginfo, 0, 1, "Inspector\\Opline", 1)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Scope_getOpline_arginfo, 0, 0, Inspector\\Opline, 1)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getOpline_arginfo, 0, 1, IS_OBJECT, "Inspector\\Opline", 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getOpline_arginfo, 0, 0, IS_OBJECT, "Inspector\\Opline", 1)
 #endif
 	ZEND_ARG_TYPE_INFO(0, num, IS_LONG, 0)
 ZEND_END_ARG_INFO()
@@ -318,8 +344,23 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getLineEnd_arginfo, 0, 0, IS_LONG,
 #endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getName_arginfo, 0, 0, IS_STRING, 1)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getName_arginfo, 0, 0, IS_STRING, NULL, 1)
+#endif
+ZEND_END_ARG_INFO()
+
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Scope_getEntry_arginfo, 0, 0, Inspector\\Entry, 1)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getEntry_arginfo, 0, 0, IS_OBJECT, "Inspector\\Entry", 1)
+#endif
+ZEND_END_ARG_INFO()
+
 /* {{{ */
 static zend_function_entry php_inspector_scope_methods[] = {
+	PHP_ME(Scope, getName, Scope_getName_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getStatics, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getConstants, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getVariables, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
@@ -327,6 +368,7 @@ static zend_function_entry php_inspector_scope_methods[] = {
 	PHP_ME(Scope, getLineStart, Scope_getLineStart_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getLineEnd, Scope_getLineEnd_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, count, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getEntry, Scope_getEntry_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 

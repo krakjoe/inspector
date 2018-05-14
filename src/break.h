@@ -17,28 +17,33 @@
 */
 
 /* $Id$ */
-#ifndef HAVE_INSPECTOR_OPLINE_H
-#define HAVE_INSPECTOR_OPLINE_H
-typedef struct _php_inspector_opline_t {
-	zend_op *opline;
-	zval scope;
-	zval previous;
-	zval next;
+#ifndef HAVE_INSPECTOR_BREAK_H
+#define HAVE_INSPECTOR_BREAK_H
+
+extern zend_class_entry *php_inspector_break_ce;
+
+typedef struct _php_inspector_break_t {
+	zval opline;
+	zend_uchar opcode;
+	struct {
+		zend_fcall_info fci;
+		zend_fcall_info_cache fcc;
+	} cache;
 	zend_object std;
-} php_inspector_opline_t;
+} php_inspector_break_t;
 
-extern zend_class_entry *php_inspector_opline_ce;
+#ifndef INSPECTOR_DEBUG_BREAK
+#define INSPECTOR_DEBUG_BREAK 255
+#endif
 
-#define PHP_INSPECTOR_OPLINE_INVALID	0
-#define PHP_INSPECTOR_OPLINE_OP1		1
-#define PHP_INSPECTOR_OPLINE_OP2		2
-#define PHP_INSPECTOR_OPLINE_RESULT		3
+#define php_inspector_break_fetch_from(o) ((php_inspector_break_t*) (((char*)o) - XtOffsetOf(php_inspector_break_t, std)))
+#define php_inspector_break_fetch(z) php_inspector_break_fetch_from(Z_OBJ_P(z))
+#define php_inspector_break_this() php_inspector_break_fetch(getThis())
 
-#define php_inspector_opline_fetch_from(o) ((php_inspector_opline_t*) (((char*)o) - XtOffsetOf(php_inspector_opline_t, std)))
-#define php_inspector_opline_fetch(z) php_inspector_opline_fetch_from(Z_OBJ_P(z))
-#define php_inspector_opline_this() php_inspector_opline_fetch(getThis())
+PHP_MINIT_FUNCTION(inspector_break);
+PHP_RINIT_FUNCTION(inspector_break);
+PHP_RSHUTDOWN_FUNCTION(inspector_break);
 
-void php_inspector_opline_construct(zval *object, zval *scope, zend_op *opline);
-
-PHP_MINIT_FUNCTION(inspector_opline);
+void php_inspector_break_find(zval *return_value, php_inspector_opline_t *opline);
+php_inspector_break_t* php_inspector_break_find_ptr(php_inspector_opline_t *opline);
 #endif

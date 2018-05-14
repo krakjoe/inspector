@@ -17,18 +17,18 @@
 */
 
 /* $Id$ */
-#ifndef HAVE_INSPECTOR_GLOBAL
-#define HAVE_INSPECTOR_GLOBAL
+#ifndef HAVE_INSPECTOR_FUNC
+#define HAVE_INSPECTOR_FUNC
 
 #include "php.h"
 #include "ext/spl/spl_exceptions.h"
 #include "zend_exceptions.h"
 #include "scope.h"
 
-zend_class_entry *php_inspector_global_ce;
+zend_class_entry *php_inspector_func_ce;
 
 /* {{{ */
-static PHP_METHOD(Global, __construct)
+static PHP_METHOD(Func, __construct)
 {
 	zend_string *name = NULL;
 	zend_function *function = NULL;
@@ -47,22 +47,22 @@ static PHP_METHOD(Global, __construct)
 	php_inspector_scope_construct(getThis(), function);
 }
 
-ZEND_BEGIN_ARG_INFO_EX(Global_construct_arginfo, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(Func_construct_arginfo, 0, 0, 1)
 	ZEND_ARG_TYPE_INFO(0, function, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-static zend_function_entry php_inspector_global_methods[] = {
-	PHP_ME(Global, __construct, Global_construct_arginfo, ZEND_ACC_PUBLIC)
+static zend_function_entry php_inspector_func_methods[] = {
+	PHP_ME(Func, __construct, Func_construct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
-PHP_MINIT_FUNCTION(inspector_global) {
+PHP_MINIT_FUNCTION(inspector_func) {
 	zend_class_entry ce;
 
-	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Global", php_inspector_global_methods);
-	php_inspector_global_ce = 
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Func", php_inspector_func_methods);
+	php_inspector_func_ce = 
 		zend_register_internal_class_ex(&ce, php_inspector_scope_ce);
-	php_inspector_global_ce->ce_flags |= ZEND_ACC_FINAL;
+	php_inspector_func_ce->ce_flags |= ZEND_ACC_FINAL;
 
 	return SUCCESS;
 }  /* }}} */

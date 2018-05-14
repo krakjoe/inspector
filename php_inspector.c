@@ -35,10 +35,12 @@
 #include "src/operand.h"
 
 #include "src/file.h"
-#include "src/global.h"
+#include "src/func.h"
 #include "src/method.h"
 #include "src/closure.h"
 #include "src/entry.h"
+#include "src/break.h"
+#include "src/frame.h"
 
 /* {{{ PHP_MINIT_FUNCTION
  */
@@ -46,12 +48,14 @@ PHP_MINIT_FUNCTION(inspector)
 {
 	PHP_MINIT(inspector_scope)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
-	PHP_MINIT(inspector_global)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_MINIT(inspector_func)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_method)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_closure)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_opline)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_operand)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_entry)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_MINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_MINIT(inspector_frame)(INIT_FUNC_ARGS_PASSTHRU);
 
 	return SUCCESS;
 }
@@ -64,6 +68,18 @@ PHP_RINIT_FUNCTION(inspector)
 #if defined(COMPILE_DL_INSPECTOR) && defined(ZTS)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
+
+	PHP_RINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
+
+	return SUCCESS;
+}
+/* }}} */
+
+/* {{{ */
+PHP_RSHUTDOWN_FUNCTION(inspector)
+{
+	PHP_RSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
+
 	return SUCCESS;
 }
 /* }}} */
@@ -95,7 +111,7 @@ zend_module_entry inspector_module_entry = {
 	PHP_MINIT(inspector),
 	NULL,
 	PHP_RINIT(inspector),
-	NULL,
+	PHP_RSHUTDOWN(inspector),
 	PHP_MINFO(inspector),
 	PHP_INSPECTOR_VERSION,
 	STANDARD_MODULE_PROPERTIES

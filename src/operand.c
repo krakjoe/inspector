@@ -163,7 +163,6 @@ static PHP_METHOD(Operand, getValue) {
 			php_inspector_opline_fetch_from(Z_OBJ(operand->opline));
 		php_inspector_scope_t *scope = 
 			php_inspector_scope_fetch_from(Z_OBJ(opline->scope));
-
 #if PHP_VERSION_ID >= 70300
 		ZEND_PASS_TWO_UNDO_CONSTANT(scope->ops, opline->opline, *operand->op);
 #else

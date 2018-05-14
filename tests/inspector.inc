@@ -36,12 +36,16 @@ function printExtendedValue($value) {
 	printf("%s\n", $value ?: "-");
 }
 
+function printOpline($opline) {
+	printOpcode($opline->getType());
+	printOperand($opline->getOperand(OPLINE::OP1));
+	printOperand($opline->getOperand(OPLINE::OP2));
+	printOperand($opline->getOperand(OPLINE::RESULT));
+	printExtendedValue($opline->getExtendedValue());
+}
+
 function printInspector(Scope $inspector) {
 	foreach ($inspector as $opline) {
-		printOpcode($opline->getType());
-		printOperand($opline->getOperand(OPLINE::OP1));
-		printOperand($opline->getOperand(OPLINE::OP2));
-		printOperand($opline->getOperand(OPLINE::RESULT));
-		printExtendedValue($opline->getExtendedValue());
+		printOpline($opline);
 	}
 }

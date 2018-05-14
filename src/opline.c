@@ -29,6 +29,7 @@
 #include "scope.h"
 #include "opline.h"
 #include "operand.h"
+#include "break.h"
 
 static zend_object_handlers php_inspector_opline_handlers;
 zend_class_entry *php_inspector_opline_ce;
@@ -41,7 +42,11 @@ static void php_inspector_opline_destroy(zend_object *object) {
 	zend_object_std_dtor(object);
 
 	if (Z_TYPE(opline->scope) != IS_UNDEF)
-		zval_ptr_dtor(&opline->scope);	
+		zval_ptr_dtor(&opline->scope);
+	if (Z_TYPE(opline->previous) != IS_UNDEF)
+		zval_ptr_dtor(&opline->previous);
+	if (Z_TYPE(opline->next) != IS_UNDEF)
+		zval_ptr_dtor(&opline->next);
 }
 
 void php_inspector_opline_construct(zval *object, zval *scope, zend_op *zopline) {
@@ -61,28 +66,38 @@ static zend_object* php_inspector_opline_create(zend_class_entry *ce) {
 	object_properties_init(&opline->std, ce);
 
 	opline->std.handlers = &php_inspector_opline_handlers;
-	
+
 	ZVAL_UNDEF(&opline->scope);	
-	
+
 	return &opline->std;
 } /* }}} */
 
 /* {{{ */
 static PHP_METHOD(Opline, getType) {
 	php_inspector_opline_t *opline = php_inspector_opline_this();
-	const char *name;
-	
-	if (opline->opline->opcode) {
+	const char *name = NULL;
+
+	if (opline->opline->opcode == INSPECTOR_DEBUG_BREAK) {
+		php_inspector_break_t *brk = 
+			php_inspector_break_find_ptr(opline);
+
+		name = zend_get_opcode_name(brk->opcode);		
+	} else if (opline->opline->opcode) {
 		name = zend_get_opcode_name
 			(opline->opline->opcode);
-		RETURN_STRING((char*)name);
 	}
+
+	if (!name) {
+		return;
+	}
+
+	RETURN_STRING((char*)name);
 }
 
 static PHP_METHOD(Opline, getOperand) {
 	php_inspector_opline_t *opline = php_inspector_opline_this();
 	zend_long operand = PHP_INSPECTOR_OPLINE_INVALID;
-	
+
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &operand) != SUCCESS) {
 		return;
 	}
@@ -209,14 +224,63 @@ static PHP_METHOD(Opline, getLine) {
 		php_inspector_opline_this();
 	
 	RETURN_LONG(opline->opline->lineno);
-} 
+}
 
 static PHP_METHOD(Opline, getScope) {
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_this();
 	
 	ZVAL_COPY(return_value, &opline->scope);
-} /* }}} */
+} 
+
+static PHP_METHOD(Opline, getNext) {
+	php_inspector_opline_t *opline =
+		php_inspector_opline_this();
+	php_inspector_scope_t *scope =
+		php_inspector_scope_fetch(&opline->scope);
+
+	if ((opline->opline + 1) < scope->ops->opcodes + scope->ops->last) {
+		if (Z_TYPE(opline->next) == IS_UNDEF) {
+			php_inspector_opline_construct(
+				&opline->next, &opline->scope, opline->opline + 1);
+		}
+		ZVAL_COPY(return_value, &opline->next);
+	}
+}
+
+static PHP_METHOD(Opline, getPrevious) {
+	php_inspector_opline_t *opline =
+		php_inspector_opline_this();
+	php_inspector_scope_t *scope =
+		php_inspector_scope_fetch(&opline->scope);
+
+	if ((opline->opline - 1) >= scope->ops->opcodes) {
+		if (Z_TYPE(opline->previous) == IS_UNDEF) {
+			php_inspector_opline_construct(
+				&opline->previous, &opline->scope, opline->opline - 1);
+		}
+		ZVAL_COPY(return_value, &opline->previous);
+	}
+}
+
+static PHP_METHOD(Opline, getOffset)
+{
+	php_inspector_opline_t *opline =
+		php_inspector_opline_this();
+	php_inspector_scope_t *scope =
+		php_inspector_scope_fetch(&opline->scope);
+	
+	RETURN_LONG(opline->opline - scope->ops->opcodes);
+}
+
+static PHP_METHOD(Opline, getBreakPoint)
+{
+	php_inspector_opline_t *opline =
+		php_inspector_opline_this();
+
+	php_inspector_break_find(return_value, opline);
+}
+/* }}} */
 
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getType_arginfo, 0, 0, IS_STRING, 1)
@@ -247,6 +311,27 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getScope_arginfo, 0, 0, IS_OBJECT
 #endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Opline_getOpline_arginfo, 0, 0, Inspector\\Opline, 1)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getOpline_arginfo, 0, 0, IS_OBJECT, "Inspector\\Opline", 1)
+#endif
+ZEND_END_ARG_INFO()
+
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getOffset_arginfo, 0, 0, IS_LONG, 1)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getOffset_arginfo, 0, 0, IS_LONG, NULL, 1)
+#endif
+ZEND_END_ARG_INFO()
+
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Opline_getBreakPoint_arginfo, 0, 0, Inspector\\BreakPoint, 1)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getBreakPoint_arginfo, 0, 0, IS_OBJECT, "Inspector\\BreakPoint", 1)
+#endif
+ZEND_END_ARG_INFO()
+
 /* {{{ */
 static zend_function_entry php_inspector_opline_methods[] = {
 	PHP_ME(Opline, getType, Opline_getType_arginfo, ZEND_ACC_PUBLIC)
@@ -254,6 +339,10 @@ static zend_function_entry php_inspector_opline_methods[] = {
 	PHP_ME(Opline, getExtendedValue, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Opline, getLine, Opline_getLine_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Opline, getScope, Opline_getScope_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Opline, getNext, Opline_getOpline_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Opline, getPrevious, Opline_getOpline_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Opline, getOffset, Opline_getOffset_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Opline, getBreakPoint, Opline_getBreakPoint_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 

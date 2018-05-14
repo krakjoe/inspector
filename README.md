@@ -1,10 +1,10 @@
 Inspector
 ========
-*Inspector allows you to programmatically inspect PHP code*
+*Inspector allows you to programmatically inspect (and debug) PHP code*
 
 [![Build Status](https://travis-ci.org/krakjoe/inspector.svg?branch=master)](https://travis-ci.org/krakjoe/inspector)
 
-There are many tools that dump or print opcodes, but none of these tools allow programmatic inspection.
+There are many tools that dump or print opcodes, but none of these tools allow programmatic inspection or debugging.
 
 If you don't know what any of this is for, move on ... this is not for you ;)
 
@@ -17,16 +17,19 @@ The following API is provided:
 namespace Inspector
 {
 	abstract class Scope implements Traversable, Countable {
+		public function getName() : ?string;
 		public function getStatics() : array;
 		public function getConstants() : array;
 		public function getVariables() : array;
-		public function getOpline(int num) : Opline;
-        public function getLineStart() : int;
-        public function getLineEnd() : int;
+		public function getOpline(int num = 0) : Opline;
+        	public function getLineStart() : int;
+        	public function getLineEnd() : int;
 		public function count() : int;
+
+		public function getEntry() : ?Entry;
 	}
 	
-	final class Global extends Scope {
+	final class Func extends Scope {
 		public function __construct(string function);
 	}
 
@@ -63,6 +66,9 @@ namespace Inspector
 		public function getExtendedValue() : mixed;
 		public function getLine() : int;
 		public function getScope() : Scope;
+		public function getNext() : ?Opline;
+		public function getPrevious() : ?Opline;
+		public function getBreakPoint() : BreakPoint;
 	}
 
 	final class Operand {
@@ -78,6 +84,26 @@ namespace Inspector
 		public function getName() : string;
 		public function getNumber() : int;
 		public function getOpline() : Opline;
+	}
+
+	abstract class BreakPoint {
+		public function __construct(Opline $opline);
+	
+		public function enable() : bool;
+		public function disable() : bool;
+		public function isEnabled() : bool;
+
+		public function getOpcode() : ?string;
+		public function getOpline() : Opline;
+
+		abstract public function hit(Frame $frame);
+	}
+
+	final class Frame {
+		public function getScope() : Scope;
+		public function getOpline() : Opline;
+		public function getSymbols() : ?array;
+		public function getPrevious() : ?Frame;
 	}
 }
 ```

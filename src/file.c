@@ -27,7 +27,7 @@
 #include "zend_exceptions.h"
 
 #include "scope.h"
-#include "global.h"
+#include "func.h"
 #include "entry.h"
 
 zend_class_entry *php_inspector_file_ce;
@@ -109,7 +109,7 @@ PHP_METHOD(File, getGlobals)
 				continue;
 			}
 
-			object_init_ex(&o, php_inspector_global_ce);
+			object_init_ex(&o, php_inspector_func_ce);
 
 			php_inspector_scope_construct(&o, function);
 
@@ -168,7 +168,7 @@ PHP_METHOD(File, getGlobal) {
 	function = zend_hash_find_ptr(&scope->symbols.functions, name);
 
 	if (function) {
-		object_init_ex(return_value, php_inspector_global_ce);
+		object_init_ex(return_value, php_inspector_func_ce);
 
 		php_inspector_scope_construct(return_value, function);
 	}
