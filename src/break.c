@@ -79,9 +79,10 @@ static void php_inspector_break_destroy(zend_object *zo) {
 	php_inspector_break_t *brk = 
 		php_inspector_break_fetch_from(zo);
 	php_inspector_opline_t *opline = 
-		php_inspector_opline_fetch(&brk->opline);
+		Z_TYPE(brk->opline) != IS_UNDEF ?
+			php_inspector_opline_fetch(&brk->opline) : NULL;
 
-	if (BRK(state) != INSPECTOR_BREAK_SHUTDOWN)
+	if (Z_TYPE(brk->opline) != IS_UNDEF && BRK(state) != INSPECTOR_BREAK_SHUTDOWN)
 		zend_hash_index_del(&BRK(table), (zend_ulong) opline->opline);	
 
 	if (Z_TYPE(brk->opline) != IS_UNDEF) {
@@ -279,7 +280,9 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 		brk->cache.fci.params = &ip;
 		brk->cache.fci.retval = &rv;
 
-		zend_call_function(&brk->cache.fci, &brk->cache.fcc);
+		if (zend_call_function(&brk->cache.fci, &brk->cache.fcc) != SUCCESS) {
+			/* do something */
+		}
 
 		if (Z_REFCOUNTED(rv)) {
 			zval_ptr_dtor(&rv);

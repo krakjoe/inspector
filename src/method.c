@@ -88,7 +88,7 @@ static zend_function_entry php_inspector_method_methods[] = {
 	PHP_ME(Method, __construct, Method_construct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Method, getName, Method_getName_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
-}; 
+};
 
 PHP_MINIT_FUNCTION(inspector_method) {
 	zend_class_entry ce;
