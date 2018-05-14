@@ -69,7 +69,12 @@ static zend_object* php_inspector_break_create(zend_class_entry *ce) {
 }
 
 static void php_inspector_break_destroy(zend_object *zo) {
-	php_inspector_break_t *brk = php_inspector_break_fetch_from(zo);
+	php_inspector_break_t *brk = 
+		php_inspector_break_fetch_from(zo);
+	php_inspector_opline_t *opline = 
+		php_inspector_opline_fetch(&brk->opline);
+
+	zend_hash_index_del(&BRK(table), (zend_ulong) opline->opline);	
 
 	if (Z_TYPE(brk->opline) != IS_UNDEF) {
 		zval_ptr_dtor(&brk->opline);
@@ -92,11 +97,6 @@ static inline zend_bool php_inspector_break_enable(php_inspector_break_t *brk) {
 
 	zend_vm_set_opcode_handler(opline->opline);
 
-#if PHP_VERSION_ID < 70200
-	GC_REFCOUNT(&brk->std)++;
-#else
-	GC_ADDREF(&brk->std);
-#endif
 	return 1;
 }
 
@@ -140,13 +140,13 @@ static PHP_METHOD(BreakPoint, __construct)
 		return;
 	}
 
+	opline = php_inspector_opline_fetch(ol);
+
 	if (zend_hash_index_exists(&BRK(table), (zend_ulong) opline->opline)) {
 		zend_throw_exception_ex(spl_ce_RuntimeException, 0, 
 			"breakpoint at %p already exists", opline->opline);
 		return;
 	}
-
-	opline = php_inspector_opline_fetch(ol);
 
 	ZVAL_COPY(&brk->opline, ol);
 
@@ -303,7 +303,7 @@ PHP_MINIT_FUNCTION(inspector_break) {
 } /* }}} */
 
 /* {{{ */
-static inline void php_inspector_break_free(zval *zv) {
+static inline void php_inspector_break_unset(zval *zv) {
 	php_inspector_break_t *brk = Z_PTR_P(zv);
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_fetch(&brk->opline);
@@ -311,14 +311,12 @@ static inline void php_inspector_break_free(zval *zv) {
 	opline->opline->opcode = brk->opcode;
 
 	zend_vm_set_opcode_handler(opline->opline);
-
-	OBJ_RELEASE(&brk->std);
 } /* }}} */
 
 /* {{{ */
 PHP_RINIT_FUNCTION(inspector_break) 
 {
-	zend_hash_init(&BRK(table), 32, NULL, php_inspector_break_free, 0);
+	zend_hash_init(&BRK(table), 32, NULL, php_inspector_break_unset, 0);
 
 	return SUCCESS;
 } /* }}} */

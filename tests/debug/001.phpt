@@ -27,14 +27,18 @@ $break = new class($closure->getOpline(2)) extends BreakPoint {
 
 	public function hit(Frame $frame) {
 
-		if (!$frame->getOpline()->getOperand(Opline::OP1)->isUnused() &&
+		$print = $frame->getOpline()->getType() == "ZEND_ADD";
+
+		if ($print &&
+		!$frame->getOpline()->getOperand(Opline::OP1)->isUnused() &&
 		   ($name = $frame->getOpline()->getOperand(Opline::OP1)->getName())) {
 			printf("%s = %s\n", 
 				$name,
 				$frame->getOperand(Opline::OP1));
 		}
 
-		if (!$frame->getOpline()->getOperand(Opline::OP2)->isUnused() &&
+		if ($print &&
+		!$frame->getOpline()->getOperand(Opline::OP2)->isUnused() &&
 		   ($name = $frame->getOpline()->getOperand(Opline::OP2)->getName())) {
 			printf("%s = %s\n", 
 				$name,
@@ -44,7 +48,7 @@ $break = new class($closure->getOpline(2)) extends BreakPoint {
 		$next = $frame->getOpline()->getNext();
 
 		if ($next && !$next->getBreakPoint()) {
-			new self($next);
+			$this->breaks[] = new self($next);
 		}
 
 		$this->disable();
@@ -62,12 +66,8 @@ var_dump($zc(30, 40)); # instrumented
 --EXPECTF--
 a = 10
 b = 20
-c = 
-c = 30
 int(30)
 int(50)
 a = 30
 b = 40
-c = 
-c = 70
 int(70)
