@@ -104,6 +104,7 @@ namespace Inspector
 		public function getOpline() : Opline;
 		public function getSymbols() : ?array;
 		public function getPrevious() : ?Frame;
+		public function getOperand(int which) : ?mixed;
 	}
 }
 ```
