@@ -48,13 +48,45 @@ static PHP_METHOD(Method, __construct)
 	php_inspector_scope_construct(getThis(), function);
 }
 
+static PHP_METHOD(Method, getName)
+{
+	php_inspector_scope_t *scope = 
+		php_inspector_scope_this();
+	zend_string *name = zend_string_alloc(
+		ZSTR_LEN(scope->ops->scope->name) +
+		ZSTR_LEN(scope->ops->function_name) +
+		sizeof("::")-1, 0);
+
+	memcpy(&ZSTR_VAL(name)[0], 
+		ZSTR_VAL(scope->ops->scope->name), 
+		ZSTR_LEN(scope->ops->scope->name));
+	memcpy(&ZSTR_VAL(name)[ZSTR_LEN(scope->ops->scope->name)], 
+		"::", 
+		sizeof("::")-1);
+	memcpy(&ZSTR_VAL(name)[ZSTR_LEN(scope->ops->scope->name) + sizeof("::")-1], 
+		ZSTR_VAL(scope->ops->function_name), 
+		ZSTR_LEN(scope->ops->function_name));
+
+	ZSTR_VAL(name)[ZSTR_LEN(name)] = 0;
+
+	RETURN_STR(name);
+}
+
 ZEND_BEGIN_ARG_INFO_EX(Method_construct_arginfo, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, class, IS_STRING, 0)	
 	ZEND_ARG_TYPE_INFO(0, method, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Method_getName_arginfo, 0, 0, IS_STRING, 0)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Method_getName_arginfo, 0, 0, IS_STRING, NULL, 0)
+#endif
+ZEND_END_ARG_INFO()
+
 static zend_function_entry php_inspector_method_methods[] = {
 	PHP_ME(Method, __construct, Method_construct_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Method, getName, Method_getName_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; 
 
