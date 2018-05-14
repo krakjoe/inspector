@@ -32,8 +32,15 @@
 #include "break.h"
 #include "frame.h"
 
+typedef enum _php_inspector_break_state_t {
+	INSPECTOR_BREAK_RUNTIME,
+	INSPECTOR_BREAK_HANDLER,
+	INSPECTOR_BREAK_SHUTDOWN,
+} php_inspector_break_state_t;
+
 ZEND_BEGIN_MODULE_GLOBALS(inspector_break)
 	HashTable table;
+	php_inspector_break_state_t state;
 ZEND_END_MODULE_GLOBALS(inspector_break)
 
 ZEND_DECLARE_MODULE_GLOBALS(inspector_break);
@@ -74,7 +81,8 @@ static void php_inspector_break_destroy(zend_object *zo) {
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_fetch(&brk->opline);
 
-	zend_hash_index_del(&BRK(table), (zend_ulong) opline->opline);	
+	if (BRK(state) != INSPECTOR_BREAK_SHUTDOWN)
+		zend_hash_index_del(&BRK(table), (zend_ulong) opline->opline);	
 
 	if (Z_TYPE(brk->opline) != IS_UNDEF) {
 		zval_ptr_dtor(&brk->opline);
@@ -246,6 +254,7 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 	php_inspector_break_t *brk = 
 		zend_hash_index_find_ptr(&BRK(table), (zend_ulong) opline);
 
+	BRK(state) = INSPECTOR_BREAK_HANDLER;
 	{
 		zval rv;
 		zval ip;
@@ -278,6 +287,7 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 
 		zval_ptr_dtor(&ip);
 	}
+	BRK(state) = INSPECTOR_BREAK_RUNTIME;
 
 	return ZEND_USER_OPCODE_DISPATCH_TO | brk->opcode;
 }
@@ -316,6 +326,8 @@ static inline void php_inspector_break_unset(zval *zv) {
 /* {{{ */
 PHP_RINIT_FUNCTION(inspector_break) 
 {
+	BRK(state) = INSPECTOR_BREAK_RUNTIME;
+
 	zend_hash_init(&BRK(table), 32, NULL, php_inspector_break_unset, 0);
 
 	return SUCCESS;
@@ -324,6 +336,8 @@ PHP_RINIT_FUNCTION(inspector_break)
 /* {{{ */
 PHP_RSHUTDOWN_FUNCTION(inspector_break)
 {
+	BRK(state) = INSPECTOR_BREAK_SHUTDOWN;
+
 	zend_hash_destroy(&BRK(table));
 
 	return SUCCESS;

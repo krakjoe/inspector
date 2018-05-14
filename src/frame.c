@@ -93,7 +93,7 @@ void php_inspector_frame_construct(zval *zv, zend_execute_data *execute_data) {
 	php_inspector_opline_construct(
 		&frame->opline, 
 		&frame->scope, (zend_op*) frame->frame->opline);
-	
+
 	if (frame->frame->opline->op1_type != IS_UNUSED) {
 		frame->op1.p = zend_get_zval_ptr(
 #if PHP_VERSION_ID >= 70300
@@ -144,7 +144,11 @@ PHP_METHOD(Frame, getSymbols)
 		php_inspector_frame_this();
 
 	if (frame->frame->symbol_table) {
+#if PHP_VERSION_ID >= 70300
 		GC_ADDREF(frame->frame->symbol_table);
+#else
+		GC_REFCOUNT(frame->frame->symbol_table)++;
+#endif
 
 		RETURN_ARR(frame->frame->symbol_table);
 	}
