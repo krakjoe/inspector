@@ -54,7 +54,7 @@ zend_object_handlers php_inspector_break_handlers;
 static zend_object* php_inspector_break_create(zend_class_entry *ce) {
 	php_inspector_break_t *brk =
 		(php_inspector_break_t*)
-			zend_object_alloc(sizeof(php_inspector_break_t), ce);
+			ecalloc(1, sizeof(php_inspector_break_t) + zend_object_properties_size(ce));
 
 	zend_object_std_init(&brk->std, ce);
 

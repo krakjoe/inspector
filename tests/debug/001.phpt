@@ -42,7 +42,7 @@ $break = new class($closure->getOpline(2)) extends BreakPoint {
 		
 		$next = $frame->getOpline()->getNext();
 
-		if ($next) {
+		if ($next && !$next->getBreakPoint()) {
 			new self($next);
 		}
 

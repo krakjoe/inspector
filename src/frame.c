@@ -40,8 +40,7 @@ zend_object_handlers php_inspector_frame_handlers;
 static zend_object* php_inspector_frame_create(zend_class_entry *ce) {
 	php_inspector_frame_t *frame =
 		(php_inspector_frame_t*)
-			zend_object_alloc(
-				sizeof(php_inspector_frame_t), ce);
+			ecalloc(1, sizeof(php_inspector_frame_t) + zend_object_properties_size(ce));
 
 	zend_object_std_init(&frame->std, ce);
 
