@@ -5,6 +5,7 @@ Debug tests (basics)
 --INI--
 opcache.optimization_level=0
 opcache.enable_cli=0
+error_reporting=0
 --FILE--
 <?php 
 require_once(sprintf("%s/../inspector.inc", __DIR__));

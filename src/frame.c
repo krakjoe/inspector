@@ -69,10 +69,6 @@ static void php_inspector_frame_free(zend_object *zo) {
 		zval_ptr_dtor(frame->op2.f);
 	}
 
-	if (frame->rv.f) {
-		zval_ptr_dtor(frame->rv.f);
-	}
-
 	zend_object_std_dtor(&frame->std);
 }
 
@@ -98,27 +94,25 @@ void php_inspector_frame_construct(zval *zv, zend_execute_data *execute_data) {
 		&frame->opline, 
 		&frame->scope, (zend_op*) frame->frame->opline);
 	
-	frame->op1.p = zend_get_zval_ptr(
+	if (frame->frame->opline->op1_type != IS_UNUSED) {
+		frame->op1.p = zend_get_zval_ptr(
 #if PHP_VERSION_ID >= 70300
 			frame->frame->opline, 
 #endif
 			frame->frame->opline->op1_type, 
 			&frame->frame->opline->op1, 
 			frame->frame, &frame->op1.f, BP_VAR_RW);
-	frame->op2.p = zend_get_zval_ptr(
+	}
+
+	if (frame->frame->opline->op2_type != IS_UNUSED) {
+		frame->op2.p = zend_get_zval_ptr(
 #if PHP_VERSION_ID >= 70300
 			frame->frame->opline, 
 #endif
 			frame->frame->opline->op2_type, 
 			&frame->frame->opline->op2, 
 			frame->frame, &frame->op2.f, BP_VAR_RW);
-	frame->rv.p = zend_get_zval_ptr(
-#if PHP_VERSION_ID >= 70300
-			frame->frame->opline, 
-#endif
-			frame->frame->opline->result_type, 
-			&frame->frame->opline->result, 
-			frame->frame, &frame->rv.f, BP_VAR_RW);
+	}
 }
 
 PHP_METHOD(Frame, getOpline)
@@ -187,11 +181,6 @@ PHP_METHOD(Frame, getOperand)
 		case PHP_INSPECTOR_OPLINE_OP2:
 			if (frame->op2.p)
 				ZVAL_COPY(return_value, frame->op2.p);
-		break;
-
-		case PHP_INSPECTOR_OPLINE_RESULT:
-			if (frame->rv.p)
-				ZVAL_COPY(return_value, frame->rv.p);
 		break;
 	}
 }

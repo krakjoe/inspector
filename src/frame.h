@@ -33,7 +33,6 @@ typedef struct _php_inspector_frame_t {
 	zval opline;
 	php_inspector_frame_op_t op1;
 	php_inspector_frame_op_t op2;
-	php_inspector_frame_op_t rv;
 	zend_object std;
 } php_inspector_frame_t;
 
