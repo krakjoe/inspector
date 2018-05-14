@@ -22,6 +22,7 @@
 
 #include "php.h"
 #include "ext/spl/spl_exceptions.h"
+#include "zend_exceptions.h"
 
 #include "php_inspector.h"
 
@@ -217,17 +218,33 @@ static PHP_METHOD(Opline, getScope) {
 	ZVAL_COPY(return_value, &opline->scope);
 } /* }}} */
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getType_arginfo, 0, 0, IS_STRING, 1)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getType_arginfo, 0, 0, IS_STRING, NULL, 1)
+#endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Opline_getOperand_arginfo, 0, 1, Inspector\\Operand, 1)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getOperand_arginfo, 0, 1, IS_OBJECT, "Inspector\\Operand", 1)
+#endif
 	ZEND_ARG_TYPE_INFO(0, which, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getLine_arginfo, 0, 0, IS_LONG, 1)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getLine_arginfo, 0, 0, IS_LONG, NULL, 1)
+#endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Opline_getScope_arginfo, 0, 0, Inspector\\Scope, 0)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getScope_arginfo, 0, 0, IS_OBJECT, "Inspector\\Scope", 0)
+#endif
 ZEND_END_ARG_INFO()
 
 /* {{{ */

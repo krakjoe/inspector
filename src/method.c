@@ -22,6 +22,7 @@
 
 #include "php.h"
 #include "ext/spl/spl_exceptions.h"
+#include "zend_exceptions.h"
 #include "scope.h"
 
 zend_class_entry *php_inspector_method_ce;

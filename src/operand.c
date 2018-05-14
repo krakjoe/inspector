@@ -164,9 +164,17 @@ static PHP_METHOD(Operand, getValue) {
 		php_inspector_scope_t *scope = 
 			php_inspector_scope_fetch_from(Z_OBJ(opline->scope));
 
+#if PHP_VERSION_ID >= 70300
+		ZEND_PASS_TWO_UNDO_CONSTANT(scope->ops, opline->opline, *operand->op);
+#else
 		ZEND_PASS_TWO_UNDO_CONSTANT(scope->ops, *operand->op);
+#endif
 		ZVAL_COPY(return_value, &scope->ops->literals[operand->op->num]);
+#if PHP_VERSION_ID >= 70300
+		ZEND_PASS_TWO_UPDATE_CONSTANT(scope->ops, opline->opline, *operand->op);
+#else
 		ZEND_PASS_TWO_UPDATE_CONSTANT(scope->ops, *operand->op);
+#endif
 	}
 }
 
@@ -222,9 +230,17 @@ static PHP_METHOD(Operand, getNumber) {
 
 		default: {
 			if (operand->type & IS_CONST) {
+#if PHP_VERSION_ID >= 70300
+				ZEND_PASS_TWO_UNDO_CONSTANT(scope->ops, opline->opline, *operand->op);
+#else
 				ZEND_PASS_TWO_UNDO_CONSTANT(scope->ops, *operand->op);
+#endif
 				ZVAL_LONG(return_value, operand->op->num);
+#if PHP_VERSION_ID >= 70300
+				ZEND_PASS_TWO_UPDATE_CONSTANT(scope->ops, opline->opline, *operand->op);
+#else
 				ZEND_PASS_TWO_UPDATE_CONSTANT(scope->ops, *operand->op);
+#endif
 			} else if (operand->type & IS_TMP_VAR|IS_VAR) {
 				ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num - scope->ops->last_var));
 			} else if (operand->type & IS_CV) {
@@ -241,16 +257,32 @@ static PHP_METHOD(Operand, getOpline) {
 	ZVAL_COPY(return_value, &operand->opline);
 } /* }}} */
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_bool_arginfo, 0, 0, _IS_BOOL, 0)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_bool_arginfo, 0, 0, _IS_BOOL, NULL, 0)
+#endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_int_arginfo, 0, 0, IS_LONG, 0)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_int_arginfo, 0, 0, IS_LONG, NULL, 0)
+#endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_string_or_null_arginfo, 0, 0, IS_STRING, 1)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_string_or_null_arginfo, 0, 0, IS_STRING, NULL, 1)
+#endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Operand_returns_opline_arginfo, 0, 0, Inspector\\Opline, 0)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Operand_returns_opline_arginfo, 0, 0, IS_OBJECT, "Inspector\\Opline", 0)
+#endif
 ZEND_END_ARG_INFO()
 
 /* {{{ */

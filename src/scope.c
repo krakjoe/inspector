@@ -22,12 +22,14 @@
 
 #include "php.h"
 #include "zend_interfaces.h"
+#include "zend_exceptions.h"
 
 #include "ext/spl/spl_exceptions.h"
 #include "ext/spl/spl_iterators.h"
 #include "php_inspector.h"
 
 #include "scope.h"
+#include "opline.h"
 
 typedef struct _php_inspector_scope_iterator_t {
 	zend_object_iterator zit;
@@ -75,14 +77,22 @@ void php_inspector_scope_save(zval *object, HashTable **tables, zval *values) {
 	zend_hash_init(&scope->symbols.functions, 
 		zend_hash_num_elements(CG(function_table)),
 		NULL, CG(function_table)->pDestructor, 
+#if PHP_VERSION_ID >= 70300
+		GC_FLAGS(CG(function_table)) & IS_ARRAY_PERSISTENT);
+#else
 		CG(function_table)->u.flags & HASH_FLAG_PERSISTENT);
+#endif
 
 	CG(function_table) = &scope->symbols.functions;
 
 	zend_hash_init(&scope->symbols.classes, 
 		zend_hash_num_elements(CG(class_table)),
 		NULL, CG(class_table)->pDestructor, 
+#if PHP_VERSION_ID >= 70300
+		GC_FLAGS(CG(class_table)) & IS_ARRAY_PERSISTENT);
+#else
 		CG(class_table)->u.flags & HASH_FLAG_PERSISTENT);
+#endif
 
 	CG(class_table) = &scope->symbols.classes;
 
@@ -279,17 +289,33 @@ static PHP_METHOD(Scope, getLineEnd) {
 }
 /* }}} */
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getArray_arginfo, 0, 0, IS_ARRAY, 0)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getArray_arginfo, 0, 0, IS_ARRAY, NULL, 0)
+#endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Scope_getOpline_arginfo, 0, 1, "Inspector\\Opline", 1)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getOpline_arginfo, 0, 1, IS_OBJECT, "Inspector\\Opline", 1)
+#endif
 	ZEND_ARG_TYPE_INFO(0, num, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getLineStart_arginfo, 0, 0, IS_LONG, 0)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getLineStart_arginfo, 0, 0, IS_LONG, NULL, 0)
+#endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getLineEnd_arginfo, 0, 0, IS_LONG, 0)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getLineEnd_arginfo, 0, 0, IS_LONG, NULL, 0)
+#endif
 ZEND_END_ARG_INFO()
 
 /* {{{ */

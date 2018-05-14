@@ -25,6 +25,7 @@
 
 #include "ext/spl/spl_exceptions.h"
 #include "ext/spl/spl_iterators.h"
+#include "zend_exceptions.h"
 #include "php_inspector.h"
 
 #include "scope.h"
@@ -216,11 +217,19 @@ static PHP_METHOD(Entry, getMethods) {
 }
 /* }}} */
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Entry_getMethod_arginfo, 0, 1, Inspector\\Method, 1)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Entry_getMethod_arginfo, 0, 1, IS_OBJECT, "Inspector\\Method", 1)
+#endif
 	ZEND_ARG_TYPE_INFO(0, method, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Entry_getMethods_arginfo, 0, 0, IS_ARRAY, 0)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Entry_getMethods_arginfo, 0, 0, IS_ARRAY, NULL, 0)
+#endif
 ZEND_END_ARG_INFO()
 
 

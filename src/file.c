@@ -21,8 +21,10 @@
 #define HAVE_INSPECTOR_FILE
 
 #include "php.h"
+#include "php_main.h"
 
 #include "ext/spl/spl_exceptions.h"
+#include "zend_exceptions.h"
 
 #include "scope.h"
 #include "global.h"
@@ -206,14 +208,26 @@ ZEND_BEGIN_ARG_INFO_EX(File_construct_arginfo, 0, 0, 1)
 	ZEND_ARG_TYPE_INFO(0, clobber, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(File_getArray_arginfo, 0, 0, IS_ARRAY, 1)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(File_getArray_arginfo, 0, 0, IS_ARRAY, NULL, 1)
+#endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(File_getGlobal_arginfo, 0, 0, Inspector\\Global, 0)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(File_getGlobal_arginfo, 0, 0, IS_OBJECT, "Inspector\\Global", 0)
+#endif
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(File_getEntry_arginfo, 0, 0, Inspector\\Entry, 0)
+#else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(File_getEntry_arginfo, 0, 0, IS_OBJECT, "Inspector\\Entry", 0)
+#endif
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
