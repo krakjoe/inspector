@@ -22,17 +22,10 @@
 
 extern zend_class_entry *php_inspector_frame_ce;
 
-typedef struct _php_inspector_frame_op_t {
-	zend_free_op f;
-	zval *p;
-} php_inspector_frame_op_t;
-
 typedef struct _php_inspector_frame_t {
 	zend_execute_data *frame;
 	zval scope;
 	zval opline;
-	php_inspector_frame_op_t op1;
-	php_inspector_frame_op_t op2;
 	zend_object std;
 } php_inspector_frame_t;
 

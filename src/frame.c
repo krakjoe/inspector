@@ -61,14 +61,6 @@ static void php_inspector_frame_free(zend_object *zo) {
 	if (Z_TYPE(frame->opline) != IS_UNDEF)
 		zval_ptr_dtor(&frame->opline);
 
-	if (frame->op1.f) {
-		zval_ptr_dtor(frame->op1.f);
-	}
-
-	if (frame->op2.f) {
-		zval_ptr_dtor(frame->op2.f);
-	}
-
 	zend_object_std_dtor(&frame->std);
 }
 
@@ -93,26 +85,6 @@ void php_inspector_frame_construct(zval *zv, zend_execute_data *execute_data) {
 	php_inspector_opline_construct(
 		&frame->opline, 
 		&frame->scope, (zend_op*) frame->frame->opline);
-
-	if (frame->frame->opline->op1_type != IS_UNUSED) {
-		frame->op1.p = zend_get_zval_ptr(
-#if PHP_VERSION_ID >= 70300
-			frame->frame->opline, 
-#endif
-			frame->frame->opline->op1_type, 
-			&frame->frame->opline->op1, 
-			frame->frame, &frame->op1.f, BP_VAR_RW);
-	}
-
-	if (frame->frame->opline->op2_type != IS_UNUSED) {
-		frame->op2.p = zend_get_zval_ptr(
-#if PHP_VERSION_ID >= 70300
-			frame->frame->opline, 
-#endif
-			frame->frame->opline->op2_type, 
-			&frame->frame->opline->op2, 
-			frame->frame, &frame->op2.f, BP_VAR_RW);
-	}
 }
 
 PHP_METHOD(Frame, getOpline)
@@ -199,29 +171,6 @@ PHP_METHOD(Frame, getPrevious)
 	}
 }
 
-PHP_METHOD(Frame, getOperand)
-{
-	php_inspector_frame_t *frame =
-		php_inspector_frame_this();
-	zend_long which = PHP_INSPECTOR_OPLINE_INVALID;
-
-	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "l", &which) != SUCCESS) {
-		return;
-	}
-
-	switch (which) {
-		case PHP_INSPECTOR_OPLINE_OP1:
-			if (frame->op1.p)
-				ZVAL_COPY(return_value, frame->op1.p);
-		break;
-
-		case PHP_INSPECTOR_OPLINE_OP2:
-			if (frame->op2.p)
-				ZVAL_COPY(return_value, frame->op2.p);
-		break;
-	}
-}
-
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Frame_getScope_arginfo, 0, 0, Inspector\\Scope, 0)
 #else
@@ -243,10 +192,6 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Frame_getPrevious_arginfo, 0, 0, IS_OBJE
 #endif
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(Frame_getOperand_arginfo, 0, 0, 1)
-	ZEND_ARG_TYPE_INFO(0, which, IS_LONG, 0)
-ZEND_END_ARG_INFO()
-
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Frame_getStack_arginfo, 0, 0, IS_ARRAY, 1)
 #else
@@ -259,7 +204,6 @@ static zend_function_entry php_inspector_frame_methods[] = {
 	PHP_ME(Frame, getScope, Frame_getScope_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getSymbols, Frame_getSymbols_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getPrevious, Frame_getPrevious_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Frame, getOperand, Frame_getOperand_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getStack, Frame_getStack_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };

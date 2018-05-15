@@ -282,6 +282,7 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 
 		if (zend_call_function(&brk->cache.fci, &brk->cache.fcc) != SUCCESS) {
 			/* do something */
+			
 		}
 
 		if (Z_REFCOUNTED(rv)) {
@@ -291,6 +292,10 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 		zval_ptr_dtor(&ip);
 	}
 	BRK(state) = INSPECTOR_BREAK_RUNTIME;
+
+	if (EG(exception)) {
+		return ZEND_USER_OPCODE_DISPATCH_TO | ZEND_HANDLE_EXCEPTION;
+	}
 
 	return ZEND_USER_OPCODE_DISPATCH_TO | brk->opcode;
 }
