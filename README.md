@@ -105,6 +105,7 @@ namespace Inspector
 		public function getSymbols() : ?array;
 		public function getPrevious() : ?Frame;
 		public function getOperand(int which) : ?mixed;
+		public function getStack() : array;
 	}
 }
 ```
