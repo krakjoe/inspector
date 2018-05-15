@@ -171,6 +171,18 @@ PHP_METHOD(Frame, getPrevious)
 	}
 }
 
+PHP_METHOD(Frame, getCall)
+{
+	php_inspector_frame_t *frame =
+		php_inspector_frame_this();
+
+	if (frame->frame->call) {
+		php_inspector_frame_construct(
+			return_value,
+			frame->frame->call);
+	}
+}
+
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Frame_getScope_arginfo, 0, 0, Inspector\\Scope, 0)
 #else
@@ -199,12 +211,20 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Frame_getStack_arginfo, 0, 0, IS_ARRAY, 
 #endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Frame_getCall_arginfo, 0, 0, Inspector\\Frame, 1)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Frame_getCall_arginfo, 0, 0, IS_OBJECT, "Inspector\\Frame", 1)
+#endif
+ZEND_END_ARG_INFO()
+
 static zend_function_entry php_inspector_frame_methods[] = {
 	PHP_ME(Frame, getOpline, Frame_getOpline_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getScope, Frame_getScope_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getSymbols, Frame_getSymbols_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getPrevious, Frame_getPrevious_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getStack, Frame_getStack_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Frame, getCall, Frame_getCall_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
