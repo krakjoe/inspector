@@ -183,6 +183,33 @@ PHP_METHOD(Frame, getCall)
 	}
 }
 
+PHP_METHOD(Frame, getParameters)
+{
+	php_inspector_frame_t *frame =
+		php_inspector_frame_this();
+	zval *param = ZEND_CALL_ARG(frame->frame, 1),
+	     *end   = param + ZEND_CALL_NUM_ARGS(frame->frame);
+
+	array_init_size(return_value, ZEND_CALL_NUM_ARGS(frame->frame));
+
+	while (param < end) {
+		zval *val = param;
+		
+		if (Z_TYPE_P(val) == IS_UNDEF) {
+			param++;
+			continue;
+		}
+
+		if (Z_TYPE_P(val) == IS_INDIRECT) {
+			val = Z_INDIRECT_P(val);
+		}
+
+		add_next_index_zval(return_value, val);
+		Z_TRY_ADDREF_P(val);
+		param++;
+	}
+}
+
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Frame_getScope_arginfo, 0, 0, Inspector\\Scope, 0)
 #else
@@ -218,6 +245,13 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Frame_getCall_arginfo, 0, 0, IS_OBJECT, 
 #endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Frame_getParameters_arginfo, 0, 0, IS_ARRAY, 1)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Frame_getParameters_arginfo, 0, 0, IS_ARRAY, NULL, 1)
+#endif
+ZEND_END_ARG_INFO()
+
 static zend_function_entry php_inspector_frame_methods[] = {
 	PHP_ME(Frame, getOpline, Frame_getOpline_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getScope, Frame_getScope_arginfo, ZEND_ACC_PUBLIC)
@@ -225,6 +259,7 @@ static zend_function_entry php_inspector_frame_methods[] = {
 	PHP_ME(Frame, getPrevious, Frame_getPrevious_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getStack, Frame_getStack_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getCall, Frame_getCall_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Frame, getParameters, Frame_getParameters_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 

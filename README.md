@@ -107,6 +107,7 @@ namespace Inspector
 		public function getPrevious() : ?Frame;
 		public function getCall() : ?Frame;
 		public function getStack() : array;
+		public function getParameters() : array;
 	}
 }
 ```
