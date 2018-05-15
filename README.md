@@ -24,6 +24,7 @@ namespace Inspector
 		public function getOpline(int num = 0) : Opline;
         	public function getLineStart() : int;
         	public function getLineEnd() : int;
+		public function getFileName() : ?string;
 		public function count() : int;
 
 		public function getEntry() : ?Entry;

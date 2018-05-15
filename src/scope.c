@@ -313,6 +313,16 @@ static PHP_METHOD(Scope, getEntry)
 		php_inspector_entry_construct(return_value, scope->ops->scope);
 	}
 }
+
+static PHP_METHOD(Scope, getFileName)
+{
+	php_inspector_scope_t *scope =
+		php_inspector_scope_this();
+
+	if (scope->ops->filename) {
+		RETURN_STR_COPY(scope->ops->filename);
+	}
+}
 /* }}} */
 
 #if PHP_VERSION_ID >= 70200
@@ -358,6 +368,13 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getEntry_arginfo, 0, 0, IS_OBJECT,
 #endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getFileName_arginfo, 0, 0, IS_STRING, 1)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getFileName_arginfo, 0, 0, IS_STRING, NULL, 1)
+#endif
+ZEND_END_ARG_INFO()
+
 /* {{{ */
 static zend_function_entry php_inspector_scope_methods[] = {
 	PHP_ME(Scope, getName, Scope_getName_arginfo, ZEND_ACC_PUBLIC)
@@ -367,6 +384,7 @@ static zend_function_entry php_inspector_scope_methods[] = {
 	PHP_ME(Scope, getOpline, Scope_getOpline_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getLineStart, Scope_getLineStart_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getLineEnd, Scope_getLineEnd_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getFileName, Scope_getFileName_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, count, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getEntry, Scope_getEntry_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
