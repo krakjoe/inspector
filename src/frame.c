@@ -208,6 +208,36 @@ PHP_METHOD(Frame, getParameters)
 	}
 }
 
+PHP_METHOD(Frame, getVariable)
+{
+	php_inspector_frame_t *frame =
+		php_inspector_frame_this();
+	php_inspector_scope_t *scope =
+		php_inspector_scope_fetch(&frame->scope);
+	zend_long num = 0;
+	zval *variable = NULL;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "l", &num) != SUCCESS) {
+		return;
+	}
+
+	if (num < 0 || scope->ops->type != ZEND_USER_FUNCTION || scope->ops->last_var < num) {
+		return;
+	}
+
+	variable = ZEND_CALL_VAR_NUM(frame->frame, num);
+
+	if (Z_TYPE_P(variable) == IS_UNDEF) {
+		return;
+	}
+
+	if (Z_TYPE_P(variable) == IS_INDIRECT) {
+		ZVAL_COPY(return_value, Z_INDIRECT_P(variable));
+	} else {
+		ZVAL_COPY(return_value, variable);	
+	}
+}
+
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Frame_getOpline_arginfo, 0, 0, Inspector\\Opline, 0)
 #else
@@ -257,6 +287,10 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Frame_getParameters_arginfo, 0, 0, IS_AR
 #endif
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(Frame_getVariable_arginfo, 0, 0, 1)
+	ZEND_ARG_TYPE_INFO(0, num, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
 static zend_function_entry php_inspector_frame_methods[] = {
 	PHP_ME(Frame, getOpline, Frame_getOpline_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getScope, Frame_getScope_arginfo, ZEND_ACC_PUBLIC)
@@ -265,6 +299,7 @@ static zend_function_entry php_inspector_frame_methods[] = {
 	PHP_ME(Frame, getStack, Frame_getStack_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getCall, Frame_getCall_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Frame, getParameters, Frame_getParameters_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Frame, getVariable, Frame_getVariable_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 

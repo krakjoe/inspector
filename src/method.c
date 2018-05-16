@@ -24,6 +24,7 @@
 #include "ext/spl/spl_exceptions.h"
 #include "zend_exceptions.h"
 #include "scope.h"
+#include "reflection.h"
 
 zend_class_entry *php_inspector_method_ce;
 
@@ -48,28 +49,23 @@ static PHP_METHOD(Method, __construct)
 	php_inspector_scope_construct(getThis(), function);
 }
 
-static PHP_METHOD(Method, getName)
+static PHP_METHOD(Method, getReflector)
 {
-	php_inspector_scope_t *scope = 
+	php_inspector_scope_t *scope =
 		php_inspector_scope_this();
-	zend_string *name = zend_string_alloc(
-		ZSTR_LEN(scope->ops->scope->name) +
-		ZSTR_LEN(scope->ops->function_name) +
-		sizeof("::")-1, 0);
 
-	memcpy(&ZSTR_VAL(name)[0], 
-		ZSTR_VAL(scope->ops->scope->name), 
-		ZSTR_LEN(scope->ops->scope->name));
-	memcpy(&ZSTR_VAL(name)[ZSTR_LEN(scope->ops->scope->name)], 
-		"::", 
-		sizeof("::")-1);
-	memcpy(&ZSTR_VAL(name)[ZSTR_LEN(scope->ops->scope->name) + sizeof("::")-1], 
-		ZSTR_VAL(scope->ops->function_name), 
-		ZSTR_LEN(scope->ops->function_name));
+	if (!Z_ISUNDEF(scope->reflector)) {
+		RETURN_ZVAL(&scope->reflector, 1, 0);
+	}
 
-	ZSTR_VAL(name)[ZSTR_LEN(name)] = 0;
+	php_inspector_reflection_object_factory(
+		&scope->reflector,
+		php_inspector_reflection_method_ce, 
+		PHP_REF_TYPE_OTHER, 
+		(zend_function*) scope->ops,
+		scope->ops->function_name);
 
-	RETURN_STR(name);
+	RETURN_ZVAL(&scope->reflector, 1, 0);
 }
 
 ZEND_BEGIN_ARG_INFO_EX(Method_construct_arginfo, 0, 0, 2)
@@ -77,16 +73,9 @@ ZEND_BEGIN_ARG_INFO_EX(Method_construct_arginfo, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, method, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-#if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Method_getName_arginfo, 0, 0, IS_STRING, 0)
-#else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Method_getName_arginfo, 0, 0, IS_STRING, NULL, 0)
-#endif
-ZEND_END_ARG_INFO()
-
 static zend_function_entry php_inspector_method_methods[] = {
 	PHP_ME(Method, __construct, Method_construct_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Method, getName, Method_getName_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Method, getReflector, Reflectable_getReflector_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 

@@ -41,11 +41,13 @@
 #include "src/entry.h"
 #include "src/break.h"
 #include "src/frame.h"
+#include "src/reflection.h"
 
 /* {{{ PHP_MINIT_FUNCTION
  */
 PHP_MINIT_FUNCTION(inspector)
 {
+	PHP_MINIT(inspector_reflection)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_scope)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_func)(INIT_FUNC_ARGS_PASSTHRU);
@@ -68,6 +70,7 @@ PHP_RINIT_FUNCTION(inspector)
 #if defined(COMPILE_DL_INSPECTOR) && defined(ZTS)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
+	PHP_RINIT(inspector_reflection)(INIT_FUNC_ARGS_PASSTHRU);
 
 	PHP_RINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 
@@ -96,9 +99,9 @@ PHP_MINFO_FUNCTION(inspector)
 
 static const zend_module_dep inspector_deps[] = {
         ZEND_MOD_REQUIRED("SPL")
+	ZEND_MOD_REQUIRED("Reflection")
         ZEND_MOD_END
 };
-
 
 /* {{{ inspector_module_entry
  */

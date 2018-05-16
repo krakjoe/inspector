@@ -31,6 +31,7 @@
 #include "scope.h"
 #include "method.h"
 #include "entry.h"
+#include "reflection.h"
 
 typedef struct _php_inspector_entry_iterator_t {
 	zend_object_iterator zit;
@@ -74,6 +75,10 @@ void php_inspector_entry_construct(zval *object, zend_class_entry *ce) {
 static void php_inspector_entry_destroy(zend_object *object) {
 	php_inspector_entry_t *entry = 
 		php_inspector_entry_fetch_from(object);
+
+	if (!Z_ISUNDEF(entry->reflector)) {
+		zval_ptr_dtor(&entry->reflector);
+	}
 
 	zend_object_std_dtor(object);
 }
@@ -216,12 +221,23 @@ static PHP_METHOD(Entry, getMethods) {
 	} ZEND_HASH_FOREACH_END();
 }
 
-static PHP_METHOD(Entry, getName) 
+static PHP_METHOD(Entry, getReflector)
 {
-	php_inspector_entry_t *entry = 
+	php_inspector_entry_t *entry =
 		php_inspector_entry_this();
 
-	RETURN_STR_COPY(entry->entry->name);
+	if (!Z_ISUNDEF(entry->reflector)) {
+		RETURN_ZVAL(&entry->reflector, 1, 0);
+	}
+
+	php_inspector_reflection_object_factory(
+		&entry->reflector,
+		php_inspector_reflection_class_ce, 
+		PHP_REF_TYPE_OTHER, 
+		entry->entry,
+		entry->entry->name);
+
+	RETURN_ZVAL(&entry->reflector, 1, 0);
 }
 /* }}} */
 
@@ -241,9 +257,9 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Entry_getMethods_arginfo, 0, 0, IS_ARRAY
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Entry_getName_arginfo, 0, 0, IS_STRING, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Entry_getFileName_arginfo, 0, 0, IS_STRING, 0)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Entry_getName_arginfo, 0, 0, IS_STRING, NULL, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Entry_getFileName_arginfo, 0, 0, IS_STRING, NULL, 0)
 #endif
 ZEND_END_ARG_INFO()
 
@@ -253,7 +269,7 @@ static zend_function_entry php_inspector_entry_methods[] = {
 	PHP_ME(Entry, count, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Entry, getMethod, Entry_getMethod_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Entry, getMethods, Entry_getMethods_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Entry, getName, Entry_getName_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Entry, getReflector, Reflectable_getReflector_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 

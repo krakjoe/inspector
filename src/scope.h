@@ -26,6 +26,7 @@ typedef struct _php_inspector_scope_t {
 		HashTable   functions;
 		HashTable   classes;
 	} symbols;
+	zval reflector;
 	zend_object std;
 } php_inspector_scope_t;
 

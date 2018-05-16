@@ -22,6 +22,7 @@
 
 typedef struct _php_inspector_entry_t {
 	zend_class_entry *entry;
+	zval reflector;
 	zend_object std;
 } php_inspector_entry_t;
 

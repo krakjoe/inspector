@@ -31,6 +31,7 @@
 #include "scope.h"
 #include "opline.h"
 #include "entry.h"
+#include "reflection.h"
 
 typedef struct _php_inspector_scope_iterator_t {
 	zend_object_iterator zit;
@@ -145,6 +146,10 @@ static void php_inspector_scope_destroy(zend_object *object) {
 	
 	if (scope->symbols.classes.pDestructor) {
 		zend_hash_destroy(&scope->symbols.classes);
+	}
+
+	if (!Z_ISUNDEF(scope->reflector)) {
+		zval_ptr_dtor(&scope->reflector);
 	}
 
 	if (scope->ops) {
@@ -275,30 +280,6 @@ static PHP_METHOD(Scope, count) {
 	RETURN_LONG(scope->ops->last);
 }
 
-static PHP_METHOD(Scope, getLineStart) {
-	php_inspector_scope_t *scope = 
-		php_inspector_scope_this();
-
-	RETURN_LONG(scope->ops->line_start);
-}
-
-static PHP_METHOD(Scope, getLineEnd) {
-	php_inspector_scope_t *scope = 
-		php_inspector_scope_this();
-
-	RETURN_LONG(scope->ops->line_end);
-}
-
-static PHP_METHOD(Scope, getName) 
-{
-	php_inspector_scope_t *scope = 
-		php_inspector_scope_this();
-
-	if (scope->ops->function_name) {
-		RETURN_STR_COPY(scope->ops->function_name);
-	}
-}
-
 static PHP_METHOD(Scope, getEntry)
 {
 	php_inspector_scope_t *scope =
@@ -314,14 +295,23 @@ static PHP_METHOD(Scope, getEntry)
 	}
 }
 
-static PHP_METHOD(Scope, getFileName)
+static PHP_METHOD(Scope, getReflector)
 {
 	php_inspector_scope_t *scope =
 		php_inspector_scope_this();
 
-	if (scope->ops->filename) {
-		RETURN_STR_COPY(scope->ops->filename);
+	if (!Z_ISUNDEF(scope->reflector)) {
+		RETURN_ZVAL(&scope->reflector, 1, 0);
 	}
+
+	php_inspector_reflection_object_factory(
+		&scope->reflector,
+		php_inspector_reflection_function_ce, 
+		PHP_REF_TYPE_OTHER, 
+		(zend_function*) scope->ops,
+		scope->ops->function_name);
+
+	RETURN_ZVAL(&scope->reflector, 1, 0);
 }
 /* }}} */
 
@@ -368,25 +358,15 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getEntry_arginfo, 0, 0, IS_OBJECT,
 #endif
 ZEND_END_ARG_INFO()
 
-#if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getFileName_arginfo, 0, 0, IS_STRING, 1)
-#else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Scope_getFileName_arginfo, 0, 0, IS_STRING, NULL, 1)
-#endif
-ZEND_END_ARG_INFO()
-
 /* {{{ */
 static zend_function_entry php_inspector_scope_methods[] = {
-	PHP_ME(Scope, getName, Scope_getName_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getStatics, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getConstants, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getVariables, Scope_getArray_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getOpline, Scope_getOpline_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Scope, getLineStart, Scope_getLineStart_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Scope, getLineEnd, Scope_getLineEnd_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Scope, getFileName, Scope_getFileName_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, count, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(Scope, getEntry, Scope_getEntry_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(Scope, getReflector, Reflectable_getReflector_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
@@ -400,7 +380,7 @@ PHP_MINIT_FUNCTION(inspector_scope) {
 	php_inspector_scope_ce->ce_flags |= ZEND_ACC_EXPLICIT_ABSTRACT_CLASS;
 	php_inspector_scope_ce->create_object = php_inspector_scope_create;
 	php_inspector_scope_ce->get_iterator  = php_inspector_scope_iterate;
-	zend_class_implements(php_inspector_scope_ce, 2, zend_ce_traversable, spl_ce_Countable);
+	zend_class_implements(php_inspector_scope_ce, 3, zend_ce_traversable, spl_ce_Countable, php_inspector_reflectable_ce);
 
 	memcpy(&php_inspector_scope_handlers, 
 		zend_get_std_object_handlers(), sizeof(zend_object_handlers));

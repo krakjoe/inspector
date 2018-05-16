@@ -16,26 +16,32 @@ The following API is provided:
 ```php
 namespace Inspector
 {
-	abstract class Scope implements Traversable, Countable {
-		public function getName() : ?string;
+	interface Reflectable {
+		public function getReflector() : Reflector;
+	}
+
+	abstract class Scope implements Reflectable, Traversable, Countable {
 		public function getStatics() : array;
 		public function getConstants() : array;
 		public function getVariables() : array;
 		public function getOpline(int num = 0) : Opline;
-        	public function getLineStart() : int;
-        	public function getLineEnd() : int;
-		public function getFileName() : ?string;
-		public function count() : int;
-
 		public function getEntry() : ?Entry;
+
+		public function getReflector() : Reflector;
+
+		public function count() : int;
 	}
 	
 	final class Func extends Scope {
 		public function __construct(string function);
+
+		public function getReflector() : ReflectionFunction;
 	}
 
 	final class Method extends Scope {
 		public function __construct(string class, string method);
+
+		public function getReflector() : ReflectionMethod;
 	}
 
 	final class Closure extends Scope {
@@ -50,11 +56,13 @@ namespace Inspector
 		public function getEntry(string name) : ?Entry;
 	}
 
-	final class Entry implements Traversable, Countable {
+	final class Entry implements Reflectable, Traversable, Countable {
 		public function __construct(string class);
 		public function getMethod(string name) : Method;
 		public function getMethods() : array;
 		public function count();
+
+		public function getReflector() : ReflectionClass;
 	}
 
 	final class Opline {
