@@ -82,9 +82,14 @@ void php_inspector_frame_construct(zval *zv, zend_execute_data *execute_data) {
 
 	php_inspector_scope_construct(
 		&frame->scope, frame->frame->func);
-	php_inspector_opline_construct(
-		&frame->opline, 
-		&frame->scope, (zend_op*) frame->frame->opline);
+
+	if (frame->frame->opline) {
+		php_inspector_opline_construct(
+			&frame->opline, 
+			&frame->scope, (zend_op*) frame->frame->opline);
+	} else {
+		ZVAL_NULLL(&frame->opline);
+	}
 }
 
 PHP_METHOD(Frame, getOpline)
@@ -127,13 +132,6 @@ PHP_METHOD(Frame, getStack)
 		var++;
 	}
 }
-
-#if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Frame_getOpline_arginfo, 0, 0, Inspector\\Opline, 0)
-#else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Frame_getOpline_arginfo, 0, 0, IS_OBJECT, "Inspector\\Opline", 0)
-#endif
-ZEND_END_ARG_INFO()
 
 PHP_METHOD(Frame, getScope)
 {
@@ -209,6 +207,13 @@ PHP_METHOD(Frame, getParameters)
 		param++;
 	}
 }
+
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Frame_getOpline_arginfo, 0, 0, Inspector\\Opline, 0)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Frame_getOpline_arginfo, 0, 0, IS_OBJECT, "Inspector\\Opline", 0)
+#endif
+ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Frame_getScope_arginfo, 0, 0, Inspector\\Scope, 0)
