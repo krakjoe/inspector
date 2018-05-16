@@ -88,7 +88,7 @@ void php_inspector_frame_construct(zval *zv, zend_execute_data *execute_data) {
 			&frame->opline, 
 			&frame->scope, (zend_op*) frame->frame->opline);
 	} else {
-		ZVAL_NULLL(&frame->opline);
+		ZVAL_NULL(&frame->opline);
 	}
 }
 
