@@ -21,6 +21,8 @@ $result = $opline->getOperand(InspectorOpline::RESULT);
 if ($result->isVariable() || $result->isTemporaryVariable() &&
     $result->getNumber() > -1) {
 	echo "OK";
+} else {
+	var_dump($result->isVariable(), $result->isTemporaryVariable(), $result->getNumber());
 }
 ?>
 --EXPECT--
