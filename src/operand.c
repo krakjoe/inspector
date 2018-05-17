@@ -34,6 +34,12 @@
 static zend_object_handlers php_inspector_operand_handlers;
 zend_class_entry *php_inspector_operand_ce;
 
+#ifdef EXT_TYPE_UNUSED
+#define zend_op_type(type) (type & ~EXT_TYPE_UNUSED)
+#else
+#define zend_op_type(type) (type)
+#endif
+
 /* {{{ */
 static void php_inspector_operand_destroy(zend_object *object) {
 	php_inspector_operand_t *operand = php_inspector_operand_fetch_from(object);
@@ -111,42 +117,46 @@ static PHP_METHOD(InspectorOperand, isUnused) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
-	RETURN_BOOL(operand->type == IS_UNUSED);
+	RETURN_BOOL(zend_op_type(operand->type) == IS_UNUSED);
 }
 
 static PHP_METHOD(InspectorOperand, isExtendedTypeUnused) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
-	RETURN_BOOL(operand->type & IS_UNUSED);
+#ifdef EXT_TYPE_UNUSED
+	RETURN_BOOL(operand->type & EXT_TYPE_UNUSED);
+#else
+	RETURN_BOOL(operand->type == IS_UNUSED);
+#endif
 }
 
 static PHP_METHOD(InspectorOperand, isCompiledVariable) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
-	RETURN_BOOL(operand->type & IS_CV);
+	RETURN_BOOL(zend_op_type(operand->type) == IS_CV);
 }
 
 static PHP_METHOD(InspectorOperand, isTemporaryVariable) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
-	RETURN_BOOL(operand->type & IS_TMP_VAR);
+	RETURN_BOOL(zend_op_type(operand->type) == IS_TMP_VAR);
 }
 
 static PHP_METHOD(InspectorOperand, isVariable) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
-	RETURN_BOOL(operand->type & IS_VAR);
+	RETURN_BOOL(zend_op_type(operand->type) == IS_VAR);
 }
 
 static PHP_METHOD(InspectorOperand, isConstant) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
 
-	RETURN_BOOL(operand->type & IS_CONST);
+	RETURN_BOOL(zend_op_type(operand->type) == IS_CONST);
 }
 
 static PHP_METHOD(InspectorOperand, getWhich) {
@@ -170,7 +180,7 @@ static PHP_METHOD(InspectorOperand, getValue) {
 		return;
 	}
 
-	if (operand->type & IS_CONST) {
+	if (zend_op_type(operand->type) == IS_CONST) {
 #if PHP_VERSION_ID >= 70300
 		ZEND_PASS_TWO_UNDO_CONSTANT(function, opline->opline, *operand->op);
 #else
@@ -206,7 +216,7 @@ static PHP_METHOD(InspectorOperand, getValue) {
 static PHP_METHOD(InspectorOperand, getName) {
 	php_inspector_operand_t *operand = php_inspector_operand_this();
 
-	if (operand->type & IS_CV) {
+	if (zend_op_type(operand->type) == IS_CV) {
 		php_inspector_opline_t *opline = 
 			php_inspector_opline_fetch(&operand->opline);
 		zend_op_array *function = 
@@ -256,7 +266,7 @@ static PHP_METHOD(InspectorOperand, getNumber) {
 			}
 
 		default: {
-			if (operand->type & IS_CONST) {
+			if (zend_op_type(operand->type) == IS_CONST) {
 #if PHP_VERSION_ID >= 70300
 				ZEND_PASS_TWO_UNDO_CONSTANT(function, opline->opline, *operand->op);
 #else
@@ -268,9 +278,9 @@ static PHP_METHOD(InspectorOperand, getNumber) {
 #else
 				ZEND_PASS_TWO_UPDATE_CONSTANT(function, *operand->op);
 #endif
-			} else if (operand->type & IS_TMP_VAR|IS_VAR) {
+			} else if (zend_op_type(operand->type) == IS_TMP_VAR || IS_VAR == zend_op_type(operand->type)) {
 				ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num - function->last_var));
-			} else if (operand->type & IS_CV) {
+			} else if (zend_op_type(operand->type) == IS_CV) {
 				ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num));
 			}
 		}	

@@ -53,7 +53,7 @@ namespace Inspector
 		public function isConstant() : bool;
 		public function isJumpTarget() : bool;
 		public function getWhich() : int;
-		public function getValue() : mixed;
+		public function getValue(?InspectorFrame $frame) : mixed;
 		public function getName() : string;
 		public function getNumber() : int;
 		public function getOpline() : InspectorOpline;
