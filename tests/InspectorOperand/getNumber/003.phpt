@@ -18,7 +18,7 @@ $opline = $inspector->getOpline(2);
 
 $result = $opline->getOperand(InspectorOpline::RESULT);
 
-if ($result->isVariable() &&
+if ($result->isVariable() || $result->isTemporaryVariable() &&
     $result->getNumber() == 0) {
 	echo "OK";
 }
