@@ -7,19 +7,19 @@ use Inspector\InspectorOpline;
 use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
 
-$function = function($a, $b) {
-	return $c = $a + $b;
+$function = function() {
+	$a = sprintf("hello");
 };
 
 $inspector = 
 	new InspectorFunction($function);
 
-$opline = $inspector->getOpline(4);
+$opline = $inspector->getOpline(2);
 
-$op1 = $opline->getOperand(InspectorOpline::OP1);
+$result = $opline->getOperand(InspectorOpline::RESULT);
 
-if ($op1->isVariable() &&
-    $op1->getNumber() == 3) {
+if ($result->isVariable() &&
+    $result->getNumber() == 0) {
 	echo "OK";
 }
 ?>

@@ -8,19 +8,18 @@ use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
 
 $function = function($a, $b) {
-	$c = $a + $b;
+	$a + $b;
 };
 
 $inspector = 
 	new InspectorFunction($function);
 
-$opline = $inspector->getOpline(3);
+$opline = $inspector->getOpline(2);
 
-$op1 = $opline->getOperand(InspectorOpline::OP1);
-$op2 = $opline->getOperand(InspectorOpline::OP2);
+$result = $opline->getOperand(InspectorOpline::RESULT);
 
-if ($op2->isTemporaryVariable() &&
-    $op2->getNumber()) {
+if ($result->isTemporaryVariable() &&
+    $result->getNumber() == 1) {
 	echo "OK";
 }
 ?>
