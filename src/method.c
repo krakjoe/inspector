@@ -21,71 +21,37 @@
 #define HAVE_INSPECTOR_METHOD
 
 #include "php.h"
-#include "ext/spl/spl_exceptions.h"
-#include "zend_exceptions.h"
-#include "scope.h"
 #include "reflection.h"
+#include "class.h"
+#include "method.h"
+#include "function.h"
 
 zend_class_entry *php_inspector_method_ce;
 
-/* {{{ */
-static PHP_METHOD(Method, __construct)
-{
-	zend_class_entry *clazz = NULL;
-	zend_string *method = NULL;
-	zend_function *function = NULL;
-
-	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "CS", &clazz, &method) != SUCCESS) {
-		return;
-	}
-
-	if (!(function = php_inspector_scope_find(clazz, method))) {
-		zend_throw_exception_ex(spl_ce_RuntimeException, 0,
-			"cannot find function %s::%s",
-			ZSTR_VAL(clazz->name), ZSTR_VAL(method));
-		return;
-	}
-
-	php_inspector_scope_construct(getThis(), function);
-}
-
-static PHP_METHOD(Method, getReflector)
-{
-	php_inspector_scope_t *scope =
-		php_inspector_scope_this();
-
-	if (!Z_ISUNDEF(scope->reflector)) {
-		RETURN_ZVAL(&scope->reflector, 1, 0);
-	}
-
-	php_inspector_reflection_object_factory(
-		&scope->reflector,
-		php_inspector_reflection_method_ce, 
-		PHP_REF_TYPE_OTHER, 
-		(zend_function*) scope->ops,
-		scope->ops->function_name);
-
-	RETURN_ZVAL(&scope->reflector, 1, 0);
-}
-
-ZEND_BEGIN_ARG_INFO_EX(Method_construct_arginfo, 0, 0, 2)
-	ZEND_ARG_TYPE_INFO(0, class, IS_STRING, 0)	
-	ZEND_ARG_TYPE_INFO(0, method, IS_STRING, 0)
+ZEND_BEGIN_ARG_INFO(InspectorMethod_getDeclaringClass_arginfo, 0)
 ZEND_END_ARG_INFO()
 
+static PHP_METHOD(InspectorMethod, getDeclaringClass) 
+{
+	zend_function *function = php_reflection_object_function(getThis());
+
+	if (function->common.scope) {
+		php_inspector_class_factory(
+			function->common.scope, return_value);
+	}
+}
+
 static zend_function_entry php_inspector_method_methods[] = {
-	PHP_ME(Method, __construct, Method_construct_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Method, getReflector, Reflectable_getReflector_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, getOpline, InspectorFunction_getOpline_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorMethod, getDeclaringClass, InspectorMethod_getDeclaringClass_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
 PHP_MINIT_FUNCTION(inspector_method) {
 	zend_class_entry ce;
 
-	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Method", php_inspector_method_methods);
-	php_inspector_method_ce = 
-		zend_register_internal_class_ex(&ce, php_inspector_scope_ce);
-	php_inspector_method_ce->ce_flags |= ZEND_ACC_FINAL;
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorMethod", php_inspector_method_methods);
+	php_inspector_method_ce = zend_register_internal_class_ex(&ce, reflection_method_ptr);
 
 	return SUCCESS;
 } /* }}} */

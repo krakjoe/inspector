@@ -24,7 +24,7 @@ extern zend_class_entry *php_inspector_frame_ce;
 
 typedef struct _php_inspector_frame_t {
 	zend_execute_data *frame;
-	zval scope;
+	zval function;
 	zval opline;
 	zend_object std;
 } php_inspector_frame_t;
@@ -35,5 +35,5 @@ typedef struct _php_inspector_frame_t {
 
 PHP_MINIT_FUNCTION(inspector_frame);
 
-void php_inspector_frame_construct(zval *object, zend_execute_data *execute_data);
+void php_inspector_frame_factory(zend_execute_data *execute_data, zval *return_value);
 #endif

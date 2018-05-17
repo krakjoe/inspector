@@ -22,12 +22,12 @@
 
 #include "php.h"
 
-#include "ext/spl/spl_exceptions.h"
 #include "zend_exceptions.h"
 #include "zend_vm.h"
 
-#include "scope.h"
-#include "entry.h"
+#include "reflection.h"
+#include "class.h"
+#include "function.h"
 #include "opline.h"
 #include "break.h"
 #include "frame.h"
@@ -139,33 +139,32 @@ void php_inspector_break_find(zval *return_value, php_inspector_opline_t *opline
 }
 
 /* {{{ */
-static PHP_METHOD(BreakPoint, __construct)
+static PHP_METHOD(InspectorBreakPoint, __construct)
 {
 	php_inspector_break_t *brk = php_inspector_break_this();
-	php_inspector_opline_t *opline;
 	zval *ol = NULL;
 
 	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "O", &ol, php_inspector_opline_ce) != SUCCESS) {
 		return;
 	}
 
-	opline = php_inspector_opline_fetch(ol);
-
-	if (zend_hash_index_exists(&BRK(table), (zend_ulong) opline->opline)) {
-		zend_throw_exception_ex(spl_ce_RuntimeException, 0, 
-			"breakpoint at %p already exists", opline->opline);
-		return;
-	}
-
 	ZVAL_COPY(&brk->opline, ol);
 
 	if (!php_inspector_break_enable(brk)) {
-		zend_throw_exception_ex(spl_ce_RuntimeException, 0, 
-			"already a BreakPoint at that address");
+		zend_throw_exception_ex(reflection_exception_ptr, 0, 
+			"already a InspectorBreakPoint at that address");
 	}
 }
 
-PHP_METHOD(BreakPoint, getOpcode)
+static PHP_METHOD(InspectorBreakPoint, getOpcode)
+{
+	php_inspector_break_t *brk =
+		php_inspector_break_this();
+
+	RETURN_LONG(brk->opcode);
+}
+
+static PHP_METHOD(InspectorBreakPoint, getOpcodeName)
 {
 	php_inspector_break_t *brk =
 		php_inspector_break_this();
@@ -178,7 +177,7 @@ PHP_METHOD(BreakPoint, getOpcode)
 	RETURN_STRING(name);
 }
 
-PHP_METHOD(BreakPoint, getOpline)
+static PHP_METHOD(InspectorBreakPoint, getOpline)
 {
 	php_inspector_break_t *brk =
 		php_inspector_break_this();
@@ -186,7 +185,7 @@ PHP_METHOD(BreakPoint, getOpline)
 	ZVAL_COPY(return_value, &brk->opline);
 }
 
-PHP_METHOD(BreakPoint, disable)
+static PHP_METHOD(InspectorBreakPoint, disable)
 {
 	php_inspector_break_t *brk =
 		php_inspector_break_this();
@@ -194,7 +193,7 @@ PHP_METHOD(BreakPoint, disable)
 	RETURN_BOOL(php_inspector_break_disable(brk));
 }
 
-PHP_METHOD(BreakPoint, enable)
+static PHP_METHOD(InspectorBreakPoint, enable)
 {
 	php_inspector_break_t *brk =
 		php_inspector_break_this();
@@ -202,7 +201,7 @@ PHP_METHOD(BreakPoint, enable)
 	RETURN_BOOL(php_inspector_break_enable(brk));
 }
 
-PHP_METHOD(BreakPoint, isEnabled)
+static PHP_METHOD(InspectorBreakPoint, isEnabled)
 {
 	php_inspector_break_t *brk =
 		php_inspector_break_this();
@@ -211,42 +210,50 @@ PHP_METHOD(BreakPoint, isEnabled)
 }
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(BreakPoint_getOpcode_arginfo, 0, 0, IS_STRING, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorBreakPoint_getOpcode_arginfo, 0, 0, IS_LONG, 0)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(BreakPoint_getOpcode_arginfo, 0, 0, IS_STRING, NULL, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorBreakPoint_getOpcode_arginfo, 0, 0, IS_LONG, NULL, 0)
 #endif
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(BreakPoint_getOpline_arginfo, 0, 0, Inspector\\Opline, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorBreakPoint_getOpcodeName_arginfo, 0, 0, IS_STRING, 1)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(BreakPoint_getOpline_arginfo, 0, 0, IS_OBJECT, "Inspector\\Opline", 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorBreakPoint_getOpcodeName_arginfo, 0, 0, IS_STRING, NULL, 1)
 #endif
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(BreakPoint_switch_arginfo, 0, 0, _IS_BOOL, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorBreakPoint_getOpline_arginfo, 0, 0, Inspector\\InspectorOpline, 0)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(BreakPoint_switch_arginfo, 0, 0, _IS_BOOL, NULL, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorBreakPoint_getOpline_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorOpline", 0)
 #endif
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(BreakPoint_construct_arginfo, 0, 0, 1)
-	ZEND_ARG_OBJ_INFO(0, opline, Inspector\\Opline, 0)
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorBreakPoint_switch_arginfo, 0, 0, _IS_BOOL, 0)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorBreakPoint_switch_arginfo, 0, 0, _IS_BOOL, NULL, 0)
+#endif
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(BreakPoint_hit_arginfo, 0, 0, 1)
-	ZEND_ARG_OBJ_INFO(0, frame, Inspector\\Frame, 0)
+ZEND_BEGIN_ARG_INFO_EX(InspectorBreakPoint_construct_arginfo, 0, 0, 1)
+	ZEND_ARG_OBJ_INFO(0, opline, Inspector\\InspectorOpline, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(InspectorBreakPoint_hit_arginfo, 0, 0, 1)
+	ZEND_ARG_OBJ_INFO(0, frame, Inspector\\InspectorFrame, 0)
 ZEND_END_ARG_INFO()
 
 static zend_function_entry php_inspector_break_methods[] = {
-	PHP_ME(BreakPoint, __construct, BreakPoint_construct_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(BreakPoint, getOpcode, BreakPoint_getOpcode_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(BreakPoint, getOpline, BreakPoint_getOpline_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(BreakPoint, disable, BreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(BreakPoint, enable, BreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(BreakPoint, isEnabled, BreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ABSTRACT_ME(BreakPoint, hit, BreakPoint_hit_arginfo)
+	PHP_ME(InspectorBreakPoint, __construct, InspectorBreakPoint_construct_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorBreakPoint, getOpcode, InspectorBreakPoint_getOpcode_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorBreakPoint, getOpcodeName, InspectorBreakPoint_getOpcodeName_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorBreakPoint, getOpline, InspectorBreakPoint_getOpline_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorBreakPoint, disable, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorBreakPoint, enable, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorBreakPoint, isEnabled, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ABSTRACT_ME(InspectorBreakPoint, hit, InspectorBreakPoint_hit_arginfo)
 	PHP_FE_END
 };
 
@@ -274,7 +281,7 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 
 		ZVAL_NULL(&rv);
 
-		php_inspector_frame_construct(&ip, execute_data);
+		php_inspector_frame_factory(execute_data, &ip);
 
 		brk->cache.fci.param_count = 1;
 		brk->cache.fci.params = &ip;
@@ -305,7 +312,7 @@ PHP_MINIT_FUNCTION(inspector_break) {
 
 	ZEND_INIT_MODULE_GLOBALS(inspector_break, php_inspector_break_globals_init, NULL);	
 
-	INIT_NS_CLASS_ENTRY(ce, "Inspector", "BreakPoint", php_inspector_break_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorBreakPoint", php_inspector_break_methods);
 	php_inspector_break_ce = 
 		zend_register_internal_class(&ce);
 	php_inspector_break_ce->create_object = php_inspector_break_create;

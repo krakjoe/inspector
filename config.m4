@@ -7,7 +7,7 @@ PHP_ARG_ENABLE(inspector-coverage,      whether to enable inspector coverage sup
 [  --enable-inspector-coverage          Enable inspector coverage support], no, no)
 
 if test "$PHP_INSPECTOR" != "no"; then
-  PHP_NEW_EXTENSION(inspector, php_inspector.c src/scope.c src/closure.c src/file.c src/func.c src/method.c src/opline.c src/operand.c src/entry.c src/break.c src/frame.c src/reflection.c, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
+  PHP_NEW_EXTENSION(inspector, php_inspector.c src/class.c src/method.c src/function.c src/opline.c src/operand.c src/break.c src/frame.c, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
   PHP_ADD_BUILD_DIR($ext_builddir/src, 1)
   PHP_ADD_EXTENSION_DEP(inspector, SPL)
 

@@ -18,13 +18,10 @@
 #ifndef HAVE_INSPECTOR_REFLECTION_H
 #define HAVE_INSPECTOR_REFLECTION_H
 
-extern PHP_MINIT_FUNCTION(inspector_reflection);
-extern PHP_RINIT_FUNCTION(inspector_reflection);
-
-extern zend_class_entry* php_inspector_reflection_class_ce;
-extern zend_class_entry* php_inspector_reflection_method_ce;
-extern zend_class_entry* php_inspector_reflection_function_ce;
-extern zend_class_entry* php_inspector_reflectable_ce;
+extern zend_class_entry *reflection_function_ptr;
+extern zend_class_entry *reflection_method_ptr;
+extern zend_class_entry *reflection_class_ptr;
+extern zend_class_entry *reflection_exception_ptr;
 
 typedef enum {
 	PHP_REF_TYPE_OTHER,
@@ -37,17 +34,21 @@ typedef enum {
 	PHP_REF_TYPE_CLASS_CONSTANT
 } php_reflection_type_t;
 
-#if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Reflectable_getReflector_arginfo, 0, 0, Reflector, 0)
-#else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Reflectable_getReflector_arginfo, 0, 0, IS_OBJECT, "Reflector", 0)
-#endif
-ZEND_END_ARG_INFO()
+typedef struct {
+	zval dummy;
+	zval obj;
+	void *ptr;
+	zend_class_entry *ce;
+	php_reflection_type_t ref_type;
+	unsigned int ignore_visibility:1;
+	zend_object zo;
+} php_reflection_object_t;
 
-void php_inspector_reflection_object_factory(
-	zval *return_value, 
-	zend_class_entry *ce, 
-	php_reflection_type_t type, 
-	void *ptr,
-	zend_string *named);
+#define php_reflection_object_from(o) \
+	((php_reflection_object_t*) \
+		(((char*) o) - XtOffsetOf(php_reflection_object_t, zo)))
+#define php_reflection_object_fetch(z) php_reflection_object_from(Z_OBJ_P(z))
+
+#define php_reflection_object_function(z) ((zend_function*) (php_reflection_object_fetch(z)->ptr))
+#define php_reflection_object_class(z) ((zend_class_entry*) (php_reflection_object_fetch(z)->ptr))
 #endif

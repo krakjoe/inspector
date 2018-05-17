@@ -21,12 +21,13 @@
 #define HAVE_INSPECTOR_OPLINE
 
 #include "php.h"
-#include "ext/spl/spl_exceptions.h"
 #include "zend_exceptions.h"
 
 #include "php_inspector.h"
 
-#include "scope.h"
+#include "reflection.h"
+#include "class.h"
+#include "function.h"
 #include "opline.h"
 #include "operand.h"
 #include "break.h"
@@ -41,39 +42,43 @@ static void php_inspector_opline_destroy(zend_object *object) {
 
 	zend_object_std_dtor(object);
 
-	if (Z_TYPE(opline->scope) != IS_UNDEF)
-		zval_ptr_dtor(&opline->scope);
+	if (Z_TYPE(opline->function) != IS_UNDEF)
+		zval_ptr_dtor(&opline->function);
 	if (Z_TYPE(opline->previous) != IS_UNDEF)
 		zval_ptr_dtor(&opline->previous);
 	if (Z_TYPE(opline->next) != IS_UNDEF)
 		zval_ptr_dtor(&opline->next);
 }
 
-void php_inspector_opline_construct(zval *object, zval *scope, zend_op *zopline) {
+void php_inspector_opline_factory(zval *function, zend_op *op, zval *return_value) {
 	php_inspector_opline_t *opline = NULL;
 
-	object_init_ex(object, php_inspector_opline_ce);
+	object_init_ex(return_value, php_inspector_opline_ce);
 
-	opline = php_inspector_opline_fetch(object);
-	ZVAL_COPY(&opline->scope, scope);
-	opline->opline = zopline;
+	opline = php_inspector_opline_fetch(return_value);
+	opline->opline = op;
+
+	ZVAL_COPY(&opline->function, function);
 }
 
 static zend_object* php_inspector_opline_create(zend_class_entry *ce) {
-	php_inspector_opline_t *opline = ecalloc(1, sizeof(php_inspector_opline_t) + zend_object_properties_size(ce));
+	php_inspector_opline_t *opline = 
+		(php_inspector_opline_t*) 
+			ecalloc(1, 
+				sizeof(php_inspector_opline_t) + zend_object_properties_size(ce));
 
 	zend_object_std_init(&opline->std, ce);	
 	object_properties_init(&opline->std, ce);
 
 	opline->std.handlers = &php_inspector_opline_handlers;
 
-	ZVAL_UNDEF(&opline->scope);	
+	ZVAL_UNDEF(&opline->function);
 
 	return &opline->std;
 } /* }}} */
 
 /* {{{ */
-static PHP_METHOD(Opline, getType) {
+static PHP_METHOD(InspectorOpline, getOpcodeName) {
 	php_inspector_opline_t *opline = php_inspector_opline_this();
 	const char *name = NULL;
 
@@ -81,7 +86,7 @@ static PHP_METHOD(Opline, getType) {
 		php_inspector_break_t *brk = 
 			php_inspector_break_find_ptr(opline);
 
-		name = zend_get_opcode_name(brk->opcode);		
+		name = zend_get_opcode_name(brk->opcode);
 	} else if (opline->opline->opcode) {
 		name = zend_get_opcode_name
 			(opline->opline->opcode);
@@ -94,7 +99,20 @@ static PHP_METHOD(Opline, getType) {
 	RETURN_STRING((char*)name);
 }
 
-static PHP_METHOD(Opline, getOperand) {
+static PHP_METHOD(InspectorOpline, getOpcode) {
+	php_inspector_opline_t *opline = php_inspector_opline_this();
+
+	if (opline->opline->opcode == INSPECTOR_DEBUG_BREAK) {
+		php_inspector_break_t *brk = 
+			php_inspector_break_find_ptr(opline);
+
+		RETURN_LONG(brk->opcode);
+	} else {
+		RETURN_LONG(opline->opline->opcode);
+	}
+}
+
+static PHP_METHOD(InspectorOpline, getOperand) {
 	php_inspector_opline_t *opline = php_inspector_opline_this();
 	zend_long operand = PHP_INSPECTOR_OPLINE_INVALID;
 
@@ -121,18 +139,19 @@ static PHP_METHOD(Opline, getOperand) {
 		break;
 
 		default:
-			zend_throw_exception_ex(spl_ce_RuntimeException, 0,
+			zend_throw_exception_ex(reflection_exception_ptr, 0,
 				"the requested operand (%ld) is invalid", 
 				operand);
 	}
 #undef NEW_OPERAND
 }
 
-static PHP_METHOD(Opline, getExtendedValue) {
+static PHP_METHOD(InspectorOpline, getExtendedValue) {
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_this();
-	php_inspector_scope_t *scope = 
-		php_inspector_scope_fetch_from(Z_OBJ(opline->scope));
+	zend_op_array *function = 
+		(zend_op_array*)
+			php_reflection_object_function(&opline->function);
 
 	switch (opline->opline->opcode) {
 		case ZEND_TYPE_CHECK:
@@ -143,7 +162,7 @@ static PHP_METHOD(Opline, getExtendedValue) {
 		case ZEND_JMPZNZ:
 		case ZEND_FE_FETCH_R:
 		case ZEND_FE_FETCH_RW:
-			RETURN_LONG(ZEND_OFFSET_TO_OPLINE_NUM(scope->ops, opline->opline, opline->opline->extended_value));
+			RETURN_LONG(ZEND_OFFSET_TO_OPLINE_NUM(function, opline->opline, opline->opline->extended_value));
 		break;
 		
 		case ZEND_FETCH_CLASS:
@@ -219,61 +238,64 @@ static PHP_METHOD(Opline, getExtendedValue) {
 	}
 }
 
-static PHP_METHOD(Opline, getLine) {
+static PHP_METHOD(InspectorOpline, getLine) {
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_this();
 	
 	RETURN_LONG(opline->opline->lineno);
 }
 
-static PHP_METHOD(Opline, getScope) {
+static PHP_METHOD(InspectorOpline, getFunction) {
 	php_inspector_opline_t *opline = 
 		php_inspector_opline_this();
 	
-	ZVAL_COPY(return_value, &opline->scope);
+	ZVAL_COPY(return_value, &opline->function);
 } 
 
-static PHP_METHOD(Opline, getNext) {
+static PHP_METHOD(InspectorOpline, getNext) {
 	php_inspector_opline_t *opline =
 		php_inspector_opline_this();
-	php_inspector_scope_t *scope =
-		php_inspector_scope_fetch(&opline->scope);
+	zend_op_array *function =
+		(zend_op_array*)
+			php_reflection_object_function(&opline->function);
 
-	if ((opline->opline + 1) < scope->ops->opcodes + scope->ops->last) {
+	if ((opline->opline + 1) < function->opcodes + function->last) {
 		if (Z_TYPE(opline->next) == IS_UNDEF) {
-			php_inspector_opline_construct(
-				&opline->next, &opline->scope, opline->opline + 1);
+			php_inspector_opline_factory(
+				&opline->function, opline->opline + 1, &opline->next);
 		}
 		ZVAL_COPY(return_value, &opline->next);
 	}
 }
 
-static PHP_METHOD(Opline, getPrevious) {
+static PHP_METHOD(InspectorOpline, getPrevious) {
 	php_inspector_opline_t *opline =
 		php_inspector_opline_this();
-	php_inspector_scope_t *scope =
-		php_inspector_scope_fetch(&opline->scope);
+	zend_op_array *function =
+		(zend_op_array*)
+			php_reflection_object_function(&opline->function);
 
-	if ((opline->opline - 1) >= scope->ops->opcodes) {
+	if ((opline->opline - 1) >= function->opcodes) {
 		if (Z_TYPE(opline->previous) == IS_UNDEF) {
-			php_inspector_opline_construct(
-				&opline->previous, &opline->scope, opline->opline - 1);
+			php_inspector_opline_factory(
+				&opline->function, opline->opline - 1, &opline->previous);
 		}
 		ZVAL_COPY(return_value, &opline->previous);
 	}
 }
 
-static PHP_METHOD(Opline, getOffset)
+static PHP_METHOD(InspectorOpline, getOffset)
 {
 	php_inspector_opline_t *opline =
 		php_inspector_opline_this();
-	php_inspector_scope_t *scope =
-		php_inspector_scope_fetch(&opline->scope);
+	zend_op_array *function =
+		(zend_op_array*)
+			php_reflection_object_function(&opline->function);
 	
-	RETURN_LONG(opline->opline - scope->ops->opcodes);
+	RETURN_LONG(opline->opline - function->opcodes);
 }
 
-static PHP_METHOD(Opline, getBreakPoint)
+static PHP_METHOD(InspectorOpline, getBreakPoint)
 {
 	php_inspector_opline_t *opline =
 		php_inspector_opline_this();
@@ -283,66 +305,74 @@ static PHP_METHOD(Opline, getBreakPoint)
 /* }}} */
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getType_arginfo, 0, 0, IS_STRING, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getOpcode_arginfo, 0, 0, IS_LONG, 0)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getType_arginfo, 0, 0, IS_STRING, NULL, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getOpcode_arginfo, 0, 0, IS_LONG, NULL, 0)
 #endif
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Opline_getOperand_arginfo, 0, 1, Inspector\\Operand, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getOpcodeName_arginfo, 0, 0, IS_STRING, 1)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getOperand_arginfo, 0, 1, IS_OBJECT, "Inspector\\Operand", 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getOpcodeName_arginfo, 0, 0, IS_STRING, NULL, 1)
+#endif
+ZEND_END_ARG_INFO()
+
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorOpline_getOperand_arginfo, 0, 1, Inspector\\InspectorOperand, 1)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getOperand_arginfo, 0, 1, IS_OBJECT, "Inspector\\InspectorOperand", 1)
 #endif
 	ZEND_ARG_TYPE_INFO(0, which, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getLine_arginfo, 0, 0, IS_LONG, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getLine_arginfo, 0, 0, IS_LONG, 1)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getLine_arginfo, 0, 0, IS_LONG, NULL, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getLine_arginfo, 0, 0, IS_LONG, NULL, 1)
 #endif
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Opline_getScope_arginfo, 0, 0, Inspector\\Scope, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorOpline_getFunction_arginfo, 0, 0, Inspector\\InspectorFunction, 0)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getScope_arginfo, 0, 0, IS_OBJECT, "Inspector\\Scope", 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getFunction_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorFunction", 0)
 #endif
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Opline_getOpline_arginfo, 0, 0, Inspector\\Opline, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorOpline_getOpline_arginfo, 0, 0, Inspector\\InspectorOpline, 1)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getOpline_arginfo, 0, 0, IS_OBJECT, "Inspector\\Opline", 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getOpline_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorOpline", 1)
 #endif
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getOffset_arginfo, 0, 0, IS_LONG, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getOffset_arginfo, 0, 0, IS_LONG, 1)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getOffset_arginfo, 0, 0, IS_LONG, NULL, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getOffset_arginfo, 0, 0, IS_LONG, NULL, 1)
 #endif
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(Opline_getBreakPoint_arginfo, 0, 0, Inspector\\BreakPoint, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorOpline_getBreakPoint_arginfo, 0, 0, Inspector\\InspectorBreakPoint, 1)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(Opline_getBreakPoint_arginfo, 0, 0, IS_OBJECT, "Inspector\\BreakPoint", 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getBreakPoint_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorBreakPoint", 1)
 #endif
 ZEND_END_ARG_INFO()
 
 /* {{{ */
 static zend_function_entry php_inspector_opline_methods[] = {
-	PHP_ME(Opline, getType, Opline_getType_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Opline, getOperand, Opline_getOperand_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Opline, getExtendedValue, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Opline, getLine, Opline_getLine_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Opline, getScope, Opline_getScope_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Opline, getNext, Opline_getOpline_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Opline, getPrevious, Opline_getOpline_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Opline, getOffset, Opline_getOffset_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(Opline, getBreakPoint, Opline_getBreakPoint_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorOpline, getOpcode, InspectorOpline_getOpcode_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorOpline, getOpcodeName, InspectorOpline_getOpcodeName_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorOpline, getOperand, InspectorOpline_getOperand_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorOpline, getExtendedValue, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorOpline, getLine, InspectorOpline_getLine_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorOpline, getFunction, InspectorOpline_getFunction_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorOpline, getNext, InspectorOpline_getOpline_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorOpline, getPrevious, InspectorOpline_getOpline_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorOpline, getOffset, InspectorOpline_getOffset_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorOpline, getBreakPoint, InspectorOpline_getBreakPoint_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
@@ -350,7 +380,7 @@ static zend_function_entry php_inspector_opline_methods[] = {
 PHP_MINIT_FUNCTION(inspector_opline) {
 	zend_class_entry ce;
 	
-	INIT_NS_CLASS_ENTRY(ce, "Inspector", "Opline", php_inspector_opline_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorOpline", php_inspector_opline_methods);
 	php_inspector_opline_ce = 
 		zend_register_internal_class(&ce);
 	php_inspector_opline_ce->create_object = php_inspector_opline_create;

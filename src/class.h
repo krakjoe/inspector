@@ -17,28 +17,12 @@
 */
 
 /* $Id$ */
-#ifndef HAVE_INSPECTOR_OPLINE_H
-#define HAVE_INSPECTOR_OPLINE_H
-typedef struct _php_inspector_opline_t {
-	zend_op *opline;
-	zval function;
-	zval previous;
-	zval next;
-	zend_object std;
-} php_inspector_opline_t;
+#ifndef HAVE_INSPECTOR_CLASS_H
+#define HAVE_INSPECTOR_CLASS_H
 
-extern zend_class_entry *php_inspector_opline_ce;
+extern zend_class_entry *php_inspector_class_ce;
 
-#define PHP_INSPECTOR_OPLINE_INVALID	0
-#define PHP_INSPECTOR_OPLINE_OP1		1
-#define PHP_INSPECTOR_OPLINE_OP2		2
-#define PHP_INSPECTOR_OPLINE_RESULT		3
+void php_inspector_class_factory(zend_class_entry *ce, zval *return_value);
 
-#define php_inspector_opline_fetch_from(o) ((php_inspector_opline_t*) (((char*)o) - XtOffsetOf(php_inspector_opline_t, std)))
-#define php_inspector_opline_fetch(z) php_inspector_opline_fetch_from(Z_OBJ_P(z))
-#define php_inspector_opline_this() php_inspector_opline_fetch(getThis())
-
-void php_inspector_opline_factory(zval *function, zend_op *opline, zval *return_value);
-
-PHP_MINIT_FUNCTION(inspector_opline);
+PHP_MINIT_FUNCTION(inspector_class);
 #endif

@@ -1,12 +1,10 @@
 Inspector
 ========
-*Inspector allows you to programmatically inspect (and debug) PHP code*
+*A disassembler and debug kit for PHP7*
 
 [![Build Status](https://travis-ci.org/krakjoe/inspector.svg?branch=master)](https://travis-ci.org/krakjoe/inspector)
 
-There are many tools that dump or print opcodes, but none of these tools allow programmatic inspection or debugging.
-
-If you don't know what any of this is for, move on ... this is not for you ;)
+Inspector provides an API for disassembling and debugging PHP7 code, in userland.
 
 API
 ===
@@ -16,71 +14,37 @@ The following API is provided:
 ```php
 namespace Inspector
 {
-	interface Reflectable {
-		public function getReflector() : Reflector;
+	class InspectorClass extends \ReflectionClass {
+		public function getMethod() : InspectorMethod;
 	}
 
-	abstract class Scope implements Reflectable, Traversable, Countable {
-		public function getStatics() : array;
-		public function getConstants() : array;
-		public function getVariables() : array;
-		public function getOpline(int num = 0) : Opline;
-		public function getEntry() : ?Entry;
+	class InspectorMethod extends \ReflectionMethod {
+		public function getOpline(int num 0) : InspectorOpline;
 
-		public function getReflector() : Reflector;
-
-		public function count() : int;
-	}
-	
-	final class Func extends Scope {
-		public function __construct(string function);
-
-		public function getReflector() : ReflectionFunction;
+		public function getDeclaringClass() : InspectorClass;
 	}
 
-	final class Method extends Scope {
-		public function __construct(string class, string method);
-
-		public function getReflector() : ReflectionMethod;
+	class InspectorFunction extends \ReflectionFunction {
+		public function getOpline(int num 0) : InspectorOpline;
 	}
 
-	final class Closure extends Scope {
-		public function __construct(Closure closure);
-	}
-
-	final class File extends Scope {
-		public function __construct(string filename [, bool clobber = false]);
-		public function getEntries() : ?array;
-		public function getGlobals() : ?array;
-		public function getGlobal(string name) : ?Global;
-		public function getEntry(string name) : ?Entry;
-	}
-
-	final class Entry implements Reflectable, Traversable, Countable {
-		public function __construct(string class);
-		public function getMethod(string name) : Method;
-		public function getMethods() : array;
-		public function count();
-
-		public function getReflector() : ReflectionClass;
-	}
-
-	final class Opline {
+	final class InspectorOpline {
 		const OP1;
 		const OP2;
 		const RESULT;
 
-		public function getType() : string;
-		public function getOperand(int which) : Operand;
+		public function getOpcode() : int;
+		public function getOpcodeName() : ?string;
+		public function getOperand(int which) : InspectorOperand;
 		public function getExtendedValue() : mixed;
 		public function getLine() : int;
-		public function getScope() : Scope;
-		public function getNext() : ?Opline;
-		public function getPrevious() : ?Opline;
-		public function getBreakPoint() : BreakPoint;
+		public function getFunction() : InspectorFunction;
+		public function getNext() : ?InspectorOpline;
+		public function getPrevious() : ?InspectorOpline;
+		public function getBreakPoint() : InspectorBreakPoint;
 	}
 
-	final class Operand {
+	final class InspectorOperand {
 		public function isUnused() : bool;
 		public function isExtendedTypeUnused() : bool;
 		public function isCompiledVariable() : bool;
@@ -92,28 +56,29 @@ namespace Inspector
 		public function getValue() : mixed;
 		public function getName() : string;
 		public function getNumber() : int;
-		public function getOpline() : Opline;
+		public function getOpline() : InspectorOpline;
 	}
 
-	abstract class BreakPoint {
-		public function __construct(Opline $opline);
+	abstract class InspectorBreakPoint {
+		public function __construct(InspectorOpline $opline);
 	
 		public function enable() : bool;
 		public function disable() : bool;
 		public function isEnabled() : bool;
 
-		public function getOpcode() : ?string;
-		public function getOpline() : Opline;
+		public function getOpcode() : int;
+		public function getOpcodeName() : ?string;
+		public function getOpline() : InspectorOpline;
 
-		abstract public function hit(Frame $frame);
+		abstract public function hit(InspectorFrame $frame);
 	}
 
-	final class Frame {
-		public function getScope() : Scope;
-		public function getOpline() : Opline;
+	final class InspectorFrame {
+		public function getFunction() : InspectorFunction;
+		public function getOpline() : InspectorOpline;
 		public function getSymbols() : ?array;
-		public function getPrevious() : ?Frame;
-		public function getCall() : ?Frame;
+		public function getPrevious() : ?InspectorFrame;
+		public function getCall() : ?InspectorFrame;
 		public function getStack() : array;
 		public function getParameters() : array;
 	}
@@ -127,10 +92,10 @@ Example
 Making stuff look nice is not my forte, all the same, here is some simple code using Inspector:
 
 ```php
-use Inspector\Closure;
-use Inspector\Scope;
-use Inspector\Opline;
-use Inspector\Operand;
+<?php
+use Inspector\InspectorFunction;
+use Inspector\InspectorOpline;
+use Inspector\InspectorOperand;
 
 function printConstant($mixed) {
 	if (strlen($mixed) > 8) {
@@ -143,7 +108,7 @@ function printConstant($mixed) {
 	} else printf("%s\t", $mixed ?: "null");
 }
 
-function printOperand(Operand $op) {
+function printOperand(InspectorOperand $op) {
 	if ($op->isConstant()) {
 		printConstant($op->getValue());
 	} else if ($op->isCompiledVariable()) {
@@ -155,18 +120,20 @@ function printOperand(Operand $op) {
 	} else printf("-\t");
 }
 
-function printInspector(Scope $inspector) {
+function printFunction(InspectorFunction $inspector) {
 	printf("OPCODE\t\tOP1\tOP2\tRESULT\n");
-	foreach ($inspector as $opline) {
+	$opline = $inspector->getOpline();
+
+	do {
 		printf("%s\t", $opline->getType());
-		printOperand($opline->getOperand(OPLINE::OP1));
-		printOperand($opline->getOperand(OPLINE::OP2));
-		printOperand($opline->getOperand(OPLINE::RESULT));
+		printOperand($opline->getOperand(InspectorOpline::OP1));
+		printOperand($opline->getOperand(InspectorOpline::OP2));
+		printOperand($opline->getOperand(InspectorOpline::RESULT));
 		printf("\n");
-	}
+	} while ($opline = $opline->getNext());
 }
 
-printInspector(new Closure(function($a, $b){
+printFunction(new InspectorFunction(function($a, $b){
 	return $a + $b;
 }));
 ```
@@ -185,8 +152,4 @@ ZEND_RETURN     null    -       -
 TODO
 ====
 
- * moar Scope
- * moar Entry
  * tests (started)
-
-**This extension is experimental, and requires PHP7**

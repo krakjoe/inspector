@@ -30,32 +30,25 @@
 #include "ext/spl/spl_exceptions.h"
 #include "php_inspector.h"
 
-#include "src/scope.h"
+#include "src/class.h"
+#include "src/method.h"
+#include "src/function.h"
 #include "src/opline.h"
 #include "src/operand.h"
 
-#include "src/file.h"
-#include "src/func.h"
-#include "src/method.h"
-#include "src/closure.h"
-#include "src/entry.h"
 #include "src/break.h"
 #include "src/frame.h"
-#include "src/reflection.h"
 
 /* {{{ PHP_MINIT_FUNCTION
  */
 PHP_MINIT_FUNCTION(inspector)
 {
-	PHP_MINIT(inspector_reflection)(INIT_FUNC_ARGS_PASSTHRU);
-	PHP_MINIT(inspector_scope)(INIT_FUNC_ARGS_PASSTHRU);
-	PHP_MINIT(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
-	PHP_MINIT(inspector_func)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_MINIT(inspector_class)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_method)(INIT_FUNC_ARGS_PASSTHRU);
-	PHP_MINIT(inspector_closure)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_MINIT(inspector_function)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_opline)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_operand)(INIT_FUNC_ARGS_PASSTHRU);
-	PHP_MINIT(inspector_entry)(INIT_FUNC_ARGS_PASSTHRU);
+
 	PHP_MINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_frame)(INIT_FUNC_ARGS_PASSTHRU);
 
@@ -70,7 +63,6 @@ PHP_RINIT_FUNCTION(inspector)
 #if defined(COMPILE_DL_INSPECTOR) && defined(ZTS)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
-	PHP_RINIT(inspector_reflection)(INIT_FUNC_ARGS_PASSTHRU);
 
 	PHP_RINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 
