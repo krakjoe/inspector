@@ -270,7 +270,7 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 		if (brk->cache.fci.size == 0) {
 			brk->cache.fci.size = sizeof(zend_fcall_info);
 			brk->cache.fci.object = &brk->std;
-#if PHP_VERSION_ID < 70200
+#if PHP_VERSION_ID < 70300
 			brk->cache.fcc.initialized = 1;
 #endif
 			brk->cache.fcc.object = brk->cache.fci.object;
