@@ -121,7 +121,7 @@ static PHP_METHOD(InspectorOpline, getOperand) {
 	}
 
 #define NEW_OPERAND(n, t, o) do { \
-	php_inspector_operand_construct(return_value, getThis(), n, t, o); \
+	php_inspector_operand_factory(getThis(), n, t, o, return_value); \
 	return; \
 } while(0)
 

@@ -33,7 +33,7 @@ extern zend_class_entry *php_inspector_operand_ce;
 #define php_inspector_operand_fetch(z) php_inspector_operand_fetch_from(Z_OBJ_P(z))
 #define php_inspector_operand_this() php_inspector_operand_fetch(getThis())
 
-void php_inspector_operand_construct(zval *object, zval *opline, uint32_t which, zend_uchar type, znode_op *operand);
+void php_inspector_operand_factory(zval *opline, uint32_t which, zend_uchar type, znode_op *operand, zval *return_value);
 
 PHP_MINIT_FUNCTION(inspector_operand);
 #endif

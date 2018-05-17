@@ -44,12 +44,15 @@ static void php_inspector_operand_destroy(zend_object *object) {
 		zval_ptr_dtor(&operand->opline);
 }
 
-void php_inspector_operand_construct(zval *object, zval *opline, uint32_t which, zend_uchar type, znode_op *op) {
+void php_inspector_operand_factory(zval *opline, uint32_t which, zend_uchar type, znode_op *op, zval *return_value) {
 	php_inspector_operand_t *operand;
-	
-	object_init_ex(object, php_inspector_operand_ce);
-	operand = php_inspector_operand_fetch(object);
+
+	object_init_ex(return_value, php_inspector_operand_ce);
+
+	operand = php_inspector_operand_fetch(return_value);
+
 	ZVAL_COPY(&operand->opline, opline);
+
 	operand->which = which;
 	operand->type = type;
 	operand->op = op;
