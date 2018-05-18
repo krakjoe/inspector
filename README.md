@@ -29,10 +29,6 @@ namespace Inspector
 	}
 
 	final class InspectorInstruction {
-		const OP1;
-		const OP2;
-		const RESULT;
-
 		public function getOpcode() : int;
 		public function getOpcodeName() : ?string;
 		public function getOperand(int which) : InspectorOperand;
@@ -45,6 +41,10 @@ namespace Inspector
 	}
 
 	final class InspectorOperand {
+		const OP1;
+		const OP2;
+		const RESULT;
+
 		public function isUnused() : bool;
 		public function isExtendedTypeUnused() : bool;
 		public function isCompiledVariable() : bool;
