@@ -15,7 +15,7 @@ $function = function() {
 $inspector = 
 	new InspectorFunction($function);
 
-$opline = $inspector->getInstruction(2);
+$opline = $inspector->findFirstInstruction(InspectorInstruction::ZEND_DO_ICALL);
 
 $result = $opline->getOperand(InspectorOperand::RESULT);
 
@@ -23,7 +23,7 @@ if ($result->isVariable() || $result->isTemporaryVariable() &&
     $result->getNumber() > -1) {
 	echo "OK";
 } else {
-	var_dump($result->isVariable(), $result->isTemporaryVariable(), $result->getNumber());
+	var_dump($opline->getOpcodeName(), $result->isVariable(), $result->isTemporaryVariable(), $result->getNumber());
 }
 ?>
 --EXPECT--
