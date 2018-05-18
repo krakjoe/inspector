@@ -32,6 +32,10 @@
 #include "operand.h"
 #include "break.h"
 
+#ifndef ZEND_VM_LAST_OPCODE
+#define ZEND_VM_LAST_OPCODE ZEND_DECLARE_ANON_INHERITED_CLASS
+#endif
+
 static zend_object_handlers php_inspector_instruction_handlers;
 zend_class_entry *php_inspector_instruction_ce;
 zend_class_entry *php_inspector_instruction_interface_ce;
