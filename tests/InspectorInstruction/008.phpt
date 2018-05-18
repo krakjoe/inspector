@@ -1,9 +1,9 @@
 --TEST--
-InspectorOpline getOffset
+InspectorInstruction getOffset
 --FILE--
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
+use Inspector\InspectorInstruction;
 
 $inspector = 
 	new InspectorFunction(function($a, $b) {
@@ -11,7 +11,7 @@ $inspector =
 });
 
 $opline = 
-	$inspector->getOpline();
+	$inspector->getInstruction();
 $offset = 0;
 
 do {

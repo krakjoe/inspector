@@ -1,9 +1,9 @@
 --TEST--
-InspectorOpline getExtendedValue
+InspectorInstruction getExtendedValue
 --FILE--
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
+use Inspector\InspectorInstruction;
 use Inspector\InspectorOperand;
 
 $inspector = 
@@ -14,7 +14,7 @@ $inspector =
 });
 
 $opline = 
-	$inspector->getOpline(2);
+	$inspector->getInstruction(2);
 
 var_dump($opline->getOpcodeName());
 var_dump($opline->getExtendedValue());

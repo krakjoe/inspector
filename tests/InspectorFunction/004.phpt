@@ -1,14 +1,14 @@
 --TEST--
-InspectorFunction::getOpline returns InspectorOpline
+InspectorFunction::getInstruction returns InspectorInstruction
 --FILE--
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
+use Inspector\InspectorInstruction;
 
 $inspector = 
 	new InspectorFunction(function(){});
 
-if ($inspector->getOpline() instanceof InspectorOpline) {
+if ($inspector->getInstruction() instanceof InspectorInstruction) {
 	echo "OK";
 }
 ?>

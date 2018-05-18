@@ -20,12 +20,17 @@
 #ifndef HAVE_INSPECTOR_OPERAND_H
 #define HAVE_INSPECTOR_OPERAND_H
 typedef struct _php_inspector_operand_t {
-	zval opline;
+	zval instruction;
 	uint32_t which;
 	zend_uchar type;
 	znode_op *op;
 	zend_object std;
 } php_inspector_operand_t;
+
+#define PHP_INSPECTOR_OPERAND_INVALID	0
+#define PHP_INSPECTOR_OPERAND_OP1	1
+#define PHP_INSPECTOR_OPERAND_OP2	2
+#define PHP_INSPECTOR_OPERAND_RESULT	3
 
 extern zend_class_entry *php_inspector_operand_ce;
 
@@ -33,7 +38,7 @@ extern zend_class_entry *php_inspector_operand_ce;
 #define php_inspector_operand_fetch(z) php_inspector_operand_fetch_from(Z_OBJ_P(z))
 #define php_inspector_operand_this() php_inspector_operand_fetch(getThis())
 
-void php_inspector_operand_factory(zval *opline, uint32_t which, zend_uchar type, znode_op *operand, zval *return_value);
+void php_inspector_operand_factory(zval *instruction, uint32_t which, zend_uchar type, znode_op *operand, zval *return_value);
 
 PHP_MINIT_FUNCTION(inspector_operand);
 #endif

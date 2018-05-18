@@ -1,5 +1,5 @@
 --TEST--
-InspectorFunction::getOpline out of bounds
+InspectorFunction::getInstruction out of bounds
 --FILE--
 <?php
 use Inspector\InspectorFunction;
@@ -7,7 +7,7 @@ use Inspector\InspectorFunction;
 $inspector = new InspectorFunction(function(){});
 
 try {
-	$inspector->getOpline(-1);
+	$inspector->getInstruction(-1);
 } catch (ReflectionException $ex) {
 	echo "OK";
 }

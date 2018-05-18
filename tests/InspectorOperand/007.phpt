@@ -1,11 +1,11 @@
 --TEST--
-InspectorOperand getOpline
+InspectorOperand getInstruction
 --FILE--
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
 use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
+use Inspector\InspectorOperand;
 
 $function = function($b) {
 	$a + $b;
@@ -14,11 +14,11 @@ $function = function($b) {
 $inspector = 
 	new InspectorFunction($function);
 
-$opline = $inspector->getOpline(2);
+$opline = $inspector->getInstruction(2);
 
-$op1 = $opline->getOperand(InspectorOpline::OP1);
+$op1 = $opline->getOperand(InspectorOperand::OP1);
 
-if ($op1->getOpline() == $opline) {
+if ($op1->getInstruction() == $opline) {
 	echo "OK";
 }
 ?>

@@ -1,5 +1,5 @@
 --TEST--
-InspectorFunction::getOpline not user function
+InspectorFunction::getInstruction not user function
 --FILE--
 <?php
 use Inspector\InspectorFunction;
@@ -7,7 +7,7 @@ use Inspector\InspectorFunction;
 $inspector = new InspectorFunction("var_dump");
 
 try {
-	$inspector->getOpline();
+	$inspector->getInstruction();
 } catch (ReflectionException $ex) {
 	echo "OK";
 }

@@ -3,9 +3,10 @@ InspectorOperand getNumber variable
 --FILE--
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
+use Inspector\InspectorInstruction;
 use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
+use Inspector\InspectorOperand;
 
 $function = function() {
 	$a = sprintf("hello");
@@ -14,9 +15,9 @@ $function = function() {
 $inspector = 
 	new InspectorFunction($function);
 
-$opline = $inspector->getOpline(2);
+$opline = $inspector->getInstruction(2);
 
-$result = $opline->getOperand(InspectorOpline::RESULT);
+$result = $opline->getOperand(InspectorOperand::RESULT);
 
 if ($result->isVariable() || $result->isTemporaryVariable() &&
     $result->getNumber() > -1) {

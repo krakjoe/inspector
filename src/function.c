@@ -26,7 +26,7 @@
 #include "reflection.h"
 #include "function.h"
 #include "method.h"
-#include "opline.h"
+#include "instruction.h"
 
 zend_class_entry *php_inspector_function_ce;
 
@@ -44,7 +44,7 @@ void php_inspector_function_factory(zend_function *function, zval *return_value)
 	reflection->ref_type = PHP_REF_TYPE_OTHER;
 }
 
-PHP_METHOD(InspectorFunction, getOpline)
+PHP_METHOD(InspectorFunction, getInstruction)
 {
 	zend_function *function = 
 		php_reflection_object_function(getThis());
@@ -56,21 +56,21 @@ PHP_METHOD(InspectorFunction, getOpline)
 
 	if (function->type != ZEND_USER_FUNCTION) {
 		zend_throw_exception_ex(reflection_exception_ptr, 0, 
-			"cannot get opline from internal code");
+			"cannot get instruction from internal code");
 		return;
 	}
 
 	if (num < 0 || num > function->op_array.last) {
 		zend_throw_exception_ex(reflection_exception_ptr, 0,
-			"opline %d is out of bounds", num);
+			"instruction %d is out of bounds", num);
 		return;
 	}
 
-	php_inspector_opline_factory(getThis(), &function->op_array.opcodes[num], return_value);
+	php_inspector_instruction_factory(getThis(), &function->op_array.opcodes[num], return_value);
 }
 
 static zend_function_entry php_inspector_function_methods[] = {
-	PHP_ME(InspectorFunction, getOpline, InspectorFunction_getOpline_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, getInstruction, InspectorFunction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 

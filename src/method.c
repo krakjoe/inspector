@@ -42,7 +42,7 @@ static PHP_METHOD(InspectorMethod, getDeclaringClass)
 }
 
 static zend_function_entry php_inspector_method_methods[] = {
-	PHP_ME(InspectorFunction, getOpline, InspectorFunction_getOpline_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, getInstruction, InspectorFunction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorMethod, getDeclaringClass, InspectorMethod_getDeclaringClass_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };

@@ -28,7 +28,7 @@
 #include "reflection.h"
 #include "class.h"
 #include "function.h"
-#include "opline.h"
+#include "instruction.h"
 #include "break.h"
 #include "frame.h"
 
@@ -78,57 +78,57 @@ static zend_object* php_inspector_break_create(zend_class_entry *ce) {
 static void php_inspector_break_destroy(zend_object *zo) {
 	php_inspector_break_t *brk = 
 		php_inspector_break_fetch_from(zo);
-	php_inspector_opline_t *opline = 
-		Z_TYPE(brk->opline) != IS_UNDEF ?
-			php_inspector_opline_fetch(&brk->opline) : NULL;
+	php_inspector_instruction_t *instruction = 
+		Z_TYPE(brk->instruction) != IS_UNDEF ?
+			php_inspector_instruction_fetch(&brk->instruction) : NULL;
 
-	if (Z_TYPE(brk->opline) != IS_UNDEF && BRK(state) != INSPECTOR_BREAK_SHUTDOWN)
-		zend_hash_index_del(&BRK(table), (zend_ulong) opline->opline);	
-
-	if (Z_TYPE(brk->opline) != IS_UNDEF) {
-		zval_ptr_dtor(&brk->opline);
+	if (Z_TYPE(brk->instruction) != IS_UNDEF) {
+		if (BRK(state) != INSPECTOR_BREAK_SHUTDOWN) {
+			zend_hash_index_del(&BRK(table), (zend_ulong) instruction->opline);	
+		}
+		zval_ptr_dtor(&brk->instruction);
 	}
 
 	zend_object_std_dtor(&brk->std);
 }
 
 static inline zend_bool php_inspector_break_enable(php_inspector_break_t *brk) {
-	php_inspector_opline_t *opline =
-		php_inspector_opline_fetch(&brk->opline);
+	php_inspector_instruction_t *instruction =
+		php_inspector_instruction_fetch(&brk->instruction);
 
-	if (!zend_hash_index_add_ptr(&BRK(table), (zend_ulong) opline->opline, brk)) {
+	if (!zend_hash_index_add_ptr(&BRK(table), (zend_ulong) instruction->opline, brk)) {
 		return 0;
 	}
 
-	brk->opcode = opline->opline->opcode;
+	brk->opcode = instruction->opline->opcode;
 
-	opline->opline->opcode = INSPECTOR_DEBUG_BREAK;
+	instruction->opline->opcode = INSPECTOR_DEBUG_BREAK;
 
-	zend_vm_set_opcode_handler(opline->opline);
+	zend_vm_set_opcode_handler(instruction->opline);
 
 	return 1;
 }
 
 static inline zend_bool php_inspector_break_enabled(php_inspector_break_t *brk) {
-	php_inspector_opline_t *opline =
-		php_inspector_opline_fetch(&brk->opline);
+	php_inspector_instruction_t *instruction =
+		php_inspector_instruction_fetch(&brk->instruction);
 
-	return zend_hash_index_exists(&BRK(table), (zend_ulong) opline->opline);
+	return zend_hash_index_exists(&BRK(table), (zend_ulong) instruction->opline);
 }
 
 static inline zend_bool php_inspector_break_disable(php_inspector_break_t *brk) {
-	php_inspector_opline_t *opline =
-		php_inspector_opline_fetch(&brk->opline);
+	php_inspector_instruction_t *instruction =
+		php_inspector_instruction_fetch(&brk->instruction);
 
-	return zend_hash_index_del(&BRK(table), (zend_ulong) opline->opline) == SUCCESS;
+	return zend_hash_index_del(&BRK(table), (zend_ulong) instruction->opline) == SUCCESS;
 }
 
-php_inspector_break_t* php_inspector_break_find_ptr(php_inspector_opline_t *opline) {
-	return zend_hash_index_find_ptr(&BRK(table), (zend_ulong) opline->opline);;
+php_inspector_break_t* php_inspector_break_find_ptr(php_inspector_instruction_t *instruction) {
+	return zend_hash_index_find_ptr(&BRK(table), (zend_ulong) instruction->opline);;
 }
 
-void php_inspector_break_find(zval *return_value, php_inspector_opline_t *opline) {
-	php_inspector_break_t *brk = php_inspector_break_find_ptr(opline);
+void php_inspector_break_find(zval *return_value, php_inspector_instruction_t *instruction) {
+	php_inspector_break_t *brk = php_inspector_break_find_ptr(instruction);
 
 	if (!brk) {
 		return;
@@ -142,17 +142,17 @@ void php_inspector_break_find(zval *return_value, php_inspector_opline_t *opline
 static PHP_METHOD(InspectorBreakPoint, __construct)
 {
 	php_inspector_break_t *brk = php_inspector_break_this();
-	zval *ol = NULL;
+	zval *in = NULL;
 
-	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "O", &ol, php_inspector_opline_ce) != SUCCESS) {
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "O", &in, php_inspector_instruction_ce) != SUCCESS) {
 		return;
 	}
 
-	ZVAL_COPY(&brk->opline, ol);
+	ZVAL_COPY(&brk->instruction, in);
 
 	if (!php_inspector_break_enable(brk)) {
 		zend_throw_exception_ex(reflection_exception_ptr, 0, 
-			"already a InspectorBreakPoint at that address");
+			"already a InspectorBreakPoint on that instruction");
 	}
 }
 
@@ -177,12 +177,12 @@ static PHP_METHOD(InspectorBreakPoint, getOpcodeName)
 	RETURN_STRING(name);
 }
 
-static PHP_METHOD(InspectorBreakPoint, getOpline)
+static PHP_METHOD(InspectorBreakPoint, getInstruction)
 {
 	php_inspector_break_t *brk =
 		php_inspector_break_this();
 
-	ZVAL_COPY(return_value, &brk->opline);
+	ZVAL_COPY(return_value, &brk->instruction);
 }
 
 static PHP_METHOD(InspectorBreakPoint, disable)
@@ -224,9 +224,9 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorBreakPoint_getOpcodeName_arginf
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorBreakPoint_getOpline_arginfo, 0, 0, Inspector\\InspectorOpline, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorBreakPoint_getInstruction_arginfo, 0, 0, Inspector\\InspectorInstruction, 0)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorBreakPoint_getOpline_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorOpline", 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorBreakPoint_getInstruction_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorInstruction", 0)
 #endif
 ZEND_END_ARG_INFO()
 
@@ -238,7 +238,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorBreakPoint_switch_arginfo, 0, 0
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(InspectorBreakPoint_construct_arginfo, 0, 0, 1)
-	ZEND_ARG_OBJ_INFO(0, opline, Inspector\\InspectorOpline, 0)
+	ZEND_ARG_OBJ_INFO(0, instruction, Inspector\\InspectorInstruction, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(InspectorBreakPoint_hit_arginfo, 0, 0, 1)
@@ -249,7 +249,7 @@ static zend_function_entry php_inspector_break_methods[] = {
 	PHP_ME(InspectorBreakPoint, __construct, InspectorBreakPoint_construct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, getOpcode, InspectorBreakPoint_getOpcode_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, getOpcodeName, InspectorBreakPoint_getOpcodeName_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(InspectorBreakPoint, getOpline, InspectorBreakPoint_getOpline_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorBreakPoint, getInstruction, InspectorBreakPoint_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, disable, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, enable, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, isEnabled, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
@@ -258,9 +258,9 @@ static zend_function_entry php_inspector_break_methods[] = {
 };
 
 static int php_inspector_break_handler(zend_execute_data *execute_data) {
-	zend_op *opline = (zend_op *) EX(opline);
+	zend_op *instruction = (zend_op *) EX(opline);
 	php_inspector_break_t *brk = 
-		zend_hash_index_find_ptr(&BRK(table), (zend_ulong) opline);
+		zend_hash_index_find_ptr(&BRK(table), (zend_ulong) instruction);
 
 	BRK(state) = INSPECTOR_BREAK_HANDLER;
 	{
@@ -330,12 +330,12 @@ PHP_MINIT_FUNCTION(inspector_break) {
 /* {{{ */
 static inline void php_inspector_break_unset(zval *zv) {
 	php_inspector_break_t *brk = Z_PTR_P(zv);
-	php_inspector_opline_t *opline = 
-		php_inspector_opline_fetch(&brk->opline);
+	php_inspector_instruction_t *instruction = 
+		php_inspector_instruction_fetch(&brk->instruction);
 
-	opline->opline->opcode = brk->opcode;
+	instruction->opline->opcode = brk->opcode;
 
-	zend_vm_set_opcode_handler(opline->opline);
+	zend_vm_set_opcode_handler(instruction->opline);
 } /* }}} */
 
 /* {{{ */

@@ -29,7 +29,7 @@
 #include "reflection.h"
 #include "class.h"
 #include "function.h"
-#include "opline.h"
+#include "instruction.h"
 #include "frame.h"
 
 zend_class_entry *php_inspector_frame_ce;
@@ -56,8 +56,8 @@ static void php_inspector_frame_free(zend_object *zo) {
 	if (Z_TYPE(frame->function) != IS_UNDEF)
 		zval_ptr_dtor(&frame->function);
 
-	if (Z_TYPE(frame->opline) != IS_UNDEF)
-		zval_ptr_dtor(&frame->opline);
+	if (Z_TYPE(frame->instruction) != IS_UNDEF)
+		zval_ptr_dtor(&frame->instruction);
 
 	zend_object_std_dtor(&frame->std);
 }
@@ -73,19 +73,19 @@ void php_inspector_frame_factory(zend_execute_data *execute_data, zval *return_v
 	php_inspector_function_factory(frame->frame->func, &frame->function);
 
 	if (frame->frame->opline) {
-		php_inspector_opline_factory(
-			&frame->function, (zend_op*) frame->frame->opline, &frame->opline);
+		php_inspector_instruction_factory(
+			&frame->function, (zend_op*) frame->frame->opline, &frame->instruction);
 	} else {
-		ZVAL_NULL(&frame->opline);
+		ZVAL_NULL(&frame->instruction);
 	}
 }
 
-PHP_METHOD(InspectorFrame, getOpline)
+PHP_METHOD(InspectorFrame, getInstruction)
 {
 	php_inspector_frame_t *frame = 
 		php_inspector_frame_this();
 	
-	ZVAL_COPY(return_value, &frame->opline);
+	ZVAL_COPY(return_value, &frame->instruction);
 }
 
 PHP_METHOD(InspectorFrame, getStack)
@@ -237,9 +237,9 @@ PHP_METHOD(InspectorFrame, getVariable)
 }
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorFrame_getOpline_arginfo, 0, 0, Inspector\\InspectorOpline, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorFrame_getInstruction_arginfo, 0, 0, Inspector\\InspectorInstruction, 0)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFrame_getOpline_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorOpline", 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFrame_getInstruction_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorInstruction", 0)
 #endif
 ZEND_END_ARG_INFO()
 
@@ -290,7 +290,7 @@ ZEND_BEGIN_ARG_INFO_EX(InspectorFrame_getVariable_arginfo, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 static zend_function_entry php_inspector_frame_methods[] = {
-	PHP_ME(InspectorFrame, getOpline, InspectorFrame_getOpline_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFrame, getInstruction, InspectorFrame_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getFunction, InspectorFrame_getFunction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getSymbols, InspectorFrame_getSymbols_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getPrevious, InspectorFrame_getPrevious_arginfo, ZEND_ACC_PUBLIC)

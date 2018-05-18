@@ -3,9 +3,10 @@ InspectorOperand getNumber cvs
 --FILE--
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
+use Inspector\InspectorInstruction;
 use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
+use Inspector\InspectorOperand;
 
 $function = function($a, $b) {
 	$a + $b;
@@ -14,10 +15,10 @@ $function = function($a, $b) {
 $inspector = 
 	new InspectorFunction($function);
 
-$opline = $inspector->getOpline(2);
+$opline = $inspector->getInstruction(2);
 
-$op1 = $opline->getOperand(InspectorOpline::OP1);
-$op2 = $opline->getOperand(InspectorOpline::OP2);
+$op1 = $opline->getOperand(InspectorOperand::OP1);
+$op2 = $opline->getOperand(InspectorOperand::OP2);
 
 if ($op1->isCompiledVariable() &&
     $op2->isCompiledVariable() &&

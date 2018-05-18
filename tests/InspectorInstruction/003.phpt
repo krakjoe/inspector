@@ -1,14 +1,14 @@
 --TEST--
-InspectorOpline getPrevious
+InspectorInstruction getPrevious
 --FILE--
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
+use Inspector\InspectorInstruction;
 
 $inspector = 
 	new InspectorFunction(function($a) {});
 
-if (!$inspector->getOpline()->getPrevious()) {
+if (!$inspector->getInstruction()->getPrevious()) {
 	echo "OK";
 }
 ?>

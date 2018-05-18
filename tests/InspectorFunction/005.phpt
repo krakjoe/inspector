@@ -1,5 +1,5 @@
 --TEST--
-InspectorFunction::getOpline invalid parameters
+InspectorFunction::getInstruction invalid parameters
 --FILE--
 <?php
 use Inspector\InspectorFunction;
@@ -7,7 +7,7 @@ use Inspector\InspectorFunction;
 $inspector = new InspectorFunction(function(){});
 
 try {
-	$inspector->getOpline("string");
+	$inspector->getInstruction("string");
 } catch (TypeError $ex) {
 	echo "OK";
 }

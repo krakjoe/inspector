@@ -3,7 +3,6 @@ InspectorFrame getStack
 --FILE--
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
 use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
 
@@ -14,7 +13,7 @@ $function = function($a, $b) {
 $inspector = 
 	new InspectorFunction($function);
 
-$opline = $inspector->getOpline(3);
+$opline = $inspector->getInstruction(3);
 
 $break = new class($opline) extends InspectorBreakPoint {
 	public function hit(InspectorFrame $frame){

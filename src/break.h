@@ -23,7 +23,7 @@
 extern zend_class_entry *php_inspector_break_ce;
 
 typedef struct _php_inspector_break_t {
-	zval opline;
+	zval instruction;
 	zend_uchar opcode;
 	struct {
 		zend_fcall_info fci;
@@ -44,6 +44,6 @@ PHP_MINIT_FUNCTION(inspector_break);
 PHP_RINIT_FUNCTION(inspector_break);
 PHP_RSHUTDOWN_FUNCTION(inspector_break);
 
-void php_inspector_break_find(zval *return_value, php_inspector_opline_t *opline);
-php_inspector_break_t* php_inspector_break_find_ptr(php_inspector_opline_t *opline);
+void php_inspector_break_find(zval *return_value, php_inspector_instruction_t *instruction);
+php_inspector_break_t* php_inspector_break_find_ptr(php_inspector_instruction_t *instruction);
 #endif

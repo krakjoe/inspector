@@ -1,9 +1,9 @@
 --TEST--
-InspectorFrame getOpline
+InspectorFrame getInstruction
 --FILE--
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
+use Inspector\InspectorInstruction;
 use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
 
@@ -14,12 +14,12 @@ $function = function($a, $b) {
 $inspector = 
 	new InspectorFunction($function);
 
-$opline = $inspector->getOpline(2);
+$opline = $inspector->getInstruction(2);
 
 $break = new class($opline) extends InspectorBreakPoint {
 	public function hit(InspectorFrame $frame){
-		if ($frame->getOpline() instanceof InspectorOpline &&
-		    $frame->getOpline()->getOffset() == 2) {
+		if ($frame->getInstruction() instanceof InspectorInstruction &&
+		    $frame->getInstruction()->getOffset() == 2) {
 			echo "OK";
 		}
 	}

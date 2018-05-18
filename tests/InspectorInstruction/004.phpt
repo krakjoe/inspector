@@ -1,14 +1,14 @@
 --TEST--
-InspectorOpline getOpcode/getOpcodeName
+InspectorInstruction getOpcode/getOpcodeName
 --FILE--
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
+use Inspector\InspectorInstruction;
 
 $inspector = 
 	new InspectorFunction(function($a) {});
 
-$opline = $inspector->getOpline();
+$opline = $inspector->getInstruction();
 
 var_dump($opline->getOpcodeName(), 
 	 $opline->getOpcode());

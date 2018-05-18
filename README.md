@@ -19,16 +19,16 @@ namespace Inspector
 	}
 
 	class InspectorMethod extends \ReflectionMethod {
-		public function getOpline(int num 0) : InspectorOpline;
+		public function getInstruction(int num 0) : InspectorInstruction;
 
 		public function getDeclaringClass() : InspectorClass;
 	}
 
 	class InspectorFunction extends \ReflectionFunction {
-		public function getOpline(int num 0) : InspectorOpline;
+		public function getInstruction(int num 0) : InspectorInstruction;
 	}
 
-	final class InspectorOpline {
+	final class InspectorInstruction {
 		const OP1;
 		const OP2;
 		const RESULT;
@@ -39,8 +39,8 @@ namespace Inspector
 		public function getExtendedValue() : mixed;
 		public function getLine() : int;
 		public function getFunction() : ReflectionFunctionAbstract;
-		public function getNext() : ?InspectorOpline;
-		public function getPrevious() : ?InspectorOpline;
+		public function getNext() : ?InspectorInstruction;
+		public function getPrevious() : ?InspectorInstruction;
 		public function getBreakPoint() : InspectorBreakPoint;
 	}
 
@@ -56,11 +56,11 @@ namespace Inspector
 		public function getValue(?InspectorFrame $frame) : mixed;
 		public function getName() : string;
 		public function getNumber() : int;
-		public function getOpline() : InspectorOpline;
+		public function getInstruction() : InspectorInstruction;
 	}
 
 	abstract class InspectorBreakPoint {
-		public function __construct(InspectorOpline $opline);
+		public function __construct(InspectorInstruction $opline);
 	
 		public function enable() : bool;
 		public function disable() : bool;
@@ -68,14 +68,14 @@ namespace Inspector
 
 		public function getOpcode() : int;
 		public function getOpcodeName() : ?string;
-		public function getOpline() : InspectorOpline;
+		public function getInstruction() : InspectorInstruction;
 
 		abstract public function hit(InspectorFrame $frame);
 	}
 
 	final class InspectorFrame {
 		public function getFunction() : ReflectionFunctionAbstract;
-		public function getOpline() : InspectorOpline;
+		public function getInstruction() : InspectorInstruction;
 		public function getSymbols() : ?array;
 		public function getPrevious() : ?InspectorFrame;
 		public function getCall() : ?InspectorFrame;
@@ -94,7 +94,7 @@ Making stuff look nice is not my forte, all the same, here is some simple code u
 ```php
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
+use Inspector\InspectorInstruction;
 use Inspector\InspectorOperand;
 
 function printConstant($mixed) {
@@ -122,13 +122,13 @@ function printOperand(InspectorOperand $op) {
 
 function printFunction(InspectorFunction $inspector) {
 	printf("OPCODE\t\tOP1\tOP2\tRESULT\n");
-	$opline = $inspector->getOpline();
+	$opline = $inspector->getInstruction();
 
 	do {
 		printf("%s\t", $opline->getType());
-		printOperand($opline->getOperand(InspectorOpline::OP1));
-		printOperand($opline->getOperand(InspectorOpline::OP2));
-		printOperand($opline->getOperand(InspectorOpline::RESULT));
+		printOperand($opline->getOperand(InspectorOperand::OP1));
+		printOperand($opline->getOperand(InspectorOperand::OP2));
+		printOperand($opline->getOperand(InspectorOperand::RESULT));
 		printf("\n");
 	} while ($opline = $opline->getNext());
 }

@@ -1,15 +1,15 @@
 --TEST--
-InspectorOpline getLine
+InspectorInstruction getLine
 --FILE--
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
+use Inspector\InspectorInstruction;
 
 $inspector = 
 	new InspectorFunction(function($a, $b) {});
 
 $opline = 
-	$inspector->getOpline();
+	$inspector->getInstruction();
 
 var_dump($opline->getLine());
 ?>

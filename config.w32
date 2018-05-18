@@ -7,7 +7,7 @@ if (PHP_INSPECTOR != "no") {
 	EXTENSION("inspector", "php_inspector.c", PHP_EXTNAME_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
 	ADD_SOURCES(
 		"ext/inspector/src",
-		"class.c method.c function.c opline.c operand.c break.c frame.c", 
+		"class.c method.c function.c instruction.c operand.c break.c frame.c", 
 		"inspector"
 	);
 }

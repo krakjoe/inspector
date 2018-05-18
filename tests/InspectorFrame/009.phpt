@@ -1,9 +1,8 @@
 --TEST--
-InspectorOpline getOpcode/getOpcodeName on InspectorBreakPoint
+InspectorFrame getInstruction on InspectorBreakPoint
 --FILE--
 <?php
 use Inspector\InspectorFunction;
-use Inspector\InspectorOpline;
 use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
 
@@ -13,11 +12,11 @@ $function = function($a, $b) {
 
 $inspector = new InspectorFunction($function);
 
-$opline = $inspector->getOpline(2);
+$opline = $inspector->getInstruction(2);
 
 $break = new class($opline) extends InspectorBreakPoint {
 	public function hit(InspectorFrame $frame){
-		$opline = $frame->getOpline();
+		$opline = $frame->getInstruction();
 
 		var_dump($opline->getOpcode(), 
 			 $opline->getOpcodeName());
