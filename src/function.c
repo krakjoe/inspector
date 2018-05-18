@@ -61,7 +61,7 @@ PHP_METHOD(InspectorFunction, getInstruction)
 	}
 
 	if (num < 0) {
-		num += function->op_array.last;
+		num += function->op_array.last - 1;
 	}
 
 	if (num < 0 || num > function->op_array.last) {
@@ -71,6 +71,42 @@ PHP_METHOD(InspectorFunction, getInstruction)
 	}
 
 	php_inspector_instruction_factory(getThis(), &function->op_array.opcodes[num], return_value);
+}
+
+PHP_METHOD(InspectorFunction, getInstructionCount)
+{
+	zend_function *function =
+		php_reflection_object_function(getThis());
+
+	if (function->type != ZEND_USER_FUNCTION) {
+		zend_throw_exception_ex(reflection_exception_ptr, 0, 
+			"cannot get instruction count from internal code");
+		return;
+	}
+
+	RETURN_LONG(function->op_array.last - 1);
+}
+
+PHP_METHOD(InspectorFunction, getEntryInstruction)
+{
+	zend_function *function =
+		php_reflection_object_function(getThis());
+	zend_op *op;
+
+	if (function->type != ZEND_USER_FUNCTION) {
+		zend_throw_exception_ex(reflection_exception_ptr, 0, 
+			"cannot get instruction from internal code");
+		return;
+	}
+
+	op = function->op_array.opcodes + function->op_array.num_args;
+
+	if (op < function->op_array.opcodes + (function->op_array.last - 1)) {
+		php_inspector_instruction_factory(getThis(), op, return_value);
+		return;
+	}
+
+	zend_throw_exception_ex(reflection_exception_ptr, 0, "function has no entry point");
 }
 
 PHP_METHOD(InspectorFunction, findFirstInstruction)
@@ -91,7 +127,7 @@ PHP_METHOD(InspectorFunction, findFirstInstruction)
 	}
 
 	if (offset < 0) {
-		offset += function->op_array.last;
+		offset += function->op_array.last - 1;
 	}
 
 	if (offset < 0 || offset > function->op_array.last) {
@@ -133,7 +169,7 @@ PHP_METHOD(InspectorFunction, findLastInstruction)
 	}
 
 	if (offset <= 0) {
-		offset += function->op_array.last;
+		offset += function->op_array.last - 1;
 	}
 
 	if (offset < 0 || offset > function->op_array.last) {
@@ -164,6 +200,8 @@ PHP_METHOD(InspectorFunction, flushInstructionCache)
 
 static zend_function_entry php_inspector_function_methods[] = {
 	PHP_ME(InspectorFunction, getInstruction, InspectorFunction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, getInstructionCount, InspectorFunction_getInstructionCount_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, getEntryInstruction, InspectorFunction_getEntryInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, findFirstInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, findLastInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, flushInstructionCache, InspectorFunction_flush_arginfo, ZEND_ACC_PUBLIC)
@@ -177,6 +215,8 @@ PHP_MINIT_FUNCTION(inspector_function) {
 
 	php_inspector_function_ce = 
 		zend_register_internal_class_ex(&ce, reflection_function_ptr);
+
+	zend_class_implements(php_inspector_function_ce, 1, php_inspector_instruction_interface_ce);
 
 	zend_declare_property_null(
 		php_inspector_function_ce, 

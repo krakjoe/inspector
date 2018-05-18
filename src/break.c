@@ -174,7 +174,7 @@ static PHP_METHOD(InspectorBreakPoint, getOpcodeName)
 		return;
 	}
 
-	RETURN_STRING(name);
+	RETURN_STRING((char*)&name[5]);
 }
 
 static PHP_METHOD(InspectorBreakPoint, getInstruction)

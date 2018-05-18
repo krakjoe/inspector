@@ -42,6 +42,8 @@
  */
 PHP_MINIT_FUNCTION(inspector)
 {
+	PHP_MINIT(inspector_instruction_interface)(INIT_FUNC_ARGS_PASSTHRU);
+
 	PHP_MINIT(inspector_class)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_method)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_function)(INIT_FUNC_ARGS_PASSTHRU);

@@ -25,6 +25,7 @@
 #include "class.h"
 #include "method.h"
 #include "function.h"
+#include "instruction.h"
 
 zend_class_entry *php_inspector_method_ce;
 
@@ -43,6 +44,8 @@ static PHP_METHOD(InspectorMethod, getDeclaringClass)
 
 static zend_function_entry php_inspector_method_methods[] = {
 	PHP_ME(InspectorFunction, getInstruction, InspectorFunction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, getInstructionCount, InspectorFunction_getInstructionCount_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, getEntryInstruction, InspectorFunction_getEntryInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, findFirstInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, findLastInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, flushInstructionCache, InspectorFunction_flush_arginfo, ZEND_ACC_PUBLIC)
@@ -54,7 +57,11 @@ PHP_MINIT_FUNCTION(inspector_method) {
 	zend_class_entry ce;
 
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorMethod", php_inspector_method_methods);
-	php_inspector_method_ce = zend_register_internal_class_ex(&ce, reflection_method_ptr);
+
+	php_inspector_method_ce = 
+		zend_register_internal_class_ex(&ce, reflection_method_ptr);
+
+	zend_class_implements(php_inspector_method_ce, 1, php_inspector_instruction_interface_ce);
 
 	zend_declare_property_null(
 		php_inspector_method_ce, 

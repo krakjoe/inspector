@@ -28,6 +28,7 @@ typedef struct _php_inspector_instruction_t {
 } php_inspector_instruction_t;
 
 extern zend_class_entry *php_inspector_instruction_ce;
+extern zend_class_entry *php_inspector_instruction_interface_ce;
 
 #define php_inspector_instruction_fetch_from(o) ((php_inspector_instruction_t*) (((char*)o) - XtOffsetOf(php_inspector_instruction_t, std)))
 #define php_inspector_instruction_fetch(z) php_inspector_instruction_fetch_from(Z_OBJ_P(z))
@@ -37,4 +38,5 @@ void php_inspector_instruction_factory(zval *function, zend_op *instruction, zva
 void php_inspector_instruction_cache_flush(zval *function);
 
 PHP_MINIT_FUNCTION(inspector_instruction);
+PHP_MINIT_FUNCTION(inspector_instruction_interface);
 #endif

@@ -34,6 +34,7 @@
 
 static zend_object_handlers php_inspector_instruction_handlers;
 zend_class_entry *php_inspector_instruction_ce;
+zend_class_entry *php_inspector_instruction_interface_ce;
 
 /* {{{ */
 static void php_inspector_instruction_destroy(zend_object *object) {
@@ -470,5 +471,25 @@ PHP_MINIT_FUNCTION(inspector_instruction) {
 	}	
 
 	return SUCCESS;
+} /* }}} */
+
+/* {{{ */
+static zend_function_entry php_inspector_instruction_interface_methods[] = {
+	PHP_ABSTRACT_ME(InspectorFunction, getInstruction, InspectorFunction_getInstruction_arginfo)
+	PHP_ABSTRACT_ME(InspectorFunction, getInstructionCount, InspectorFunction_getInstructionCount_arginfo)
+	PHP_ABSTRACT_ME(InspectorFunction, getEntryInstruction, InspectorFunction_getEntryInstruction_arginfo)
+	PHP_ABSTRACT_ME(InspectorFunction, findFirstInstruction, InspectorFunction_find_arginfo)
+	PHP_ABSTRACT_ME(InspectorFunction, findLastInstruction, InspectorFunction_find_arginfo)
+	PHP_ABSTRACT_ME(InspectorFunction, flushInstructionCache, InspectorFunction_flush_arginfo)
+	PHP_FE_END
+}; /* }}} */
+
+/* {{{ */
+PHP_MINIT_FUNCTION(inspector_instruction_interface) {
+	zend_class_entry ce;
+
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorInstructionInterface", php_inspector_instruction_interface_methods);
+
+	php_inspector_instruction_interface_ce = zend_register_internal_interface(&ce);
 } /* }}} */
 #endif

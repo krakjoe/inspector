@@ -33,6 +33,20 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFunction_getInstruction_arginfo
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFunction_getInstructionCount_arginfo, 0, 0, IS_LONG, 0)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFunction_getInstructionCount_arginfo, 0, 0, IS_LONG, NULL, 0)
+#endif
+ZEND_END_ARG_INFO()
+
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorFunction_getEntryInstruction_arginfo, 0, 0, Inspector\\InspectorInstruction, 0)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFunction_getEntryInstruction_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorInstruction", 0)
+#endif
+ZEND_END_ARG_INFO()
+
+#if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorFunction_find_arginfo, 0, 1, Inspector\\InspectorInstruction, 1)
 #else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFunction_find_arginfo, 0, 1, IS_OBJECT, "Inspector\\InspectorInstruction", 1)
@@ -45,6 +59,8 @@ ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_flush_arginfo, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 extern PHP_METHOD(InspectorFunction, getInstruction);
+extern PHP_METHOD(InspectorFunction, getInstructionCount);
+extern PHP_METHOD(InspectorFunction, getEntryInstruction);
 extern PHP_METHOD(InspectorFunction, findFirstInstruction);
 extern PHP_METHOD(InspectorFunction, findLastInstruction);
 extern PHP_METHOD(InspectorFunction, flushInstructionCache);

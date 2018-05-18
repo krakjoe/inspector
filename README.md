@@ -19,18 +19,20 @@ namespace Inspector
 		public function getMethods(int filter = 0) : array;
 	}
 
-	class InspectorMethod extends \ReflectionMethod {
-		public function getInstruction(int num = 0) : InspectorInstruction;
-		public function findNextInstruction(int opcode, int offset = 0) : ?InspectorInstruction;
-		public function findLastInstruction(int opcode, int offset = -1) : ?InspectorInstruction;
-		public function flushInstructionCache();
-
+	class InspectorMethod extends \ReflectionMethod implements InspectorInstructionInterface {
 		public function getDeclaringClass() : InspectorClass;
 
+		protected $instructionCache;
 	}
 
-	class InspectorFunction extends \ReflectionFunction {
+	class InspectorFunction extends \ReflectionFunction implements InspectorInstructionInterface {
+		protected $instructionCache;
+	}
+
+	interface InspectorInstructionInterface {
 		public function getInstruction(int num = 0) : InspectorInstruction;
+		public function getInstructionCount() : int;
+		public function getEntryInstruction() : ?InspectorInstruction;
 		public function findNextInstruction(int opcode, int offset = 0) : ?InspectorInstruction;
 		public function findLastInstruction(int opcode, int offset = -1) : ?InspectorInstruction;
 		public function flushInstructionCache();
@@ -86,7 +88,7 @@ namespace Inspector
 	}
 
 	final class InspectorFrame {
-		public function getFunction() : InspectorFunction;
+		public function getFunction() : InspectorInstructionInterface;
 		public function getInstruction() : InspectorInstruction;
 		public function getSymbols() : ?array;
 		public function getPrevious() : ?InspectorFrame;

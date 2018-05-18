@@ -26,4 +26,4 @@ var_dump($break->getOpcode(),
 ?>
 --EXPECTF--
 int(%d)
-string(%d) "ZEND_%s"
+string(%d) "%s"
