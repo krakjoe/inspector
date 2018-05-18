@@ -3,6 +3,7 @@ InspectorFrame getInstruction on InspectorBreakPoint
 --FILE--
 <?php
 use Inspector\InspectorFunction;
+use Inspector\InspectorInstruction;
 use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
 
@@ -18,14 +19,14 @@ $break = new class($opline) extends InspectorBreakPoint {
 	public function hit(InspectorFrame $frame){
 		$opline = $frame->getInstruction();
 
-		var_dump($opline->getOpcode(), 
-			 $opline->getOpcodeName());
+		if ($opline->getOpcode() == InspectorInstruction::ADD) {
+			echo "OK";
+		}
 	}
 };
 
 $function(1, 2);
 ?>
---EXPECTF--
-int(%d)
-string(%d) "ZEND_%s"
+--EXPECT--
+OK
 

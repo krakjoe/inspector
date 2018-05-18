@@ -14,5 +14,5 @@ var_dump($opline->getOpcodeName(),
 	 $opline->getOpcode());
 ?>
 --EXPECTF--
-string(%d) "ZEND_%s"
+string(%d) "%s"
 int(%d)

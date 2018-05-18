@@ -96,7 +96,7 @@ static PHP_METHOD(InspectorInstruction, getOpcodeName) {
 		return;
 	}
 
-	RETURN_STRING((char*)name);
+	RETURN_STRING((char*)&name[5]);
 }
 
 static PHP_METHOD(InspectorInstruction, getOpcode) {
@@ -389,7 +389,32 @@ PHP_MINIT_FUNCTION(inspector_instruction) {
 		zend_get_std_object_handlers(), sizeof(zend_object_handlers));
 	php_inspector_instruction_handlers.offset = XtOffsetOf(php_inspector_instruction_t, std);
 	php_inspector_instruction_handlers.free_obj = php_inspector_instruction_destroy;
-	
+
+	{
+		uint32_t opcode = 1,
+			 end    = ZEND_VM_LAST_OPCODE;
+
+		while (opcode < end) {
+			const char *name = zend_get_opcode_name(opcode);
+			const char *abbr;
+
+			if (!name) {
+				opcode++;
+				continue;	
+			}
+
+			abbr = &name[5];
+
+			zend_declare_class_constant_long(
+				php_inspector_instruction_ce,
+				&name[5],
+				strlen(&name[5]), 
+				opcode);
+
+			opcode++;
+		}
+	}	
+
 	return SUCCESS;
 } /* }}} */
 #endif

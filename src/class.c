@@ -105,7 +105,7 @@ ZEND_BEGIN_ARG_INFO(InspectorClass_getMethod_arginfo, 1)
 ZEND_END_ARG_INFO() /* }}} */
 
 /* {{{ */
-ZEND_BEGIN_ARG_INFO(InspectorClass_getMethods_arginfo, 0)
+ZEND_BEGIN_ARG_INFO_EX(InspectorClass_getMethods_arginfo, 0, 0, 0)
 	ZEND_ARG_INFO(0, filter)
 ZEND_END_ARG_INFO() /* }}} */
 

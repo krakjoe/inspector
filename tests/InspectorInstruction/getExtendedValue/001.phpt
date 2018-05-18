@@ -8,18 +8,20 @@ use Inspector\InspectorOperand;
 
 $inspector = 
 	new InspectorFunction(function($a, $b) {
-	# 0 ZEND_RECV
-	# 1 ZEND_RECV
-	(string) $a; # 2 ZEND_CAST
+	# 0 RECV
+	# 1 RECV
+	(string) $a; # 2 CAST
 });
 
-$opline = 
-	$inspector->getInstruction(2);
+$opline = $inspector->getInstruction();
 
-var_dump($opline->getOpcodeName());
-var_dump($opline->getExtendedValue());
+do {
+	if ($opline->getOpcode() == InspectorInstruction::CAST) {
+		var_dump($opline->getExtendedValue());
+		break;
+	}
+} while ($opline = $opline->getNext());
 ?>
 --EXPECT--
-string(9) "ZEND_CAST"
 string(6) "string"
 

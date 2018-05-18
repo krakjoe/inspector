@@ -39,6 +39,8 @@ namespace Inspector
 		public function getNext() : ?InspectorInstruction;
 		public function getPrevious() : ?InspectorInstruction;
 		public function getBreakPoint() : InspectorBreakPoint;
+	
+		/* opcode constants are registered */
 	}
 
 	final class InspectorOperand {
