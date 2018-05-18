@@ -16,7 +16,7 @@ $inspector =
 $opline = $inspector->getInstruction();
 
 do {
-	if ($opline->getOpcode() == InspectorInstruction::CAST) {
+	if ($opline->getOpcode() == InspectorInstruction::ZEND_CAST) {
 		var_dump($opline->getExtendedValue());
 		break;
 	}

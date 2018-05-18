@@ -19,7 +19,7 @@ $break = new class($opline) extends InspectorBreakPoint {
 	public function hit(InspectorFrame $frame){
 		$opline = $frame->getInstruction();
 
-		if ($opline->getOpcode() == InspectorInstruction::ADD) {
+		if ($opline->getOpcode() == InspectorInstruction::ZEND_ADD) {
 			echo "OK";
 		}
 	}

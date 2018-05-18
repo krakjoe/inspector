@@ -38,9 +38,10 @@ namespace Inspector
 		public function getFunction() : ReflectionFunctionAbstract;
 		public function getNext() : ?InspectorInstruction;
 		public function getPrevious() : ?InspectorInstruction;
+		public function getRelative(int offset) : ?InspectorInstruction;
 		public function getBreakPoint() : InspectorBreakPoint;
-	
-		/* opcode constants are registered */
+
+		/* opcode constants are registered with prefixed ZEND_ */
 	}
 
 	final class InspectorOperand {

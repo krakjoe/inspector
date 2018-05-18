@@ -50,7 +50,7 @@ static void php_inspector_instruction_destroy(zend_object *object) {
 		zval_ptr_dtor(&instruction->next);
 }
 
-void php_inspector_instruction_factory(zval *function, zend_op *op, zval *return_value) {
+void php_inspector_instruction_factory(zval *function, zend_op *op, zval *return_value) {	
 	php_inspector_instruction_t *instruction = NULL;
 
 	object_init_ex(return_value, php_inspector_instruction_ce);
@@ -249,7 +249,29 @@ static PHP_METHOD(InspectorInstruction, getFunction) {
 		php_inspector_instruction_this();
 	
 	ZVAL_COPY(return_value, &instruction->function);
-} 
+}
+
+static PHP_METHOD(InspectorInstruction, getRelative) {
+	php_inspector_instruction_t *instruction =
+		php_inspector_instruction_this();
+	zend_op_array *function =
+		(zend_op_array*)
+			php_reflection_object_function(&instruction->function);
+	zend_long relative = 0;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "l", &relative) != SUCCESS) {
+		return;
+	}
+
+	if ((instruction->opline + relative) < function->opcodes + function->last &&
+	    (instruction->opline + relative) >= function->opcodes) {
+		if (Z_TYPE(instruction->next) == IS_UNDEF) {
+			php_inspector_instruction_factory(
+				&instruction->function,
+				instruction->opline + relative, return_value);
+		}
+	}
+}
 
 static PHP_METHOD(InspectorInstruction, getNext) {
 	php_inspector_instruction_t *instruction =
@@ -347,6 +369,14 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorInstruction_getInstruction_argi
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorInstruction_getRelative_arginfo, 0, 0, Inspector\\InspectorInstruction, 1)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorInstruction_getRelative_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorInstruction", 1)
+#endif
+	ZEND_ARG_TYPE_INFO(0, offset, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+#if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorInstruction_getOffset_arginfo, 0, 0, IS_LONG, 1)
 #else
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorInstruction_getOffset_arginfo, 0, 0, IS_LONG, NULL, 1)
@@ -370,6 +400,7 @@ static zend_function_entry php_inspector_instruction_methods[] = {
 	PHP_ME(InspectorInstruction, getFunction, InspectorInstruction_getFunction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getNext, InspectorInstruction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getPrevious, InspectorInstruction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorInstruction, getRelative, InspectorInstruction_getRelative_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getOffset, InspectorInstruction_getOffset_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getBreakPoint, InspectorInstruction_getBreakPoint_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
@@ -396,19 +427,16 @@ PHP_MINIT_FUNCTION(inspector_instruction) {
 
 		while (opcode < end) {
 			const char *name = zend_get_opcode_name(opcode);
-			const char *abbr;
 
 			if (!name) {
 				opcode++;
 				continue;	
 			}
 
-			abbr = &name[5];
-
 			zend_declare_class_constant_long(
 				php_inspector_instruction_ce,
-				&name[5],
-				strlen(&name[5]), 
+				name,
+				strlen(name),
 				opcode);
 
 			opcode++;
