@@ -16,6 +16,7 @@ namespace Inspector
 {
 	class InspectorClass extends \ReflectionClass {
 		public function getMethod(string name) : InspectorMethod;
+		public function getMethods(int filter = 0) : array;
 	}
 
 	class InspectorMethod extends \ReflectionMethod {

@@ -71,6 +71,32 @@ static PHP_METHOD(InspectorClass, getMethod) {
 
 	php_inspector_function_factory(function, return_value);
 }
+
+static PHP_METHOD(InspectorClass, getMethods)
+{
+	zend_class_entry *ce = 
+		php_reflection_object_class(getThis());
+	zend_long filter = ZEND_ACC_PPP_MASK | ZEND_ACC_ABSTRACT | ZEND_ACC_FINAL | ZEND_ACC_STATIC;
+	zend_string *name = NULL;
+	zend_function *function = NULL;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "|l", &filter) != SUCCESS) {
+		return;
+	}
+
+	array_init(return_value);
+
+	ZEND_HASH_FOREACH_STR_KEY_PTR(&ce->function_table, name, function) {
+		if (function->common.fn_flags & filter) {
+			zval inspector;
+
+			php_inspector_function_factory(function, &inspector);
+
+			zend_hash_add(
+				Z_ARRVAL_P(return_value), name, &inspector);
+		}
+	} ZEND_HASH_FOREACH_END();
+}
 /* }}} */
 
 /* {{{ */
@@ -79,8 +105,14 @@ ZEND_BEGIN_ARG_INFO(InspectorClass_getMethod_arginfo, 1)
 ZEND_END_ARG_INFO() /* }}} */
 
 /* {{{ */
+ZEND_BEGIN_ARG_INFO(InspectorClass_getMethods_arginfo, 0)
+	ZEND_ARG_INFO(0, filter)
+ZEND_END_ARG_INFO() /* }}} */
+
+/* {{{ */
 static zend_function_entry php_inspector_class_methods[] = {
 	PHP_ME(InspectorClass, getMethod, InspectorClass_getMethod_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorClass, getMethods, InspectorClass_getMethods_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
 
