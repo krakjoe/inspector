@@ -125,7 +125,7 @@ function printFunction(InspectorFunction $inspector) {
 	$opline = $inspector->getInstruction();
 
 	do {
-		printf("%s\t", $opline->getType());
+		printf("%s\t", $opline->getOpcodeName());
 		printOperand($opline->getOperand(InspectorOperand::OP1));
 		printOperand($opline->getOperand(InspectorOperand::OP2));
 		printOperand($opline->getOperand(InspectorOperand::RESULT));
