@@ -15,7 +15,7 @@ The following API is provided:
 namespace Inspector
 {
 	class InspectorClass extends \ReflectionClass {
-		public function getMethod() : InspectorMethod;
+		public function getMethod(string name) : InspectorMethod;
 	}
 
 	class InspectorMethod extends \ReflectionMethod {
