@@ -27,7 +27,6 @@
 #include "zend_closures.h"
 
 #include "ext/standard/info.h"
-#include "ext/spl/spl_exceptions.h"
 #include "php_inspector.h"
 
 #include "src/class.h"
@@ -90,7 +89,6 @@ PHP_MINFO_FUNCTION(inspector)
 /* }}} */
 
 static const zend_module_dep inspector_deps[] = {
-        ZEND_MOD_REQUIRED("SPL")
 	ZEND_MOD_REQUIRED("Reflection")
         ZEND_MOD_END
 };
