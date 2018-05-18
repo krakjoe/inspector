@@ -33,11 +33,11 @@ before_install:
   - test $CONF != "enable-inspector-coverage" || pip install --user cpp-coveralls
 
 before_script:
-  - echo "variables_order=EGPCS"                 >> $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/php.ini
-  - echo                                          > $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/conf.d/xdebug.ini
-  - echo "extension=inspector.so"                     > $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/conf.d/inspector.ini
-  - echo "opcache.enable_cli=$OPCACHE"            > $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/conf.d/opcache.ini
-  - echo "opcache.optimization_level=0x7FFEBFFF" >> $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/conf.d/opcache.ini
+  - echo "variables_order=EGPCS"                >> $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/php.ini
+  - echo                                        > $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/conf.d/xdebug.ini
+  - echo "extension=inspector.so"               > $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/conf.d/inspector.ini
+  - echo "opcache.enable_cli=$OPCACHE"          > $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/conf.d/opcache.ini
+  - echo "opcache.optimization_level=0"         >> $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/conf.d/opcache.ini
 
 script:
   - cd $TRAVIS_BUILD_DIR
