@@ -60,6 +60,10 @@ PHP_METHOD(InspectorFunction, getInstruction)
 		return;
 	}
 
+	if (num < 0) {
+		num += function->op_array.last;
+	}
+
 	if (num < 0 || num > function->op_array.last) {
 		zend_throw_exception_ex(reflection_exception_ptr, 0,
 			"instruction %d is out of bounds", num);

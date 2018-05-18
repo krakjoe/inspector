@@ -20,9 +20,9 @@ namespace Inspector
 	}
 
 	class InspectorMethod extends \ReflectionMethod {
-		public function getInstruction(int num 0) : InspectorInstruction;
-		public function getNextInstruction(int opcode, int offset = 0) : ?InspectorInstruction;
-		public function getLastInstruction(int opcode, int offset = -1) : ?InspectorInstruction;
+		public function getInstruction(int num = 0) : InspectorInstruction;
+		public function findNextInstruction(int opcode, int offset = 0) : ?InspectorInstruction;
+		public function findLastInstruction(int opcode, int offset = -1) : ?InspectorInstruction;
 		public function flushInstructionCache();
 
 		public function getDeclaringClass() : InspectorClass;
@@ -30,9 +30,9 @@ namespace Inspector
 	}
 
 	class InspectorFunction extends \ReflectionFunction {
-		public function getInstruction(int num 0) : InspectorInstruction;
-		public function getNextInstruction(int opcode, int offset = 0) : ?InspectorInstruction;
-		public function getLastInstruction(int opcode, int offset = -1) : ?InspectorInstruction;
+		public function getInstruction(int num = 0) : InspectorInstruction;
+		public function findNextInstruction(int opcode, int offset = 0) : ?InspectorInstruction;
+		public function findLastInstruction(int opcode, int offset = -1) : ?InspectorInstruction;
 		public function flushInstructionCache();
 	}
 
