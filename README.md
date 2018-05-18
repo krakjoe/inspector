@@ -3,6 +3,7 @@ Inspector
 *A disassembler and debug kit for PHP7*
 
 [![Build Status](https://travis-ci.org/krakjoe/inspector.svg?branch=master)](https://travis-ci.org/krakjoe/inspector)
+[![Coverage Status](https://coveralls.io/repos/github/krakjoe/inspector/badge.svg?branch=master)](https://coveralls.io/github/krakjoe/inspector?branch=master)
 
 Inspector provides an API for disassembling and debugging PHP7 code, in userland.
 
