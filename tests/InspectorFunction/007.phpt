@@ -7,7 +7,7 @@ use Inspector\InspectorFunction;
 $inspector = new InspectorFunction(function(){});
 
 try {
-	$inspector->getInstruction(-1);
+	$inspector->getInstruction(-2);
 } catch (ReflectionException $ex) {
 	echo "OK";
 }
