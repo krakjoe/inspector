@@ -1,5 +1,5 @@
 --TEST--
-InspectorInstruction getBreakPoint
+InspectorFrame getInstruction getBreakPoint
 --FILE--
 <?php
 use Inspector\InspectorFunction;

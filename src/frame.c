@@ -71,7 +71,7 @@ void php_inspector_frame_factory(zend_execute_data *execute_data, zval *return_v
 
 	php_inspector_function_factory(frame->frame->func, &frame->function);
 
-	if (frame->frame->opline) {
+	if (frame->frame->func->type == ZEND_USER_FUNCTION && frame->frame->opline) {
 		php_inspector_instruction_factory(
 			&frame->function, (zend_op*) frame->frame->opline, &frame->instruction);
 	} else {
