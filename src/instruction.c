@@ -50,15 +50,41 @@ static void php_inspector_instruction_destroy(zend_object *object) {
 		zval_ptr_dtor(&instruction->next);
 }
 
-void php_inspector_instruction_factory(zval *function, zend_op *op, zval *return_value) {	
-	php_inspector_instruction_t *instruction = NULL;
+void php_inspector_instruction_cache_flush(zval *function) {
+	zval *cache = OBJ_PROP_NUM(Z_OBJ_P(function), 
+			Z_OBJCE_P(function)->default_properties_count - 1);
 
-	object_init_ex(return_value, php_inspector_instruction_ce);
+	if (Z_TYPE_P(cache) == IS_ARRAY) {
+		zend_hash_clean(Z_ARRVAL_P(cache));
+	}
+}
 
-	instruction = php_inspector_instruction_fetch(return_value);
-	instruction->opline = op;
+void php_inspector_instruction_factory(zval *function, zend_op *op, zval *return_value) {
+	zval *cache = OBJ_PROP_NUM(Z_OBJ_P(function), 
+			Z_OBJCE_P(function)->default_properties_count - 1);
+	zval *cached = NULL;
+	zend_ulong offset = op - php_reflection_object_function(function)->op_array.opcodes;
 
-	ZVAL_COPY(&instruction->function, function);
+	if (Z_TYPE_P(cache) != IS_ARRAY) {
+		array_init(cache);
+	}
+
+	if (!(cached = zend_hash_index_find(Z_ARRVAL_P(cache), offset))) {
+		php_inspector_instruction_t *instruction = NULL;
+
+		object_init_ex(return_value, php_inspector_instruction_ce);
+
+		instruction = php_inspector_instruction_fetch(return_value);
+		instruction->opline = op;
+
+		ZVAL_COPY(&instruction->function, function);
+
+		if (zend_hash_index_add(Z_ARRVAL_P(cache), offset, return_value)) {
+			Z_ADDREF_P(return_value);
+		}
+	} else {
+		ZVAL_COPY(return_value, cached);
+	}
 }
 
 static zend_object* php_inspector_instruction_create(zend_class_entry *ce) {

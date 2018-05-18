@@ -34,6 +34,7 @@ extern zend_class_entry *php_inspector_instruction_ce;
 #define php_inspector_instruction_this() php_inspector_instruction_fetch(getThis())
 
 void php_inspector_instruction_factory(zval *function, zend_op *instruction, zval *return_value);
+void php_inspector_instruction_cache_flush(zval *function);
 
 PHP_MINIT_FUNCTION(inspector_instruction);
 #endif

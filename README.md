@@ -21,15 +21,23 @@ namespace Inspector
 
 	class InspectorMethod extends \ReflectionMethod {
 		public function getInstruction(int num 0) : InspectorInstruction;
+		public function getNextInstruction(int opcode, int offset = 0) : ?InspectorInstruction;
+		public function getLastInstruction(int opcode, int offset = -1) : ?InspectorInstruction;
+		public function flushInstructionCache();
 
 		public function getDeclaringClass() : InspectorClass;
+
 	}
 
 	class InspectorFunction extends \ReflectionFunction {
 		public function getInstruction(int num 0) : InspectorInstruction;
+		public function getNextInstruction(int opcode, int offset = 0) : ?InspectorInstruction;
+		public function getLastInstruction(int opcode, int offset = -1) : ?InspectorInstruction;
+		public function flushInstructionCache();
 	}
 
 	final class InspectorInstruction {
+		public function getOffset() : int;
 		public function getOpcode() : int;
 		public function getOpcodeName() : ?string;
 		public function getOperand(int which) : InspectorOperand;

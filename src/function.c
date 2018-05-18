@@ -69,8 +69,100 @@ PHP_METHOD(InspectorFunction, getInstruction)
 	php_inspector_instruction_factory(getThis(), &function->op_array.opcodes[num], return_value);
 }
 
+PHP_METHOD(InspectorFunction, findFirstInstruction)
+{
+	zend_function *function =
+		php_reflection_object_function(getThis());
+	zend_long offset = 0;
+	zend_long opcode = 0;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "l|l", &opcode, &offset) != SUCCESS) {
+		return;
+	}
+
+	if (function->type != ZEND_USER_FUNCTION) {
+		zend_throw_exception_ex(reflection_exception_ptr, 0, 
+			"cannot get instruction from internal code");
+		return;
+	}
+
+	if (offset < 0) {
+		offset += function->op_array.last;
+	}
+
+	if (offset < 0 || offset > function->op_array.last) {
+		zend_throw_exception_ex(reflection_exception_ptr, 0,
+			"offset %d is out of bounds", offset);
+		return;
+	}
+
+	{
+		zend_op *op = &function->op_array.opcodes[offset],
+			*end = function->op_array.opcodes + function->op_array.last;
+		zend_uchar find = (zend_uchar) opcode;
+
+		while (op < end) {
+			if (op->opcode == find) {
+				php_inspector_instruction_factory(getThis(), op, return_value);
+				break;
+			}
+			op++;
+		}
+	}
+}
+
+PHP_METHOD(InspectorFunction, findLastInstruction)
+{
+	zend_function *function =
+		php_reflection_object_function(getThis());
+	zend_long offset = 0;
+	zend_long opcode = 0;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "l|l", &opcode, &offset) != SUCCESS) {
+		return;
+	}
+
+	if (function->type != ZEND_USER_FUNCTION) {
+		zend_throw_exception_ex(reflection_exception_ptr, 0, 
+			"cannot get instruction from internal code");
+		return;
+	}
+
+	if (offset <= 0) {
+		offset += function->op_array.last;
+	}
+
+	if (offset < 0 || offset > function->op_array.last) {
+		zend_throw_exception_ex(reflection_exception_ptr, 0,
+			"offset %d is out of bounds", offset);
+		return;
+	}
+
+	{
+		zend_op *op = &function->op_array.opcodes[offset],
+			*end = function->op_array.opcodes;
+		zend_uchar find = (zend_uchar) opcode;
+
+		while (op > end) {
+			if (op->opcode == find) {
+				php_inspector_instruction_factory(getThis(), op, return_value);
+				break;
+			}
+			op--;
+		}
+	}
+}
+
+PHP_METHOD(InspectorFunction, flushInstructionCache)
+{
+	php_inspector_instruction_cache_flush(getThis());
+}
+
 static zend_function_entry php_inspector_function_methods[] = {
 	PHP_ME(InspectorFunction, getInstruction, InspectorFunction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, findFirstInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, findLastInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, flushInstructionCache, InspectorFunction_flush_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
@@ -78,8 +170,13 @@ PHP_MINIT_FUNCTION(inspector_function) {
 	zend_class_entry ce;
 
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorFunction", php_inspector_function_methods);
-	php_inspector_function_ce = zend_register_internal_class_ex(&ce, reflection_function_ptr);
 
+	php_inspector_function_ce = 
+		zend_register_internal_class_ex(&ce, reflection_function_ptr);
+
+	zend_declare_property_null(
+		php_inspector_function_ce, 
+		ZEND_STRL("instructionCache"), ZEND_ACC_PROTECTED);
 	return SUCCESS;
 }  /* }}} */
 #endif
