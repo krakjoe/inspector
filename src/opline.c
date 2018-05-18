@@ -334,9 +334,9 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getLine_arginfo, 0, 0, I
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorOpline_getFunction_arginfo, 0, 0, Inspector\\InspectorFunction, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorOpline_getFunction_arginfo, 0, 0, ReflectionFunctionAbstract, 0)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getFunction_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorFunction", 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorOpline_getFunction_arginfo, 0, 0, IS_OBJECT, ReflectionFunctionAbstract, 0)
 #endif
 ZEND_END_ARG_INFO()
 

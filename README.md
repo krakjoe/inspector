@@ -38,7 +38,7 @@ namespace Inspector
 		public function getOperand(int which) : InspectorOperand;
 		public function getExtendedValue() : mixed;
 		public function getLine() : int;
-		public function getFunction() : InspectorFunction;
+		public function getFunction() : ReflectionFunctionAbstract;
 		public function getNext() : ?InspectorOpline;
 		public function getPrevious() : ?InspectorOpline;
 		public function getBreakPoint() : InspectorBreakPoint;
@@ -74,7 +74,7 @@ namespace Inspector
 	}
 
 	final class InspectorFrame {
-		public function getFunction() : InspectorFunction;
+		public function getFunction() : ReflectionFunctionAbstract;
 		public function getOpline() : InspectorOpline;
 		public function getSymbols() : ?array;
 		public function getPrevious() : ?InspectorFrame;
