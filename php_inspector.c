@@ -60,7 +60,7 @@ PHP_MINIT_FUNCTION(inspector)
 /* {{{ */
 PHP_MSHUTDOWN_FUNCTION(inspector)
 {
-	PHP_MSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_MSHUTDOWN(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 	
 	return SUCCESS;
 } /* }}} */
@@ -74,6 +74,7 @@ PHP_RINIT_FUNCTION(inspector)
 #endif
 
 	PHP_RINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_RINIT(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 
 	return SUCCESS;
 }
@@ -83,6 +84,7 @@ PHP_RINIT_FUNCTION(inspector)
 PHP_RSHUTDOWN_FUNCTION(inspector)
 {
 	PHP_RSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_RSHUTDOWN(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 
 	return SUCCESS;
 }

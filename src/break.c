@@ -32,10 +32,6 @@
 #include "break.h"
 #include "frame.h"
 
-typedef zend_op_array* (*zend_compile_file_function_t) (zend_file_handle *fh, int type);
-
-static zend_compile_file_function_t zend_compile_file_function;
-
 typedef enum _php_inspector_break_state_t {
 	INSPECTOR_BREAK_RUNTIME,
 	INSPECTOR_BREAK_HANDLER,
@@ -142,36 +138,6 @@ void php_inspector_break_find(zval *return_value, php_inspector_instruction_t *i
 
 	ZVAL_OBJ(return_value, &brk->std);
 	Z_ADDREF_P(return_value);
-}
-
-zend_function* php_inspector_break_source(zend_string *file) {
-	return zend_hash_find_ptr(&BRK(files), file);
-}
-
-static zend_always_inline HashTable* php_inspector_break_pending_list(zend_string *file) {
-	HashTable *pending = zend_hash_find_ptr(&BRK(pending), file);
-
-	if (!pending) {
-		ALLOC_HASHTABLE(pending);
-
-		zend_hash_init(pending, 8, NULL, ZVAL_PTR_DTOR, 0);
-
-		zend_hash_update_ptr(&BRK(pending), file, pending);
-	}
-
-	return pending;
-}
-
-void php_inspector_break_pending(zend_string *file, zval *function) {
-	php_reflection_object_t *reflector = 
-		php_reflection_object_fetch(function);
-	HashTable *pending = php_inspector_break_pending_list(file);
-
-	reflector->ref_type = PHP_REF_TYPE_PENDING;
-
-	if (zend_hash_next_index_insert(pending, function)) {
-		Z_ADDREF_P(function);
-	}
 }
 
 /* {{{ */
@@ -327,59 +293,6 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 	return ZEND_USER_OPCODE_DISPATCH_TO | brk->opcode;
 }
 
-int php_inspector_break_resolve(zval *zv, zend_function *ops) {
-	php_reflection_object_t *reflector = 
-		php_reflection_object_fetch(zv);
-	zend_function *onResolve = zend_hash_str_find_ptr(
-		&Z_OBJCE_P(zv)->function_table, ZEND_STRL("onresolve"));
-
-	reflector->ptr = ops;
-	reflector->ref_type = PHP_REF_TYPE_OTHER;
-
-	if (onResolve->type != ZEND_INTERNAL_FUNCTION) {
-		zval rv;
-
-		ZVAL_NULL(&rv);
-
-		zend_call_method_with_0_params(zv, Z_OBJCE_P(zv), &onResolve, "onresolve", &rv);
-
-		if (Z_REFCOUNTED(rv)) {
-			zval_ptr_dtor(&rv);
-		}	
-	}
-
-	return ZEND_HASH_APPLY_REMOVE;
-}
-
-static zend_op_array* php_inspector_compile_function(zend_file_handle *handle, int type) {
-	zend_op_array *ops = zend_compile_file_function(handle, type);
-	zend_op_array *cache;
-	HashTable     *pending;
-
-	if (!ops) {
-		return NULL;
-	}
-
-	cache = (zend_op_array*) ecalloc(1, sizeof(zend_op_array));
-
-	memcpy(cache, ops, sizeof(zend_op_array));
-
-	if (zend_hash_update_ptr(&BRK(files), ops->filename, cache)) {
-		function_add_ref((zend_function*) cache);
-	}
-
-	pending = zend_hash_find_ptr(&BRK(pending), ops->filename);
-
-	if (pending) {
-		zend_hash_apply_with_argument(
-			pending, 
-			(apply_func_arg_t) 
-				php_inspector_break_resolve, cache);
-	}
-
-	return ops;
-}
-
 PHP_MINIT_FUNCTION(inspector_break) {
 	zend_class_entry ce;
 
@@ -397,13 +310,6 @@ PHP_MINIT_FUNCTION(inspector_break) {
 
 	zend_set_user_opcode_handler(INSPECTOR_DEBUG_BREAK, php_inspector_break_handler);
 
-	zend_compile_file_function = zend_compile_file;
-	zend_compile_file = php_inspector_compile_function;
-
-	if (!zend_compile_file_function) {
-		zend_compile_file_function = compile_file;
-	}
-
 	return SUCCESS;
 } /* }}} */
 
@@ -419,25 +325,11 @@ static void php_inspector_break_unset(zval *zv) {
 } /* }}} */
 
 /* {{{ */
-static void php_inspector_break_source_free(zval *zv) {
-	destroy_op_array(Z_PTR_P(zv));
-	efree(Z_PTR_P(zv));
-} /* }}} */
-
-/* {{{ */
-static void php_inspector_break_pending_free(zval *zv) {
-	zend_hash_destroy(Z_PTR_P(zv));
-	efree(Z_PTR_P(zv));
-} /* }}} */
-
-/* {{{ */
 PHP_RINIT_FUNCTION(inspector_break) 
 {
 	BRK(state) = INSPECTOR_BREAK_RUNTIME;
 
 	zend_hash_init(&BRK(breaks), 8, NULL, php_inspector_break_unset, 0);
-	zend_hash_init(&BRK(files), 8, NULL, php_inspector_break_source_free, 0);
-	zend_hash_init(&BRK(pending), 8, NULL, php_inspector_break_pending_free, 0);
 
 	return SUCCESS;
 } /* }}} */
@@ -448,19 +340,7 @@ PHP_RSHUTDOWN_FUNCTION(inspector_break)
 	BRK(state) = INSPECTOR_BREAK_SHUTDOWN;
 
 	zend_hash_destroy(&BRK(breaks));
-	zend_hash_destroy(&BRK(files));
-	zend_hash_destroy(&BRK(pending));
 
 	return SUCCESS;
-} /* }}} */
-
-/* {{{ */
-PHP_MSHUTDOWN_FUNCTION(inspector_break)
-{
-	if (zend_compile_file_function != compile_file) {
-		zend_compile_file = zend_compile_file_function;
-	} else {
-		zend_compile_file = NULL;
-	}
 } /* }}} */
 #endif

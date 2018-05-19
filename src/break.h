@@ -40,7 +40,6 @@ typedef struct _php_inspector_break_t {
 #define php_inspector_break_this() php_inspector_break_fetch(getThis())
 
 PHP_MINIT_FUNCTION(inspector_break);
-PHP_MSHUTDOWN_FUNCTION(inspector_break);
 PHP_RINIT_FUNCTION(inspector_break);
 PHP_RSHUTDOWN_FUNCTION(inspector_break);
 
