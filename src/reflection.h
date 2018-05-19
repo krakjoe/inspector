@@ -1,8 +1,8 @@
 /*
   +----------------------------------------------------------------------+
-  | inspector                                                            |
+  | PHP Version 7                                                        |
   +----------------------------------------------------------------------+
-  | Copyright (c) Joe Watkins 2018                                       |
+  | Copyright (c) 2018 Joe Watkins                                       |
   +----------------------------------------------------------------------+
   | This source file is subject to version 3.01 of the PHP license,      |
   | that is bundled with this package in the file LICENSE, and is        |
@@ -12,9 +12,10 @@
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
-  | Author: krakjoe <krakjoe@php.net>                                    |
+  | Author: krakjoe                                                      |
   +----------------------------------------------------------------------+
- */
+*/
+
 #ifndef HAVE_INSPECTOR_REFLECTION_H
 #define HAVE_INSPECTOR_REFLECTION_H
 

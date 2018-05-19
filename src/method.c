@@ -2,7 +2,7 @@
   +----------------------------------------------------------------------+
   | PHP Version 7                                                        |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2015 The PHP Group                                |
+  | Copyright (c) 2018 Joe Watkins                                       |
   +----------------------------------------------------------------------+
   | This source file is subject to version 3.01 of the PHP license,      |
   | that is bundled with this package in the file LICENSE, and is        |
@@ -16,7 +16,6 @@
   +----------------------------------------------------------------------+
 */
 
-/* $Id$ */
 #ifndef HAVE_INSPECTOR_METHOD
 #define HAVE_INSPECTOR_METHOD
 
@@ -32,9 +31,10 @@ zend_class_entry *php_inspector_method_ce;
 ZEND_BEGIN_ARG_INFO(InspectorMethod_getDeclaringClass_arginfo, 0)
 ZEND_END_ARG_INFO()
 
-static PHP_METHOD(InspectorMethod, getDeclaringClass) 
+static PHP_METHOD(InspectorMethod, getDeclaringClass)
 {
-	zend_function *function = php_reflection_object_function(getThis());
+	zend_function *function = 
+		php_reflection_object_function(getThis());
 
 	if (function->common.scope) {
 		php_inspector_class_factory(
