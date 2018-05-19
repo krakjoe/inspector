@@ -96,6 +96,8 @@ namespace Inspector
 		public function getParameters() : array;
 		public function getVariable(int num) : mixed;
 		public function getThis() : ?object;
+
+		public static function getCurrent() : InspectorFrame;
 	}
 }
 ```
