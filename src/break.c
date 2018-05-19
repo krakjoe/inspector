@@ -22,6 +22,7 @@
 #include "php.h"
 
 #include "zend_exceptions.h"
+#include "zend_interfaces.h"
 #include "zend_vm.h"
 
 #include "reflection.h"
@@ -31,6 +32,10 @@
 #include "break.h"
 #include "frame.h"
 
+typedef zend_op_array* (*zend_compile_file_function_t) (zend_file_handle *fh, int type);
+
+static zend_compile_file_function_t zend_compile_file_function;
+
 typedef enum _php_inspector_break_state_t {
 	INSPECTOR_BREAK_RUNTIME,
 	INSPECTOR_BREAK_HANDLER,
@@ -38,8 +43,10 @@ typedef enum _php_inspector_break_state_t {
 } php_inspector_break_state_t;
 
 ZEND_BEGIN_MODULE_GLOBALS(inspector_break)
-	HashTable table;
 	php_inspector_break_state_t state;
+	HashTable files;
+	HashTable pending;
+	HashTable breaks;
 ZEND_END_MODULE_GLOBALS(inspector_break)
 
 ZEND_DECLARE_MODULE_GLOBALS(inspector_break);
@@ -83,7 +90,7 @@ static void php_inspector_break_destroy(zend_object *zo) {
 
 	if (Z_TYPE(brk->instruction) != IS_UNDEF) {
 		if (BRK(state) != INSPECTOR_BREAK_SHUTDOWN) {
-			zend_hash_index_del(&BRK(table), (zend_ulong) instruction->opline);	
+			zend_hash_index_del(&BRK(breaks), (zend_ulong) instruction->opline);	
 		}
 		zval_ptr_dtor(&brk->instruction);
 	}
@@ -95,7 +102,7 @@ static inline zend_bool php_inspector_break_enable(php_inspector_break_t *brk) {
 	php_inspector_instruction_t *instruction =
 		php_inspector_instruction_fetch(&brk->instruction);
 
-	if (!zend_hash_index_add_ptr(&BRK(table), (zend_ulong) instruction->opline, brk)) {
+	if (!zend_hash_index_add_ptr(&BRK(breaks), (zend_ulong) instruction->opline, brk)) {
 		return 0;
 	}
 
@@ -112,18 +119,18 @@ static inline zend_bool php_inspector_break_enabled(php_inspector_break_t *brk) 
 	php_inspector_instruction_t *instruction =
 		php_inspector_instruction_fetch(&brk->instruction);
 
-	return zend_hash_index_exists(&BRK(table), (zend_ulong) instruction->opline);
+	return zend_hash_index_exists(&BRK(breaks), (zend_ulong) instruction->opline);
 }
 
 static inline zend_bool php_inspector_break_disable(php_inspector_break_t *brk) {
 	php_inspector_instruction_t *instruction =
 		php_inspector_instruction_fetch(&brk->instruction);
 
-	return zend_hash_index_del(&BRK(table), (zend_ulong) instruction->opline) == SUCCESS;
+	return zend_hash_index_del(&BRK(breaks), (zend_ulong) instruction->opline) == SUCCESS;
 }
 
 php_inspector_break_t* php_inspector_break_find_ptr(php_inspector_instruction_t *instruction) {
-	return zend_hash_index_find_ptr(&BRK(table), (zend_ulong) instruction->opline);;
+	return zend_hash_index_find_ptr(&BRK(breaks), (zend_ulong) instruction->opline);;
 }
 
 void php_inspector_break_find(zval *return_value, php_inspector_instruction_t *instruction) {
@@ -135,6 +142,36 @@ void php_inspector_break_find(zval *return_value, php_inspector_instruction_t *i
 
 	ZVAL_OBJ(return_value, &brk->std);
 	Z_ADDREF_P(return_value);
+}
+
+zend_function* php_inspector_break_source(zend_string *file) {
+	return zend_hash_find_ptr(&BRK(files), file);
+}
+
+static zend_always_inline HashTable* php_inspector_break_pending_list(zend_string *file) {
+	HashTable *pending = zend_hash_find_ptr(&BRK(pending), file);
+
+	if (!pending) {
+		ALLOC_HASHTABLE(pending);
+
+		zend_hash_init(pending, 8, NULL, ZVAL_PTR_DTOR, 0);
+
+		zend_hash_update_ptr(&BRK(pending), file, pending);
+	}
+
+	return pending;
+}
+
+void php_inspector_break_pending(zend_string *file, zval *function) {
+	php_reflection_object_t *reflector = 
+		php_reflection_object_fetch(function);
+	HashTable *pending = php_inspector_break_pending_list(file);
+
+	reflector->ref_type = PHP_REF_TYPE_PENDING;
+
+	if (zend_hash_next_index_insert(pending, function)) {
+		Z_ADDREF_P(function);
+	}
 }
 
 /* {{{ */
@@ -236,7 +273,7 @@ static zend_function_entry php_inspector_break_methods[] = {
 static int php_inspector_break_handler(zend_execute_data *execute_data) {
 	zend_op *instruction = (zend_op *) EX(opline);
 	php_inspector_break_t *brk = 
-		zend_hash_index_find_ptr(&BRK(table), (zend_ulong) instruction);
+		zend_hash_index_find_ptr(&BRK(breaks), (zend_ulong) instruction);
 
 	BRK(state) = INSPECTOR_BREAK_HANDLER;
 	{
@@ -290,6 +327,52 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 	return ZEND_USER_OPCODE_DISPATCH_TO | brk->opcode;
 }
 
+int php_inspector_break_resolve(zval *zv, zend_function *ops) {
+	php_reflection_object_t *reflector = 
+		php_reflection_object_fetch(zv);
+	zval rv;
+
+	reflector->ptr = ops;
+	reflector->ref_type = PHP_REF_TYPE_OTHER;
+
+	ZVAL_NULL(&rv);
+
+	zend_call_method_with_0_params(zv, Z_OBJCE_P(zv), NULL, "onresolve", &rv);
+
+	if (Z_REFCOUNTED(rv)) {
+		zval_ptr_dtor(&rv);
+	}
+
+	return ZEND_HASH_APPLY_REMOVE;
+}
+
+static zend_op_array* php_inspector_compile_function(zend_file_handle *handle, int type) {
+	zend_op_array *ops = zend_compile_file_function(handle, type);
+	/* copy and cache */
+	zend_function *ptr;
+
+	if (!ops) {
+		return NULL;
+	}
+
+	ptr = (zend_function*) ecalloc(1, sizeof(zend_op_array));
+
+	memcpy(ptr, ops, sizeof(zend_op_array));
+
+	if (zend_hash_update_ptr(&BRK(files), ops->filename, ptr)) {
+		function_add_ref(ptr);
+	}
+
+	if (zend_hash_exists(&BRK(pending), ops->filename)) {
+		zend_hash_apply_with_argument(
+			zend_hash_find_ptr(
+				&BRK(pending), ops->filename), 
+			(apply_func_arg_t) php_inspector_break_resolve, ops);
+	}
+
+	return ops;
+}
+
 PHP_MINIT_FUNCTION(inspector_break) {
 	zend_class_entry ce;
 
@@ -307,11 +390,18 @@ PHP_MINIT_FUNCTION(inspector_break) {
 
 	zend_set_user_opcode_handler(INSPECTOR_DEBUG_BREAK, php_inspector_break_handler);
 
+	zend_compile_file_function = zend_compile_file;
+	zend_compile_file = php_inspector_compile_function;
+
+	if (!zend_compile_file_function) {
+		zend_compile_file_function = compile_file;
+	}
+
 	return SUCCESS;
 } /* }}} */
 
 /* {{{ */
-static inline void php_inspector_break_unset(zval *zv) {
+static void php_inspector_break_unset(zval *zv) {
 	php_inspector_break_t *brk = Z_PTR_P(zv);
 	php_inspector_instruction_t *instruction = 
 		php_inspector_instruction_fetch(&brk->instruction);
@@ -322,11 +412,25 @@ static inline void php_inspector_break_unset(zval *zv) {
 } /* }}} */
 
 /* {{{ */
+static void php_inspector_break_source_free(zval *zv) {
+	destroy_op_array(Z_PTR_P(zv));
+	efree(Z_PTR_P(zv));
+} /* }}} */
+
+/* {{{ */
+static void php_inspector_break_pending_free(zval *zv) {
+	zend_hash_destroy(Z_PTR_P(zv));
+	efree(Z_PTR_P(zv));
+} /* }}} */
+
+/* {{{ */
 PHP_RINIT_FUNCTION(inspector_break) 
 {
 	BRK(state) = INSPECTOR_BREAK_RUNTIME;
 
-	zend_hash_init(&BRK(table), 32, NULL, php_inspector_break_unset, 0);
+	zend_hash_init(&BRK(breaks), 8, NULL, php_inspector_break_unset, 0);
+	zend_hash_init(&BRK(files), 8, NULL, php_inspector_break_source_free, 0);
+	zend_hash_init(&BRK(pending), 8, NULL, php_inspector_break_pending_free, 0);
 
 	return SUCCESS;
 } /* }}} */
@@ -336,8 +440,20 @@ PHP_RSHUTDOWN_FUNCTION(inspector_break)
 {
 	BRK(state) = INSPECTOR_BREAK_SHUTDOWN;
 
-	zend_hash_destroy(&BRK(table));
+	zend_hash_destroy(&BRK(breaks));
+	zend_hash_destroy(&BRK(files));
+	zend_hash_destroy(&BRK(pending));
 
 	return SUCCESS;
+} /* }}} */
+
+/* {{{ */
+PHP_MSHUTDOWN_FUNCTION(inspector_break)
+{
+	if (zend_compile_file_function != compile_file) {
+		zend_compile_file = zend_compile_file_function;
+	} else {
+		zend_compile_file = NULL;
+	}
 } /* }}} */
 #endif

@@ -30,6 +30,14 @@ namespace Inspector
 		protected $instructionCache;
 	}
 
+	class InspectorFile extends InspectorFunction {
+		public function __construct(string file);
+
+		public function onResolve();
+
+		protected $instructionCache;
+	}
+
 	interface InspectorInstructionInterface {
 		public function getInstruction(int num = 0) : InspectorInstruction;
 		public function getInstructionCount() : int;

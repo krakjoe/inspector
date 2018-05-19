@@ -55,6 +55,14 @@ PHP_MINIT_FUNCTION(inspector)
 }
 /* }}} */
 
+/* {{{ */
+PHP_MSHUTDOWN_FUNCTION(inspector)
+{
+	PHP_MSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
+	
+	return SUCCESS;
+} /* }}} */
+
 /* {{{ PHP_RINIT_FUNCTION
  */
 PHP_RINIT_FUNCTION(inspector)
@@ -102,7 +110,7 @@ zend_module_entry inspector_module_entry = {
 	"inspector",
 	NULL,
 	PHP_MINIT(inspector),
-	NULL,
+	PHP_MSHUTDOWN(inspector),
 	PHP_RINIT(inspector),
 	PHP_RSHUTDOWN(inspector),
 	PHP_MINFO(inspector),
