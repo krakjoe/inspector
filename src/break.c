@@ -155,27 +155,6 @@ static PHP_METHOD(InspectorBreakPoint, __construct)
 	}
 }
 
-static PHP_METHOD(InspectorBreakPoint, getOpcode)
-{
-	php_inspector_break_t *brk =
-		php_inspector_break_this();
-
-	RETURN_LONG(brk->opcode);
-}
-
-static PHP_METHOD(InspectorBreakPoint, getOpcodeName)
-{
-	php_inspector_break_t *brk =
-		php_inspector_break_this();
-	const char *name = zend_get_opcode_name(brk->opcode);
-	
-	if (!name) {
-		return;
-	}
-
-	RETURN_STRING((char*)&name[5]);
-}
-
 static PHP_METHOD(InspectorBreakPoint, getInstruction)
 {
 	php_inspector_break_t *brk =
@@ -246,8 +225,6 @@ ZEND_END_ARG_INFO()
 
 static zend_function_entry php_inspector_break_methods[] = {
 	PHP_ME(InspectorBreakPoint, __construct, InspectorBreakPoint_construct_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(InspectorBreakPoint, getOpcode, InspectorBreakPoint_getOpcode_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(InspectorBreakPoint, getOpcodeName, InspectorBreakPoint_getOpcodeName_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, getInstruction, InspectorBreakPoint_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, disable, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, enable, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)

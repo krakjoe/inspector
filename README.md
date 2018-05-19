@@ -76,13 +76,11 @@ namespace Inspector
 
 	abstract class InspectorBreakPoint {
 		public function __construct(InspectorInstruction $opline);
-	
+
 		public function enable() : bool;
 		public function disable() : bool;
 		public function isEnabled() : bool;
 
-		public function getOpcode() : int;
-		public function getOpcodeName() : ?string;
 		public function getInstruction() : InspectorInstruction;
 
 		abstract public function hit(InspectorFrame $frame);
