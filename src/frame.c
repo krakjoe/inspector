@@ -241,6 +241,11 @@ static PHP_METHOD(InspectorFrame, getThis)
 	}
 }
 
+static PHP_METHOD(InspectorFrame, getCurrent)
+{
+	php_inspector_frame_factory(EX(prev_execute_data), return_value);
+}
+
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorFrame_getInstruction_arginfo, 0, 0, Inspector\\InspectorInstruction, 1)
 #else
@@ -301,6 +306,14 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFrame_getThis_arginfo, 0, 0, IS
 #endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorFrame_getCurrent_arginfo, 0, 0, Inspector\\InspectorFrame, 1)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFrame_getCurrent_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorFrame", 1)
+#endif
+ZEND_END_ARG_INFO()
+
+
 static zend_function_entry php_inspector_frame_methods[] = {
 	PHP_ME(InspectorFrame, getInstruction, InspectorFrame_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getFunction, InspectorFrame_getFunction_arginfo, ZEND_ACC_PUBLIC)
@@ -311,6 +324,7 @@ static zend_function_entry php_inspector_frame_methods[] = {
 	PHP_ME(InspectorFrame, getCall, InspectorFrame_getCall_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getParameters, InspectorFrame_getParameters_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getVariable, InspectorFrame_getVariable_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFrame, getCurrent, InspectorFrame_getCurrent_arginfo, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_FE_END
 };
 
