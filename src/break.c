@@ -330,17 +330,22 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 int php_inspector_break_resolve(zval *zv, zend_function *ops) {
 	php_reflection_object_t *reflector = 
 		php_reflection_object_fetch(zv);
-	zval rv;
+	zend_function *onResolve = zend_hash_str_find_ptr(
+		&Z_OBJCE_P(zv)->function_table, ZEND_STRL("onresolve"));
 
 	reflector->ptr = ops;
 	reflector->ref_type = PHP_REF_TYPE_OTHER;
 
-	ZVAL_NULL(&rv);
+	if (onResolve->type != ZEND_INTERNAL_FUNCTION) {
+		zval rv;
 
-	zend_call_method_with_0_params(zv, Z_OBJCE_P(zv), NULL, "onresolve", &rv);
+		ZVAL_NULL(&rv);
 
-	if (Z_REFCOUNTED(rv)) {
-		zval_ptr_dtor(&rv);
+		zend_call_method_with_0_params(zv, Z_OBJCE_P(zv), &onResolve, "onresolve", &rv);
+
+		if (Z_REFCOUNTED(rv)) {
+			zval_ptr_dtor(&rv);
+		}	
 	}
 
 	return ZEND_HASH_APPLY_REMOVE;
