@@ -353,26 +353,28 @@ int php_inspector_break_resolve(zval *zv, zend_function *ops) {
 
 static zend_op_array* php_inspector_compile_function(zend_file_handle *handle, int type) {
 	zend_op_array *ops = zend_compile_file_function(handle, type);
-	/* copy and cache */
-	zend_function *ptr;
+	zend_op_array *cache;
+	HashTable     *pending;
 
 	if (!ops) {
 		return NULL;
 	}
 
-	ptr = (zend_function*) ecalloc(1, sizeof(zend_op_array));
+	cache = (zend_op_array*) ecalloc(1, sizeof(zend_op_array));
 
-	memcpy(ptr, ops, sizeof(zend_op_array));
+	memcpy(cache, ops, sizeof(zend_op_array));
 
-	if (zend_hash_update_ptr(&BRK(files), ops->filename, ptr)) {
-		function_add_ref(ptr);
+	if (zend_hash_update_ptr(&BRK(files), ops->filename, cache)) {
+		function_add_ref((zend_function*) cache);
 	}
 
-	if (zend_hash_exists(&BRK(pending), ops->filename)) {
+	pending = zend_hash_find_ptr(&BRK(pending), ops->filename);
+
+	if (pending) {
 		zend_hash_apply_with_argument(
-			zend_hash_find_ptr(
-				&BRK(pending), ops->filename), 
-			(apply_func_arg_t) php_inspector_break_resolve, ops);
+			pending, 
+			(apply_func_arg_t) 
+				php_inspector_break_resolve, cache);
 	}
 
 	return ops;
