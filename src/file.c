@@ -120,15 +120,15 @@ static zend_op_array* php_inspector_file_compile(zend_file_handle *handle, int t
 
 	memcpy(cache, ops, sizeof(zend_op_array));
 
-	cache->refcount = emalloc(sizeof(uint32_t));
-	*(cache->refcount) = 1;
+	cache->refcount = NULL;
 
 	if (!zend_hash_update_ptr(&IFG(files), ops->filename, cache)) {
-		efree(cache->refcount);
 		efree(cache);
 
 		return ops;
 	}
+
+	function_add_ref((zend_function*) cache);
 
 	pending = zend_hash_find_ptr(&IFG(pending), ops->filename);
 
@@ -227,7 +227,7 @@ PHP_MSHUTDOWN_FUNCTION(inspector_file)
 static void php_inspector_file_free(zval *zv) {
 	zend_op_array *ops = Z_PTR_P(zv);
 
-	efree(ops->refcount);
+	destroy_op_array(ops);
 	efree(ops);
 } /* }}} */
 
