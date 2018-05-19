@@ -110,13 +110,24 @@ int php_inspector_file_resolve(zval *zv, zend_function *ops) {
 static zend_op_array* php_inspector_file_compile(zend_file_handle *handle, int type) {
 	zend_op_array *ops = zend_compile_file_function(handle, type);
 	HashTable     *pending;
+	zend_op_array *cache;
 
 	if (!ops) {
 		return NULL;
 	}
 
-	if (!zend_hash_update_ptr(&IFG(files), ops->filename, ops)) {
-		return NULL;
+	cache = (zend_op_array*) ecalloc(1, sizeof(zend_op_array));
+
+	memcpy(cache, ops, sizeof(zend_op_array));
+
+	cache->refcount = emalloc(sizeof(uint32_t));
+	*(cache->refcount) = 1;
+
+	if (!zend_hash_update_ptr(&IFG(files), ops->filename, cache)) {
+		efree(cache->refcount);
+		efree(cache);
+
+		return ops;
 	}
 
 	pending = zend_hash_find_ptr(&IFG(pending), ops->filename);
@@ -125,7 +136,7 @@ static zend_op_array* php_inspector_file_compile(zend_file_handle *handle, int t
 		zend_hash_apply_with_argument(
 			pending, 
 			(apply_func_arg_t) 
-				php_inspector_file_resolve, ops);
+				php_inspector_file_resolve, cache);
 	}
 
 	return ops;
@@ -213,6 +224,14 @@ PHP_MSHUTDOWN_FUNCTION(inspector_file)
 }
 
 /* {{{ */
+static void php_inspector_file_free(zval *zv) {
+	zend_op_array *ops = Z_PTR_P(zv);
+
+	efree(ops->refcount);
+	efree(ops);
+} /* }}} */
+
+/* {{{ */
 static void php_inspector_file_pending_free(zval *zv) {
 	zend_hash_destroy(Z_PTR_P(zv));
 	efree(Z_PTR_P(zv));
@@ -220,7 +239,7 @@ static void php_inspector_file_pending_free(zval *zv) {
 
 PHP_RINIT_FUNCTION(inspector_file)
 {
-	zend_hash_init(&IFG(files), 8, NULL, NULL, 0);
+	zend_hash_init(&IFG(files), 8, NULL, php_inspector_file_free, 0);
 	zend_hash_init(&IFG(pending), 8, NULL, php_inspector_file_pending_free, 0);
 
 	return SUCCESS;
