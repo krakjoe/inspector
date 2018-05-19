@@ -1,5 +1,5 @@
 --TEST--
-InspectorFrame getThis
+InspectorFrame getThis non-object scope
 --FILE--
 <?php
 use Inspector\InspectorInstruction;
