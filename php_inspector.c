@@ -27,6 +27,7 @@
 #include "ext/standard/info.h"
 #include "php_inspector.h"
 
+#include "src/file.h"
 #include "src/class.h"
 #include "src/method.h"
 #include "src/function.h"
@@ -45,6 +46,7 @@ PHP_MINIT_FUNCTION(inspector)
 	PHP_MINIT(inspector_class)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_method)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_function)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_MINIT(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_instruction)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_operand)(INIT_FUNC_ARGS_PASSTHRU);
 
