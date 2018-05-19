@@ -235,6 +235,16 @@ PHP_METHOD(InspectorFrame, getVariable)
 	}
 }
 
+static PHP_METHOD(InspectorFrame, getThis) 
+{
+	php_inspector_frame_t *frame =
+		php_inspector_frame_this();
+
+	if (Z_TYPE(frame->frame->This) == IS_OBJECT) {
+		ZVAL_COPY(return_value, &frame->frame->This);
+	}
+}
+
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorFrame_getInstruction_arginfo, 0, 0, Inspector\\InspectorInstruction, 0)
 #else
@@ -288,12 +298,20 @@ ZEND_BEGIN_ARG_INFO_EX(InspectorFrame_getVariable_arginfo, 0, 0, 1)
 	ZEND_ARG_TYPE_INFO(0, num, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFrame_getThis_arginfo, 0, 0, IS_OBJECT, 1)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFrame_getThis_arginfo, 0, 0, IS_OBJECT, "object", 1)
+#endif
+ZEND_END_ARG_INFO()
+
 static zend_function_entry php_inspector_frame_methods[] = {
 	PHP_ME(InspectorFrame, getInstruction, InspectorFrame_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getFunction, InspectorFrame_getFunction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getSymbols, InspectorFrame_getSymbols_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getPrevious, InspectorFrame_getPrevious_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getStack, InspectorFrame_getStack_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFrame, getThis, InspectorFrame_getThis_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getCall, InspectorFrame_getCall_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getParameters, InspectorFrame_getParameters_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFrame, getVariable, InspectorFrame_getVariable_arginfo, ZEND_ACC_PUBLIC)

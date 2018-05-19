@@ -97,6 +97,7 @@ namespace Inspector
 		public function getStack() : array;
 		public function getParameters() : array;
 		public function getVariable(int num) : mixed;
+		public function getThis() : ?object;
 	}
 }
 ```
