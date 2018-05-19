@@ -11,8 +11,6 @@ $test = new stdClass;
 
 $frame = InspectorFrame::getCurrent();
 
-$func = $frame->getFunction();
-
 $stack = $frame->getStack();
 
 if ($stack["test"] === $test) {
