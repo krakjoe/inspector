@@ -16,9 +16,7 @@ $opline = $inspector->getInstruction(2);
 
 $break = new class($opline) extends InspectorBreakPoint {
 	public function hit(InspectorFrame $frame){
-		try {
-			$frame->getVariable(42);
-		} catch (ReflectionException $ex) {
+		if (!$frame->getVariable(42)) {
 			echo "OK";
 		}
 	}

@@ -27,6 +27,7 @@
 
 #include "reflection.h"
 #include "class.h"
+#include "method.h"
 #include "function.h"
 #include "instruction.h"
 #include "operand.h"
@@ -64,9 +65,16 @@ void php_inspector_instruction_cache_flush(zval *function) {
 	}
 }
 
+static zend_always_inline uint32_t php_inspector_instruction_cache_slot(zval *function) {
+	return instanceof_function(Z_OBJCE_P(function), php_inspector_method_ce) ?
+		php_inspector_method_ce->default_properties_count - 1 :
+		php_inspector_function_ce->default_properties_count - 1;
+}
+
 void php_inspector_instruction_factory(zval *function, zend_op *op, zval *return_value) {
-	zval *cache = OBJ_PROP_NUM(Z_OBJ_P(function), 
-			Z_OBJCE_P(function)->default_properties_count - 1);
+	zval *cache = OBJ_PROP_NUM(
+		Z_OBJ_P(function), 
+		php_inspector_instruction_cache_slot(function));
 	zval *cached = NULL;
 	zend_ulong offset = op - php_reflection_object_function(function)->op_array.opcodes;
 

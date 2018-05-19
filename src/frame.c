@@ -22,7 +22,6 @@
 
 #include "php.h"
 
-#include "zend_exceptions.h"
 #include "zend_vm.h"
 
 #include "reflection.h"
@@ -204,7 +203,7 @@ PHP_METHOD(InspectorFrame, getVariable)
 	zend_long num = 0;
 	zval *variable = NULL;
 
-	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "l", &num) != SUCCESS) {
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS(), "l", &num) != SUCCESS) {
 		return;
 	}
 
@@ -213,8 +212,6 @@ PHP_METHOD(InspectorFrame, getVariable)
 	}
 
 	if (num < 0 || function->op_array.last_var < num) {
-		zend_throw_exception_ex(reflection_exception_ptr, 0, 
-			"%d is out of bounds", num);
 		return;
 	}
 
@@ -246,9 +243,9 @@ static PHP_METHOD(InspectorFrame, getThis)
 }
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorFrame_getInstruction_arginfo, 0, 0, Inspector\\InspectorInstruction, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorFrame_getInstruction_arginfo, 0, 0, Inspector\\InspectorInstruction, 1)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFrame_getInstruction_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorInstruction", 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFrame_getInstruction_arginfo, 0, 0, IS_OBJECT, "Inspector\\InspectorInstruction", 1)
 #endif
 ZEND_END_ARG_INFO()
 
@@ -295,7 +292,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFrame_getParameters_arginfo, 0,
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(InspectorFrame_getVariable_arginfo, 0, 0, 1)
-	ZEND_ARG_TYPE_INFO(0, num, IS_LONG, 0)
+	ZEND_ARG_INFO(0, num)
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
