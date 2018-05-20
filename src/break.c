@@ -125,6 +125,15 @@ static inline zend_bool php_inspector_break_disable(php_inspector_break_t *brk) 
 	return zend_hash_index_del(&BRK(breaks), (zend_ulong) instruction->opline) == SUCCESS;
 }
 
+void php_inspector_breaks_disable(zend_op *begin, zend_op *end) {
+	const zend_op *address = begin;
+
+	while (address < end) {
+		zend_hash_index_del(&BRK(breaks), (zend_ulong) address);
+		address++;
+	}
+}
+
 php_inspector_break_t* php_inspector_break_find_ptr(php_inspector_instruction_t *instruction) {
 	return zend_hash_index_find_ptr(&BRK(breaks), (zend_ulong) instruction->opline);;
 }

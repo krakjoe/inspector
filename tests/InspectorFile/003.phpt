@@ -1,5 +1,5 @@
 --TEST--
-InspectorFile pending source
+InspectorFile resolve returns refcounted
 --FILE--
 <?php
 use Inspector\InspectorFile;
@@ -11,26 +11,16 @@ $pending = sprintf("%s/pending.inc", __DIR__);
 
 $inspector = new class($pending) extends InspectorFile {
 	public function onResolve() {
-		$opline = 
-			$this->findFirstInstruction(Instruction::ZEND_ECHO);
-
-		$this->hook = new class($opline) extends BreakPoint {
-			public function hit(Frame $frame) {
-				echo "HIT\n";
-			}
-		};
+		echo "OK\n";
+		return $this;
 	}
-
 };
-
-var_dump($inspector->isPending());
 
 include($pending);
 
-var_dump($inspector->isExpired());
+echo "OK";
 ?>
 --EXPECT--
-bool(true)
-HIT
+OK
 Hello World
-bool(true)
+OK

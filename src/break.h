@@ -48,4 +48,5 @@ php_inspector_break_t* php_inspector_break_find_ptr(php_inspector_instruction_t 
 zend_function *php_inspector_break_source(zend_string *file);
 void php_inspector_break_pending(zend_string *file, zval *function);
 int php_inspector_break_resolve(zval *zv, zend_function *ops);
+void php_inspector_breaks_disable(zend_op *begin, zend_op *end);
 #endif

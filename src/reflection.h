@@ -34,6 +34,7 @@ typedef enum {
 	PHP_REF_TYPE_DYNAMIC_PROPERTY,
 	PHP_REF_TYPE_CLASS_CONSTANT,
 	PHP_REF_TYPE_PENDING,
+	PHP_REF_TYPE_EXPIRED,
 } php_reflection_type_t;
 
 typedef struct {

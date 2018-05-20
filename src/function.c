@@ -31,6 +31,32 @@
 zend_class_entry *php_inspector_function_ce;
 zend_class_entry *php_inspector_file_ce;
 
+static zend_always_inline zend_bool php_inspector_instruction_guard(zval *this) {
+	php_reflection_object_t *reflection =
+		php_reflection_object_fetch(this);
+	zend_function *function = (zend_function*) reflection->ptr;
+
+	if (reflection->ref_type == PHP_REF_TYPE_PENDING) {
+		zend_throw_exception_ex(reflection_exception_ptr, 0, 
+			"InspectorInstructionInterface is pending source");
+		return 0;
+	}
+
+	if (reflection->ref_type == PHP_REF_TYPE_EXPIRED) {
+		zend_throw_exception_ex(reflection_exception_ptr, 0, 
+			"InspectorInstructionInterface expired");
+		return 0;
+	}
+
+	if (function->type != ZEND_USER_FUNCTION) {
+		zend_throw_exception_ex(reflection_exception_ptr, 0,
+			"InspectorInstructionInterface doesn't work on internal functions");
+		return 0;
+	}
+
+	return 1;
+}
+
 void php_inspector_function_factory(zend_function *function, zval *return_value) {
 	php_reflection_object_t *reflection;
 
@@ -55,9 +81,7 @@ PHP_METHOD(InspectorFunction, getInstruction)
 		return;
 	}
 
-	if (function->type != ZEND_USER_FUNCTION) {
-		zend_throw_exception_ex(reflection_exception_ptr, 0, 
-			"cannot get instruction from internal code");
+	if (!php_inspector_instruction_guard(getThis())) {
 		return;
 	}
 
@@ -79,9 +103,7 @@ PHP_METHOD(InspectorFunction, getInstructionCount)
 	zend_function *function =
 		php_reflection_object_function(getThis());
 
-	if (function->type != ZEND_USER_FUNCTION) {
-		zend_throw_exception_ex(reflection_exception_ptr, 0, 
-			"cannot get instruction count from internal code");
+	if (!php_inspector_instruction_guard(getThis())) {
 		return;
 	}
 
@@ -94,9 +116,7 @@ PHP_METHOD(InspectorFunction, getEntryInstruction)
 		php_reflection_object_function(getThis());
 	zend_op *op;
 
-	if (function->type != ZEND_USER_FUNCTION) {
-		zend_throw_exception_ex(reflection_exception_ptr, 0, 
-			"cannot get instruction from internal code");
+	if (!php_inspector_instruction_guard(getThis())) {
 		return;
 	}
 
@@ -121,9 +141,7 @@ PHP_METHOD(InspectorFunction, findFirstInstruction)
 		return;
 	}
 
-	if (function->type != ZEND_USER_FUNCTION) {
-		zend_throw_exception_ex(reflection_exception_ptr, 0, 
-			"cannot get instruction from internal code");
+	if (!php_inspector_instruction_guard(getThis())) {
 		return;
 	}
 
@@ -163,9 +181,7 @@ PHP_METHOD(InspectorFunction, findLastInstruction)
 		return;
 	}
 
-	if (function->type != ZEND_USER_FUNCTION) {
-		zend_throw_exception_ex(reflection_exception_ptr, 0, 
-			"cannot get instruction from internal code");
+	if (!php_inspector_instruction_guard(getThis())) {
 		return;
 	}
 

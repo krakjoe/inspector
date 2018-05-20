@@ -21,6 +21,7 @@
 
 #include "php.h"
 
+#include "zend_exceptions.h"
 #include "zend_interfaces.h"
 
 #include "php_inspector.h"
@@ -32,12 +33,11 @@
 
 zend_class_entry *php_inspector_file_ce;
 
-typedef zend_op_array* (*zend_compile_file_function_t) (zend_file_handle *fh, int type);
+typedef void (*zend_execute_function_t) (zend_execute_data *);
 
-static zend_compile_file_function_t zend_compile_file_function;
+static zend_execute_function_t zend_execute_function;
 
 ZEND_BEGIN_MODULE_GLOBALS(inspector_file)
-	HashTable files;
 	HashTable pending;
 ZEND_END_MODULE_GLOBALS(inspector_file)
 
@@ -53,11 +53,7 @@ static void php_inspector_file_globals_init(zend_inspector_file_globals *IFG) {
 	memset(IFG, 0, sizeof(*IFG));
 }
 
-zend_function* php_inspector_file_source(zend_string *file) {
-	return zend_hash_find_ptr(&IFG(files), file);
-}
-
-static zend_always_inline HashTable* php_inspector_file_pending_list(zend_string *file) {
+static zend_always_inline HashTable* php_inspector_file_pending(zend_string *file) {
 	HashTable *pending = zend_hash_find_ptr(&IFG(pending), file);
 
 	if (!pending) {
@@ -69,18 +65,6 @@ static zend_always_inline HashTable* php_inspector_file_pending_list(zend_string
 	}
 
 	return pending;
-}
-
-void php_inspector_file_pending(zend_string *file, zval *function) {
-	php_reflection_object_t *reflector = 
-		php_reflection_object_fetch(function);
-	HashTable *pending = php_inspector_file_pending_list(file);
-
-	reflector->ref_type = PHP_REF_TYPE_PENDING;
-
-	if (zend_hash_next_index_insert(pending, function)) {
-		Z_ADDREF_P(function);
-	}
 }
 
 int php_inspector_file_resolve(zval *zv, zend_function *ops) {
@@ -101,69 +85,78 @@ int php_inspector_file_resolve(zval *zv, zend_function *ops) {
 
 		if (Z_REFCOUNTED(rv)) {
 			zval_ptr_dtor(&rv);
-		}	
+		}
 	}
+
+	reflector->ref_type = PHP_REF_TYPE_EXPIRED;
 
 	return ZEND_HASH_APPLY_REMOVE;
 }
 
-static zend_op_array* php_inspector_file_compile(zend_file_handle *handle, int type) {
-	zend_op_array *ops = zend_compile_file_function(handle, type);
-	HashTable     *pending;
-	zend_op_array *cache;
+static void php_inspector_file_execute(zend_execute_data *execute_data) {
+	HashTable *pending = EX(func)->op_array.function_name ? NULL :
+		(HashTable*) 
+			zend_hash_find_ptr(
+				&IFG(pending), EX(func)->op_array.filename);
 
-	if (!ops) {
-		return NULL;
-	}
-
-	cache = (zend_op_array*) ecalloc(1, sizeof(zend_op_array));
-
-	memcpy(cache, ops, sizeof(zend_op_array));
-
-	if (!zend_hash_update_ptr(&IFG(files), ops->filename, cache)) {
-		efree(cache);
-
-		return ops;
-	}
-
-	function_add_ref((zend_function*) cache);
-
-	pending = zend_hash_find_ptr(&IFG(pending), ops->filename);
-
-	if (pending) {
+	if (UNEXPECTED(pending)) {
 		zend_hash_apply_with_argument(
 			pending, 
 			(apply_func_arg_t) 
-				php_inspector_file_resolve, cache);
+				php_inspector_file_resolve, &EX(func)->op_array);
 
-		zend_hash_del(&IFG(pending), ops->filename);
+		zend_hash_del(&IFG(pending), EX(func)->op_array.filename);
 	}
 
-	return ops;
+	if (zend_execute_function) {
+		zend_execute_function(execute_data);
+	} else {
+		execute_ex(execute_data);
+	}
+
+	if (UNEXPECTED(pending)) {
+		php_inspector_breaks_disable(
+			EX(func)->op_array.opcodes,
+			EX(func)->op_array.opcodes + EX(func)->op_array.last);
+	}
 }
 
+zend_bool php_inspector_file_executing(zend_string *file, zend_execute_data *frame) {
+	while (frame && (!frame->func || !ZEND_USER_CODE(frame->func->type))) {
+		frame = frame->prev_execute_data;
+	}
+
+	if (frame) {
+		return zend_string_equals(frame->func->op_array.filename, file);
+	}
+	
+	return 0;
+}
 
 static PHP_METHOD(InspectorFile, __construct)
 {
 	php_reflection_object_t *reflection = php_reflection_object_fetch(getThis());
 	zend_string *file = NULL;
-	zend_function *source;
+	HashTable *pending;
 
 	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "S", &file) != SUCCESS) {
 		return;
 	}
 
-	source = php_inspector_file_source(file);
-
-	if (!source) {
-		php_inspector_file_pending(file, getThis());
+	if (php_inspector_file_executing(file, execute_data)) {
+		zend_throw_exception_ex(reflection_exception_ptr, 0,
+			"cannot inspect currently executing file");
 		return;
 	}
 
-	php_inspector_file_resolve(getThis(), source);
-}
+	pending = php_inspector_file_pending(file);
 
-static PHP_METHOD(InspectorFile, onResolve) {}
+	if (zend_hash_next_index_insert(pending, getThis())) {
+		reflection->ref_type = PHP_REF_TYPE_PENDING;
+
+		Z_ADDREF_P(getThis());
+	}
+}
 
 static PHP_METHOD(InspectorFile, isPending)
 {
@@ -173,24 +166,33 @@ static PHP_METHOD(InspectorFile, isPending)
 	RETURN_BOOL(reflector->ref_type == PHP_REF_TYPE_PENDING);
 }
 
+static PHP_METHOD(InspectorFile, isExpired)
+{
+	php_reflection_object_t *reflector =
+		php_reflection_object_fetch(getThis());
+
+	RETURN_BOOL(reflector->ref_type == PHP_REF_TYPE_EXPIRED);
+}
+
 ZEND_BEGIN_ARG_INFO_EX(InspectorFile_construct_arginfo, 0, 0, 1)
 	ZEND_ARG_INFO(0, file)
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFile_isPending_arginfo, 0, 0, _IS_BOOL, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFile_state_arginfo, 0, 0, _IS_BOOL, 0)
 #else
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFile_isPending_arginfo, 0, 0, _IS_BOOL, NULL, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFile_state_arginfo, 0, 0, _IS_BOOL, NULL, 0)
 #endif
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(InspectorFile_onResolve_arginfo, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(InspectorFile_stateChanged_arginfo, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 static zend_function_entry php_inspector_file_methods[] = {
 	PHP_ME(InspectorFile, __construct, InspectorFile_construct_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(InspectorFile, isPending, InspectorFile_isPending_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(InspectorFile, onResolve, InspectorFile_onResolve_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFile, isPending, InspectorFile_state_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFile, isExpired, InspectorFile_state_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ABSTRACT_ME(InspectorFile, onResolve, InspectorFile_stateChanged_arginfo)
 	PHP_FE_END
 };
 
@@ -204,50 +206,34 @@ PHP_MINIT_FUNCTION(inspector_file)
 
 	php_inspector_file_ce = zend_register_internal_class_ex(&ce, php_inspector_function_ce);
 
-	zend_compile_file_function = zend_compile_file;
-	zend_compile_file = php_inspector_file_compile;
-
-	if (!zend_compile_file_function) {
-		zend_compile_file_function = compile_file;
-	}
+	zend_execute_function = zend_execute_ex;
+	zend_execute_ex = php_inspector_file_execute;
 
 	return SUCCESS;
 }
 
 PHP_MSHUTDOWN_FUNCTION(inspector_file)
 {
-	if (zend_compile_file_function != compile_file) {
-		zend_compile_file = zend_compile_file_function;
-	} else {
-		zend_compile_file = NULL;
-	}
+	zend_execute_ex = zend_execute_function;
+
+	return SUCCESS;
 }
 
 /* {{{ */
-static void php_inspector_file_free(zval *zv) {
-	zend_op_array *ops = Z_PTR_P(zv);
-
-	destroy_op_array(ops);
-	efree(ops);
-} /* }}} */
-
-/* {{{ */
-static void php_inspector_file_pending_free(zval *zv) {
+static void php_inspector_file_table_free(zval *zv) {
 	zend_hash_destroy(Z_PTR_P(zv));
 	efree(Z_PTR_P(zv));
 } /* }}} */
 
 PHP_RINIT_FUNCTION(inspector_file)
 {
-	zend_hash_init(&IFG(files), 8, NULL, php_inspector_file_free, 0);
-	zend_hash_init(&IFG(pending), 8, NULL, php_inspector_file_pending_free, 0);
+	zend_hash_init(&IFG(pending), 8, NULL, php_inspector_file_table_free, 0);
 
 	return SUCCESS;
 }
 
 PHP_RSHUTDOWN_FUNCTION(inspector_file)
 {
-	zend_hash_destroy(&IFG(files));
 	zend_hash_destroy(&IFG(pending));
 
 	return SUCCESS;

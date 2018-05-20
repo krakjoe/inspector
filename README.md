@@ -30,10 +30,12 @@ namespace Inspector
 		protected $instructionCache;
 	}
 
-	class InspectorFile extends InspectorFunction {
+	abstract class InspectorFile extends InspectorFunction {
 		public function __construct(string file);
 
-		public function onResolve();
+		public function isPending() : bool;
+
+		abstract public function onResolve() : void;
 
 		protected $instructionCache;
 	}
