@@ -73,8 +73,8 @@ PHP_RINIT_FUNCTION(inspector)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
-	PHP_RINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_RINIT(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_RINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 
 	return SUCCESS;
 }

@@ -120,8 +120,6 @@ static zend_op_array* php_inspector_file_compile(zend_file_handle *handle, int t
 
 	memcpy(cache, ops, sizeof(zend_op_array));
 
-	cache->refcount = NULL;
-
 	if (!zend_hash_update_ptr(&IFG(files), ops->filename, cache)) {
 		efree(cache);
 
@@ -137,6 +135,8 @@ static zend_op_array* php_inspector_file_compile(zend_file_handle *handle, int t
 			pending, 
 			(apply_func_arg_t) 
 				php_inspector_file_resolve, cache);
+
+		zend_hash_del(&IFG(pending), ops->filename);
 	}
 
 	return ops;
