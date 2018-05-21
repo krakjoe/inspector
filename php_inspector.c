@@ -27,6 +27,7 @@
 #include "ext/standard/info.h"
 #include "php_inspector.h"
 
+#include "src/strings.h"
 #include "src/file.h"
 #include "src/class.h"
 #include "src/method.h"
@@ -42,6 +43,7 @@
 PHP_MINIT_FUNCTION(inspector)
 {
 	PHP_MINIT(inspector_instruction_interface)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_MINIT(inspector_strings)(INIT_FUNC_ARGS_PASSTHRU);
 
 	PHP_MINIT(inspector_class)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_method)(INIT_FUNC_ARGS_PASSTHRU);
@@ -61,7 +63,8 @@ PHP_MINIT_FUNCTION(inspector)
 PHP_MSHUTDOWN_FUNCTION(inspector)
 {
 	PHP_MSHUTDOWN(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
-	
+	PHP_MSHUTDOWN(inspector_strings)(INIT_FUNC_ARGS_PASSTHRU);
+
 	return SUCCESS;
 } /* }}} */
 

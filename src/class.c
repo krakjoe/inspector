@@ -24,6 +24,7 @@
 
 #include "zend_exceptions.h"
 
+#include "strings.h"
 #include "reflection.h"
 #include "class.h"
 #include "function.h"
@@ -39,6 +40,15 @@ void php_inspector_class_factory(zend_class_entry *ce, zval *return_value) {
 	reflection = php_reflection_object_fetch(return_value);
 	reflection->ptr = ce;
 	reflection->ref_type = PHP_REF_TYPE_OTHER;
+
+	{
+		zval k, v;
+
+		ZVAL_STR(&k, PHP_INSPECTOR_STRING_NAME);
+		ZVAL_STR(&v, ce->name);
+
+		zend_std_write_property(return_value, &k, &v, NULL);
+	}
 } /* }}} */
 
 /* {{{ */

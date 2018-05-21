@@ -26,6 +26,7 @@
 
 #include "php_inspector.h"
 
+#include "strings.h"
 #include "reflection.h"
 #include "instruction.h"
 #include "function.h"
@@ -70,8 +71,8 @@ static zend_always_inline HashTable* php_inspector_file_pending(zend_string *fil
 int php_inspector_file_resolve(zval *zv, zend_function *ops) {
 	php_reflection_object_t *reflector = 
 		php_reflection_object_fetch(zv);
-	zend_function *onResolve = zend_hash_str_find_ptr(
-		&Z_OBJCE_P(zv)->function_table, ZEND_STRL("onresolve"));
+	zend_function *onResolve = zend_hash_find_ptr(
+		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONRESOLVE);
 
 	reflector->ptr = ops;
 	reflector->ref_type = PHP_REF_TYPE_OTHER;

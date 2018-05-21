@@ -25,6 +25,7 @@
 #include "zend_interfaces.h"
 #include "zend_vm.h"
 
+#include "strings.h"
 #include "reflection.h"
 #include "class.h"
 #include "function.h"
@@ -263,8 +264,8 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 #endif
 			brk->cache.fcc.object = brk->cache.fci.object;
 			brk->cache.fcc.function_handler = (zend_function*)
-				zend_hash_str_find_ptr(
-					&brk->std.ce->function_table, "hit", sizeof("hit")-1);
+				zend_hash_find_ptr(
+					&brk->std.ce->function_table, PHP_INSPECTOR_STRING_HIT);
 		}
 
 		ZVAL_NULL(&rv);

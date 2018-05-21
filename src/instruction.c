@@ -24,6 +24,7 @@
 
 #include "php_inspector.h"
 
+#include "strings.h"
 #include "reflection.h"
 #include "class.h"
 #include "method.h"
@@ -41,17 +42,7 @@ zend_class_entry *php_inspector_instruction_ce;
 zend_class_entry *php_inspector_instruction_interface_ce;
 
 /* {{{ */
-static zend_always_inline const char* php_inspector_opcode_printable(zend_uchar opcode) {
-	const char *name = zend_get_opcode_name(opcode);
-
-	if (!name) {
-		return NULL;
-	}
-
-	return &name[5];
-}
-
-static zend_always_inline const char* php_inspector_opcode_name(php_inspector_instruction_t *instruction) {
+static zend_always_inline zend_string* php_inspector_opcode_name(php_inspector_instruction_t *instruction) {
 	zend_uchar opcode = 0;
 
 	if (instruction->opline->opcode == INSPECTOR_DEBUG_BREAK) {
@@ -63,7 +54,7 @@ static zend_always_inline const char* php_inspector_opcode_name(php_inspector_in
 		opcode = instruction->opline->opcode;
 	}
 
-	return php_inspector_opcode_printable(opcode);
+	return php_inspector_strings_fetch(opcode);
 }
 
 static zend_always_inline zend_uchar php_inspector_opcode_num(php_inspector_instruction_t *instruction) {
@@ -157,14 +148,22 @@ static zend_object* php_inspector_instruction_create(zend_class_entry *ce) {
 static PHP_METHOD(InspectorInstruction, getOpcodeName) {
 	php_inspector_instruction_t *instruction = 
 		php_inspector_instruction_this();
-	const char *name = 
-		php_inspector_opcode_name(instruction);
+	zend_string *name = NULL;
+
+	if (instruction->opline->opcode == INSPECTOR_DEBUG_BREAK) {
+		php_inspector_break_t *brk = 
+			php_inspector_break_find_ptr(instruction);
+
+		name = php_inspector_strings_fetch(brk->opcode);
+	} else {
+		name = php_inspector_strings_fetch(instruction->opline->opcode);
+	}
 
 	if (!name) {
 		return;
 	}
 
-	RETURN_STRING(name);
+	RETURN_STR_COPY(name);
 }
 
 static PHP_METHOD(InspectorInstruction, getOpcode) {
@@ -500,6 +499,8 @@ PHP_MINIT_FUNCTION(inspector_instruction) {
 				name,
 				strlen(name),
 				opcode);
+
+			php_inspector_strings_register_opcode(opcode, &name[5]);
 
 			opcode++;
 		}
