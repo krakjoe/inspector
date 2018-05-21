@@ -196,7 +196,9 @@ static zend_always_inline zend_bool php_inspector_operand_is_class(php_inspector
 		break;
 
 		case ZEND_INIT_STATIC_METHOD_CALL:
+#ifdef ZEND_FETCH_CLASS_CONSTANT
 		case ZEND_FETCH_CLASS_CONSTANT:
+#endif
 		case ZEND_NEW:
 			if (operand->which == PHP_INSPECTOR_OPERAND_OP1 &&
 			    operand->type != IS_CONST && operand->type != IS_UNUSED) {
@@ -204,19 +206,23 @@ static zend_always_inline zend_bool php_inspector_operand_is_class(php_inspector
 			}
 		break;
 
+#ifdef ZEND_UNSET_STATIC_PROP
 		case ZEND_UNSET_STATIC_PROP:
 			if (operand->which == PHP_INSPECTOR_OPERAND_OP2 &&
 			    operand->type != IS_CONST && operand->type != IS_UNUSED) {
 				return 1;
 			}
 		break;
+#endif
 
+#ifdef ZEND_ISSET_ISEMPTY_STATIC_PROP
 		case ZEND_ISSET_ISEMPTY_STATIC_PROP:
 			if (operand->which == PHP_INSPECTOR_OPERAND_OP2 &&
 			    operand->type != IS_UNUSED) {
 				return 1;
 			}
 		break;
+#endif
 
 		case ZEND_DECLARE_INHERITED_CLASS:
 		case ZEND_DECLARE_ANON_INHERITED_CLASS:
