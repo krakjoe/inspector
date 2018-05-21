@@ -106,6 +106,51 @@ static PHP_METHOD(InspectorClass, getMethods)
 		}
 	} ZEND_HASH_FOREACH_END();
 }
+
+static int php_inspector_class_purge(zval *zv, HashTable *filters) {
+	zval *filter;
+	zend_class_entry *ce = Z_PTR_P(zv);
+
+	if (ce->type != ZEND_USER_CLASS) {
+		return ZEND_HASH_APPLY_KEEP;
+	}
+
+	if (!filters) {
+		zend_hash_del(
+			&EG(included_files), ce->info.user.filename);
+
+		return ZEND_HASH_APPLY_REMOVE;
+	}
+
+	ZEND_HASH_FOREACH_VAL(filters, filter) {
+		if (Z_TYPE_P(filter) != IS_STRING || !Z_STRLEN_P(filter)) {
+			continue;
+		}
+
+		if (Z_STRLEN_P(filter) <= ZSTR_LEN(ce->name) &&
+		   strncasecmp(
+			ZSTR_VAL(ce->name),
+			Z_STRVAL_P(filter),
+			Z_STRLEN_P(filter)) == SUCCESS) {
+			return ZEND_HASH_APPLY_KEEP;
+		}
+	} ZEND_HASH_FOREACH_END();
+
+	zend_hash_del(&EG(included_files), ce->info.user.filename);
+
+	return ZEND_HASH_APPLY_REMOVE;
+}
+
+static PHP_METHOD(InspectorClass, purge)
+{
+	HashTable *filters = NULL;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "|H", &filters) != SUCCESS) {
+		return;
+	}
+
+	zend_hash_apply_with_argument(CG(class_table), (apply_func_arg_t) php_inspector_class_purge, filters);
+}
 /* }}} */
 
 /* {{{ */
@@ -119,9 +164,15 @@ ZEND_BEGIN_ARG_INFO_EX(InspectorClass_getMethods_arginfo, 0, 0, 0)
 ZEND_END_ARG_INFO() /* }}} */
 
 /* {{{ */
+ZEND_BEGIN_ARG_INFO_EX(InspectorClass_purge_arginfo, 0, 0, 0)
+	ZEND_ARG_TYPE_INFO(0, filter, IS_ARRAY, 0)
+ZEND_END_ARG_INFO() /* }}} */
+
+/* {{{ */
 static zend_function_entry php_inspector_class_methods[] = {
 	PHP_ME(InspectorClass, getMethod, InspectorClass_getMethod_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorClass, getMethods, InspectorClass_getMethods_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorClass, purge, InspectorClass_purge_arginfo, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_FE_END
 }; /* }}} */
 
