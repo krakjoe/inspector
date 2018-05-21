@@ -19,12 +19,8 @@ $opline = $inspector->findFirstInstruction(InspectorInstruction::ZEND_DECLARE_AN
 
 $op1 = $opline->getOperand(InspectorOperand::OP1);
 
-if ($op1->isJumpTarget() && $op1->getNumber() == 1) {
+if ($op1->isJumpTarget() && $op1->getNumber() >= 1) {
 	echo "OK";
-} else {
-	var_dump($op1->isJumpTarget(),
-		 $op1->getNumber(),
-		 $opline->getOffset());
 }
 ?>
 --EXPECT--
