@@ -484,12 +484,13 @@ PHP_MINIT_FUNCTION(inspector_instruction) {
 	php_inspector_instruction_handlers.free_obj = php_inspector_instruction_destroy;
 
 	{
-		uint32_t opcode = 1;
+		uint32_t opcode = 1,
+			 end    = ZEND_VM_LAST_OPCODE + 1;
 
-		while (opcode < ZEND_VM_LAST_OPCODE + 1) {
+		while (opcode < end) {
 			const char *name = zend_get_opcode_name(opcode);
 
-			if (!name || !name[0]) {
+			if (!name) {
 				opcode++;
 				continue;
 			}
