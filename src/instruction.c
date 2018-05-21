@@ -41,6 +41,44 @@ zend_class_entry *php_inspector_instruction_ce;
 zend_class_entry *php_inspector_instruction_interface_ce;
 
 /* {{{ */
+static zend_always_inline const char* php_inspector_opcode_printable(zend_uchar opcode) {
+	const char *name = zend_get_opcode_name(opcode);
+
+	if (!name) {
+		return NULL;
+	}
+
+	return &name[5];
+}
+
+static zend_always_inline const char* php_inspector_opcode_name(php_inspector_instruction_t *instruction) {
+	zend_uchar opcode = 0;
+
+	if (instruction->opline->opcode == INSPECTOR_DEBUG_BREAK) {
+		php_inspector_break_t *brk = 
+			php_inspector_break_find_ptr(instruction);
+
+		opcode = brk->opcode;
+	} else if (instruction->opline->opcode) {
+		opcode = instruction->opline->opcode;
+	}
+
+	return php_inspector_opcode_printable(opcode);
+}
+
+static zend_always_inline zend_uchar php_inspector_opcode_num(php_inspector_instruction_t *instruction) {
+	if (instruction->opline->opcode == INSPECTOR_DEBUG_BREAK) {
+		php_inspector_break_t *brk = 
+			php_inspector_break_find_ptr(instruction);
+
+		return brk->opcode;
+	} else {
+		return instruction->opline->opcode;
+	}
+}
+/* }}} */
+
+/* {{{ */
 static void php_inspector_instruction_destroy(zend_object *object) {
 	php_inspector_instruction_t *instruction = 
 		php_inspector_instruction_fetch_from(object);
@@ -117,37 +155,23 @@ static zend_object* php_inspector_instruction_create(zend_class_entry *ce) {
 
 /* {{{ */
 static PHP_METHOD(InspectorInstruction, getOpcodeName) {
-	php_inspector_instruction_t *instruction = php_inspector_instruction_this();
-	const char *name = NULL;
-
-	if (instruction->opline->opcode == INSPECTOR_DEBUG_BREAK) {
-		php_inspector_break_t *brk = 
-			php_inspector_break_find_ptr(instruction);
-
-		name = zend_get_opcode_name(brk->opcode);
-	} else if (instruction->opline->opcode) {
-		name = zend_get_opcode_name
-			(instruction->opline->opcode);
-	}
+	php_inspector_instruction_t *instruction = 
+		php_inspector_instruction_this();
+	const char *name = 
+		php_inspector_opcode_name(instruction);
 
 	if (!name) {
 		return;
 	}
 
-	RETURN_STRING((char*)&name[5]);
+	RETURN_STRING(name);
 }
 
 static PHP_METHOD(InspectorInstruction, getOpcode) {
-	php_inspector_instruction_t *instruction = php_inspector_instruction_this();
+	php_inspector_instruction_t *instruction = 
+		php_inspector_instruction_this();
 
-	if (instruction->opline->opcode == INSPECTOR_DEBUG_BREAK) {
-		php_inspector_break_t *brk = 
-			php_inspector_break_find_ptr(instruction);
-
-		RETURN_LONG(brk->opcode);
-	} else {
-		RETURN_LONG(instruction->opline->opcode);
-	}
+	RETURN_LONG(php_inspector_opcode_num(instruction));
 }
 
 static PHP_METHOD(InspectorInstruction, getOperand) {
@@ -226,7 +250,7 @@ static PHP_METHOD(InspectorInstruction, getExtendedValue) {
 		case ZEND_ASSIGN_POW:
 		case ZEND_INCLUDE_OR_EVAL:
 			if (instruction->opline->extended_value) {
-				RETURN_STRING(zend_get_opcode_name(instruction->opline->extended_value));
+				RETURN_LONG(instruction->opline->extended_value);
 			}
 		break;
 
