@@ -296,11 +296,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorFrame_getInstruction_arginfo, 0
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(InspectorFrame_setInstruction_arginfo, 0, 0, 1)
-#if PHP_VERSION_ID >= 70200
 	ZEND_ARG_OBJ_INFO(0, name, Inspector\\InspectorInstruction, 0)
-#else
-	ZEND_ARG_OBJ_INFO(0, name, "Inspector\\InspectorInstruction", 0)
-#endif
 ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
