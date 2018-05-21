@@ -244,10 +244,6 @@ PHP_METHOD(InspectorFrame, getVariable)
 	variable = ZEND_CALL_VAR_NUM(frame->frame, num);
 
 	if (Z_TYPE_P(variable) == IS_UNDEF) {
-		if (Z_PTR_P(variable)) {
-			/* not nice */
-			php_inspector_class_factory(Z_PTR_P(variable), return_value);
-		}
 		return;
 	}
 

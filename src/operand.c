@@ -29,6 +29,7 @@
 #include "instruction.h"
 #include "operand.h"
 #include "frame.h"
+#include "break.h"
 
 static zend_object_handlers php_inspector_operand_handlers;
 zend_class_entry *php_inspector_operand_ce;
@@ -165,6 +166,70 @@ static PHP_METHOD(InspectorOperand, getWhich) {
 	RETURN_LONG(operand->which);
 }
 
+static zend_always_inline zend_bool php_inspector_operand_is_class(php_inspector_instruction_t *instruction, php_inspector_operand_t *operand) {
+	php_inspector_break_t *brk = 
+		php_inspector_break_find_ptr(instruction);
+
+	switch (brk ? brk->opcode : instruction->opline->opcode) {
+		case ZEND_FETCH_CLASS:
+		case ZEND_DECLARE_CLASS:
+		case ZEND_DECLARE_ANON_CLASS:
+			if (operand->which == PHP_INSPECTOR_OPERAND_RESULT) {
+				return 1;
+			}
+		break;
+
+		case ZEND_ADD_INTERFACE:
+		case ZEND_ADD_TRAIT:
+		case ZEND_BIND_TRAITS:
+		case ZEND_VERIFY_ABSTRACT_CLASS:
+			if (operand->which == PHP_INSPECTOR_OPERAND_OP1) {
+				return 1;
+			}
+		break;
+
+		case ZEND_DECLARE_INHERITED_CLASS_DELAYED:
+		case ZEND_INSTANCEOF:
+			if (operand->which == PHP_INSPECTOR_OPERAND_OP2) {
+				return 1;
+			}
+		break;
+
+		case ZEND_INIT_STATIC_METHOD_CALL:
+		case ZEND_FETCH_CLASS_CONSTANT:
+		case ZEND_NEW:
+			if (operand->which == PHP_INSPECTOR_OPERAND_OP1 &&
+			    operand->type != IS_CONST && operand->type != IS_UNUSED) {
+				return 1;
+			}
+		break;
+
+		case ZEND_UNSET_STATIC_PROP:
+			if (operand->which == PHP_INSPECTOR_OPERAND_OP2 &&
+			    operand->type != IS_CONST && operand->type != IS_UNUSED) {
+				return 1;
+			}
+		break;
+
+		case ZEND_ISSET_ISEMPTY_STATIC_PROP:
+			if (operand->which == PHP_INSPECTOR_OPERAND_OP2 &&
+			    operand->type != IS_UNUSED) {
+				return 1;
+			}
+		break;
+
+		case ZEND_DECLARE_INHERITED_CLASS:
+		case ZEND_DECLARE_ANON_INHERITED_CLASS:
+			if (operand->which == PHP_INSPECTOR_OPERAND_RESULT ||
+			    operand->which == PHP_INSPECTOR_OPERAND_OP2) {
+				return 1;
+			}
+		break;
+	}
+
+	return 0;
+}
+
 static PHP_METHOD(InspectorOperand, getValue) {
 	php_inspector_operand_t *operand = 
 		php_inspector_operand_this();
@@ -180,17 +245,14 @@ static PHP_METHOD(InspectorOperand, getValue) {
 	}
 
 	if (zend_op_type(operand->type) == IS_CONST) {
+		znode_op op = *operand->op;
+
 #if PHP_VERSION_ID >= 70300
-		ZEND_PASS_TWO_UNDO_CONSTANT(function, instruction->opline, *operand->op);
+		ZEND_PASS_TWO_UNDO_CONSTANT(function, instruction->opline, op);
 #else
-		ZEND_PASS_TWO_UNDO_CONSTANT(function, *operand->op);
+		ZEND_PASS_TWO_UNDO_CONSTANT(function, op);
 #endif
-		ZVAL_COPY(return_value, &function->literals[operand->op->num]);
-#if PHP_VERSION_ID >= 70300
-		ZEND_PASS_TWO_UPDATE_CONSTANT(function, instruction->opline, *operand->op);
-#else
-		ZEND_PASS_TWO_UPDATE_CONSTANT(function, *operand->op);
-#endif
+		ZVAL_COPY(return_value, &function->literals[op.num]);
 	} else if(rt) {
 		php_inspector_frame_t *frame = 
 			php_inspector_frame_fetch(rt);
@@ -198,7 +260,7 @@ static PHP_METHOD(InspectorOperand, getValue) {
 			ZEND_CALL_VAR(frame->frame, operand->op->var);
 
 		if (Z_ISUNDEF_P(value)) {
-			if (Z_PTR_P(value)) {
+			if (Z_PTR_P(value) && php_inspector_operand_is_class(instruction, operand)) {
 				php_inspector_class_factory(Z_PTR_P(value), return_value);
 			}
 			return;
@@ -231,19 +293,22 @@ static PHP_METHOD(InspectorOperand, getNumber) {
 		php_inspector_operand_this();
 	php_inspector_instruction_t *instruction = 
 		php_inspector_instruction_fetch_from(Z_OBJ(operand->instruction));
+	php_inspector_break_t *brk = php_inspector_break_find_ptr(instruction);
+
 	zend_op_array *function = 
 		(zend_op_array*)
 			php_reflection_object_function(&instruction->function);
 
-	switch(instruction->opline->opcode) {
+	switch(brk ? brk->opcode : instruction->opline->opcode) {
 		case ZEND_JMP:
 		case ZEND_FAST_CALL:
 		case ZEND_DECLARE_ANON_CLASS:
 		case ZEND_DECLARE_ANON_INHERITED_CLASS:
 			if (operand->which == PHP_INSPECTOR_OPERAND_OP1) {
-				ZEND_PASS_TWO_UNDO_JMP_TARGET(function, instruction->opline, *operand->op);
-				ZVAL_LONG(return_value, operand->op->num);
-				ZEND_PASS_TWO_UPDATE_JMP_TARGET(function, instruction->opline, *operand->op);
+				znode_op op = *operand->op;
+
+				ZEND_PASS_TWO_UNDO_JMP_TARGET(function, instruction->opline, op);
+				ZVAL_LONG(return_value, op.num);
 				break;
 			}
 		
@@ -258,33 +323,31 @@ static PHP_METHOD(InspectorOperand, getNumber) {
 		case ZEND_FE_RESET_RW:
 		case ZEND_ASSERT_CHECK:
 			if (operand->which == PHP_INSPECTOR_OPERAND_OP2) {
-				ZEND_PASS_TWO_UNDO_JMP_TARGET(function, instruction->opline, *operand->op);
-				ZVAL_LONG(return_value, operand->op->num);
-				ZEND_PASS_TWO_UPDATE_JMP_TARGET(function, instruction->opline, *operand->op);
+				znode_op op = *operand->op;;
+
+				ZEND_PASS_TWO_UNDO_JMP_TARGET(function, instruction->opline, op);
+
+				ZVAL_LONG(return_value, op.num);
 				break;
 			}
 
 		default: {
 			if (zend_op_type(operand->type) == IS_CONST) {
+				znode_op op = *operand->op;
 #if PHP_VERSION_ID >= 70300
-				ZEND_PASS_TWO_UNDO_CONSTANT(function, instruction->opline, *operand->op);
+				ZEND_PASS_TWO_UNDO_CONSTANT(function, instruction->opline, op);
 #else
-				ZEND_PASS_TWO_UNDO_CONSTANT(function, *operand->op);
+				ZEND_PASS_TWO_UNDO_CONSTANT(function, op);
 #endif
-				ZVAL_LONG(return_value, operand->op->num);
-#if PHP_VERSION_ID >= 70300
-				ZEND_PASS_TWO_UPDATE_CONSTANT(function, instruction->opline, *operand->op);
-#else
-				ZEND_PASS_TWO_UPDATE_CONSTANT(function, *operand->op);
-#endif
+				ZVAL_LONG(return_value, op.num);
 			} else if (zend_op_type(operand->type) == IS_TMP_VAR || IS_VAR == zend_op_type(operand->type)) {
 				ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num - function->last_var));
 			} else if (zend_op_type(operand->type) == IS_CV) {
 				ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num));
 			}
-		}	
+		}
 	}
-} 
+}
 
 static PHP_METHOD(InspectorOperand, getInstruction) {
 	php_inspector_operand_t *operand = 
