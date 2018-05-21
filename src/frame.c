@@ -214,19 +214,8 @@ PHP_METHOD(InspectorFrame, getParameters)
 	array_init_size(return_value, ZEND_CALL_NUM_ARGS(frame->frame));
 
 	while (param < end) {
-		zval *val = param;
-		
-		if (Z_TYPE_P(val) == IS_UNDEF) {
-			param++;
-			continue;
-		}
-
-		if (Z_TYPE_P(val) == IS_INDIRECT) {
-			val = Z_INDIRECT_P(val);
-		}
-
-		add_next_index_zval(return_value, val);
-		Z_TRY_ADDREF_P(val);
+		add_next_index_zval(return_value, param);
+		Z_TRY_ADDREF_P(param);
 		param++;
 	}
 }

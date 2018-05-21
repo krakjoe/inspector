@@ -5,6 +5,7 @@ InspectorFrame getParameters
 use Inspector\InspectorFunction;
 use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
+use Inspector\InspectorInstruction;
 
 $function = function($a, $b) {
 	$a + $b;
@@ -12,7 +13,7 @@ $function = function($a, $b) {
 
 $inspector = new InspectorFunction($function);
 
-$opline = $inspector->getInstruction(2);
+$opline = $inspector->findFirstInstruction(InspectorInstruction::ZEND_ADD);
 
 $break = new class($opline) extends InspectorBreakPoint {
 	public function hit(InspectorFrame $frame){
