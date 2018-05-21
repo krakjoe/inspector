@@ -21,6 +21,8 @@ $op1 = $opline->getOperand(InspectorOperand::OP1);
 
 if ($op1->isJumpTarget() && $op1->getNumber() == 3) {
 	echo "OK";
+} else {
+	var_dump($op1->getNumber(), $opline->getOffset());
 }
 ?>
 --EXPECT--
