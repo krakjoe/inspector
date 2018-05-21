@@ -299,6 +299,10 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 		return ZEND_USER_OPCODE_DISPATCH_TO | ZEND_HANDLE_EXCEPTION;
 	}
 
+	if (EX(opline) != instruction) {
+		return ZEND_USER_OPCODE_CONTINUE;
+	}
+
 	return ZEND_USER_OPCODE_DISPATCH_TO | brk->opcode;
 }
 

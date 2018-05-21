@@ -99,6 +99,7 @@ namespace Inspector
 	final class InspectorFrame {
 		public function getFunction() : InspectorInstructionInterface;
 		public function getInstruction() : ?InspectorInstruction;
+		public function setInstruction(InspectorInstruction instruction);
 		public function getSymbols() : ?array;
 		public function getPrevious() : ?InspectorFrame;
 		public function getCall() : ?InspectorFrame;
