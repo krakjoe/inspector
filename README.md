@@ -44,7 +44,7 @@ namespace Inspector
 		public function getInstruction(int num = 0) : InspectorInstruction;
 		public function getInstructionCount() : int;
 		public function getEntryInstruction() : ?InspectorInstruction;
-		public function findNextInstruction(int opcode, int offset = 0) : ?InspectorInstruction;
+		public function findFirstInstruction(int opcode, int offset = 0) : ?InspectorInstruction;
 		public function findLastInstruction(int opcode, int offset = -1) : ?InspectorInstruction;
 		public function flushInstructionCache();
 	}
