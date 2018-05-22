@@ -24,6 +24,7 @@ typedef enum _php_inspector_string_t {
 	PHP_INSPECTOR_STR_NAME = -2,
 	PHP_INSPECTOR_STR_CLASS = -3,
 	PHP_INSPECTOR_STR_ONRESOLVE = -4,
+	PHP_INSPECTOR_STR_INSTRUCTION_CACHE = -5,
 } php_inspector_string_t;
 
 PHP_MINIT_FUNCTION(inspector_strings);
@@ -32,9 +33,10 @@ PHP_MSHUTDOWN_FUNCTION(inspector_strings);
 zend_string* php_inspector_strings_fetch(php_inspector_string_t id);
 void php_inspector_strings_register_opcode(zend_uchar opcode, const char *name);
 
-#define PHP_INSPECTOR_STRING_HIT         php_inspector_strings_fetch(PHP_INSPECTOR_STR_HIT)
-#define PHP_INSPECTOR_STRING_NAME        php_inspector_strings_fetch(PHP_INSPECTOR_STR_NAME)
-#define PHP_INSPECTOR_STRING_CLASS       php_inspector_strings_fetch(PHP_INSPECTOR_STR_CLASS)
-#define PHP_INSPECTOR_STRING_ONRESOLVE   php_inspector_strings_fetch(PHP_INSPECTOR_STR_ONRESOLVE)
+#define PHP_INSPECTOR_STRING_HIT         	php_inspector_strings_fetch(PHP_INSPECTOR_STR_HIT)
+#define PHP_INSPECTOR_STRING_NAME        	php_inspector_strings_fetch(PHP_INSPECTOR_STR_NAME)
+#define PHP_INSPECTOR_STRING_CLASS       	php_inspector_strings_fetch(PHP_INSPECTOR_STR_CLASS)
+#define PHP_INSPECTOR_STRING_ONRESOLVE  	 php_inspector_strings_fetch(PHP_INSPECTOR_STR_ONRESOLVE)
+#define PHP_INSPECTOR_STRING_INSTRUCTION_CACHE   php_inspector_strings_fetch(PHP_INSPECTOR_STR_INSTRUCTION_CACHE)
 
 #endif

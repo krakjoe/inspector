@@ -84,11 +84,51 @@ static void php_inspector_instruction_destroy(zend_object *object) {
 		zval_ptr_dtor(&instruction->next);
 }
 
-void php_inspector_instruction_cache_flush(zval *function) {
-	zval *cache = OBJ_PROP_NUM(Z_OBJ_P(function), 
-			Z_OBJCE_P(function)->default_properties_count - 1);
+zval *php_inspector_instruction_cache_fetch(zval *function) {
+	php_reflection_object_t *reflection =
+		php_reflection_object_fetch(function);
+	zval k;
+	zend_class_entry *scope;
+	zval *cache;
 
-	if (Z_TYPE_P(cache) == IS_ARRAY) {
+	if (EXPECTED(Z_TYPE(reflection->dummy) == IS_ARRAY)) {
+		return &reflection->dummy;
+	}
+
+	ZVAL_STR(&k, 
+		PHP_INSPECTOR_STRING_INSTRUCTION_CACHE);
+
+#if PHP_VERSION_ID >= 70100
+	scope = EG(fake_scope);
+
+	EG(fake_scope) = Z_OBJCE_P(function);
+#else
+	scope = EG(scope);
+
+	EG(scope) = Z_OBJCE_P(function);
+#endif
+
+	cache = Z_OBJ_HT_P(function)
+		->read_property(
+			function, &k, BP_VAR_RW, NULL, &reflection->dummy);
+
+#if PHP_VERSION_ID >= 70100
+	EG(fake_scope) = scope;
+#else
+	EG(scope) = scope;
+#endif
+
+
+	return cache;
+}
+
+void php_inspector_instruction_cache_flush(zval *function) {
+	php_reflection_object_t *reflection =
+		php_reflection_object_fetch(function);
+	zval *cache = 
+		php_inspector_instruction_cache_fetch(function);
+
+	if (EXPECTED(cache && Z_TYPE_P(cache) == IS_ARRAY)) {
 		zend_hash_clean(Z_ARRVAL_P(cache));
 	}
 }
@@ -100,9 +140,7 @@ static zend_always_inline uint32_t php_inspector_instruction_cache_slot(zval *fu
 }
 
 void php_inspector_instruction_factory(zval *function, zend_op *op, zval *return_value) {
-	zval *cache = OBJ_PROP_NUM(
-		Z_OBJ_P(function), 
-		php_inspector_instruction_cache_slot(function));
+	zval *cache = php_inspector_instruction_cache_fetch(function);
 	zval *cached = NULL;
 	zend_ulong offset = op - php_reflection_object_function(function)->op_array.opcodes;
 
