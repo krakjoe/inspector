@@ -18,6 +18,8 @@ namespace Inspector
 	class InspectorClass extends \ReflectionClass {
 		public function getMethod(string name) : InspectorMethod;
 		public function getMethods(int filter = 0) : array;
+
+		public static function purge(array filters = []);
 	}
 
 	class InspectorMethod extends \ReflectionMethod implements InspectorInstructionInterface {
@@ -27,6 +29,8 @@ namespace Inspector
 	}
 
 	class InspectorFunction extends \ReflectionFunction implements InspectorInstructionInterface {
+		public static function purge(array filters = []);
+
 		protected $instructionCache;
 	}
 

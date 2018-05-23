@@ -234,6 +234,55 @@ PHP_METHOD(InspectorFunction, flushInstructionCache)
 	php_inspector_instruction_cache_flush(getThis());
 }
 
+static int php_inspector_function_purge(zval *zv, HashTable *filters) {
+	zval *filter;
+	zend_function *function = Z_PTR_P(zv);
+
+	if (!ZEND_USER_CODE(function->type)) {
+		return ZEND_HASH_APPLY_KEEP;
+	}
+
+	if (!function->common.function_name || !filters) {
+		zend_hash_del(
+			&EG(included_files), function->op_array.filename);
+		return ZEND_HASH_APPLY_REMOVE;
+	}
+
+	ZEND_HASH_FOREACH_VAL(filters, filter) {
+		if (Z_TYPE_P(filter) != IS_STRING || !Z_STRLEN_P(filter)) {
+			continue;
+		}
+
+		if (Z_STRLEN_P(filter) <= ZSTR_LEN(function->common.function_name) &&
+		   strncasecmp(
+			ZSTR_VAL(function->common.function_name), 
+			Z_STRVAL_P(filter), 
+			ZSTR_LEN(function->common.function_name)) == SUCCESS) {
+			return ZEND_HASH_APPLY_KEEP;
+		}
+	} ZEND_HASH_FOREACH_END();
+
+	zend_hash_del(
+		&EG(included_files), function->op_array.filename);
+
+	return ZEND_HASH_APPLY_REMOVE;
+}
+
+static PHP_METHOD(InspectorFunction, purge)
+{
+	HashTable *filters = NULL;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "|H", &filters) != SUCCESS) {
+		return;
+	}
+
+	zend_hash_apply_with_argument(CG(function_table), (apply_func_arg_t) php_inspector_function_purge, filters);
+}
+
+ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_purge_arginfo, 0, 0, 0)
+	ZEND_ARG_TYPE_INFO(0, filter, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
 static zend_function_entry php_inspector_function_methods[] = {
 	PHP_ME(InspectorFunction, getInstruction, InspectorFunction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getInstructionCount, InspectorFunction_getInstructionCount_arginfo, ZEND_ACC_PUBLIC)
@@ -241,6 +290,7 @@ static zend_function_entry php_inspector_function_methods[] = {
 	PHP_ME(InspectorFunction, findFirstInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, findLastInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, flushInstructionCache, InspectorFunction_flush_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, purge, InspectorFunction_purge_arginfo, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_FE_END
 };
 
