@@ -20,7 +20,6 @@ $inspector = new class($pending) extends InspectorFile {
 			}
 		};
 	}
-
 };
 
 var_dump($inspector->isPending());

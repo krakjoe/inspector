@@ -105,7 +105,7 @@ static void php_inspector_break_destroy(zend_object *zo) {
 
 	if (Z_TYPE(brk->instruction) != IS_UNDEF) {
 		if (BRK(state) != INSPECTOR_BREAK_SHUTDOWN) {
-			zend_hash_index_del(&BRK(breaks), (zend_ulong) instruction->opline);	
+			zend_hash_index_del(&BRK(breaks), (zend_ulong) instruction->opline);
 		}
 		zval_ptr_dtor(&brk->instruction);
 	}
@@ -116,6 +116,12 @@ static void php_inspector_break_destroy(zend_object *zo) {
 static inline zend_bool php_inspector_break_enable(php_inspector_break_t *brk) {
 	php_inspector_instruction_t *instruction =
 		php_inspector_instruction_fetch(&brk->instruction);
+	php_reflection_object_t *reflection =
+		php_reflection_object_fetch(&instruction->function);
+
+	if (reflection->ref_type == PHP_REF_TYPE_EXPIRED) {
+		return 0;
+	}
 
 	if (!zend_hash_index_add_ptr(&BRK(breaks), (zend_ulong) instruction->opline, brk)) {
 		return 0;
@@ -460,10 +466,14 @@ static void php_inspector_break_unset(zval *zv) {
 	php_inspector_break_t *brk = Z_PTR_P(zv);
 	php_inspector_instruction_t *instruction = 
 		php_inspector_instruction_fetch(&brk->instruction);
+	php_reflection_object_t *reflection =
+		php_reflection_object_fetch(&instruction->function);
 
-	instruction->opline->opcode = brk->opcode;
+	if (reflection->ref_type != PHP_REF_TYPE_EXPIRED) {
+		instruction->opline->opcode = brk->opcode;
 
-	zend_vm_set_opcode_handler(instruction->opline);
+		zend_vm_set_opcode_handler(instruction->opline);
+	}
 } /* }}} */
 
 /* {{{ */

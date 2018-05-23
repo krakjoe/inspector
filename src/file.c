@@ -107,6 +107,9 @@ static zend_op_array* php_inspector_file_compile(zend_file_handle *fh, int type)
 			zend_hash_find_ptr(&IFG(pending), op_array->filename);
 
 	if (UNEXPECTED(pending)) {
+		/* shouldn't be necessary, may be turned into assertion */
+		php_inspector_breaks_disable(op_array->opcodes, op_array->opcodes + op_array->last);
+
 		zend_hash_apply_with_argument(
 			pending, 
 			(apply_func_arg_t) 
