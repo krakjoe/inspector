@@ -145,9 +145,8 @@ static PHP_METHOD(InspectorClass, purge)
 {
 	HashTable *filters = NULL;
 
-	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "|H", &filters) != SUCCESS) {
-		return;
-	}
+	zend_parse_parameters_throw(
+		ZEND_NUM_ARGS(), "|H", &filters);
 
 	zend_hash_apply_with_argument(CG(class_table), (apply_func_arg_t) php_inspector_class_purge, filters);
 }

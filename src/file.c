@@ -40,6 +40,11 @@ static zend_compile_file_function_t zend_compile_file_function;
 
 ZEND_BEGIN_MODULE_GLOBALS(inspector_file)
 	HashTable pending;
+
+	struct {
+		HashTable *classes;
+		HashTable *functions;
+	} global;
 ZEND_END_MODULE_GLOBALS(inspector_file)
 
 ZEND_DECLARE_MODULE_GLOBALS(inspector_file);
@@ -108,7 +113,14 @@ static zend_op_array* php_inspector_file_compile(zend_file_handle *fh, int type)
 
 	if (UNEXPECTED(pending)) {
 		/* shouldn't be necessary, may be turned into assertion */
+		HashTable *classes = CG(class_table),
+			  *functions = CG(function_table);
+
 		php_inspector_breaks_disable(op_array->opcodes, op_array->opcodes + op_array->last);
+
+		/* opcache messes with tables */
+		EG(class_table) = IFG(global).classes;
+		EG(function_table) = IFG(global).functions;
 
 		zend_hash_apply_with_argument(
 			pending, 
@@ -116,6 +128,9 @@ static zend_op_array* php_inspector_file_compile(zend_file_handle *fh, int type)
 				php_inspector_file_resolve, op_array);
 
 		zend_hash_del(&IFG(pending), op_array->filename);
+
+		EG(class_table) = classes;
+		EG(function_table) = functions;
 	}
 
 	return op_array;
@@ -228,6 +243,9 @@ static void php_inspector_file_table_free(zval *zv) {
 PHP_RINIT_FUNCTION(inspector_file)
 {
 	zend_hash_init(&IFG(pending), 8, NULL, php_inspector_file_table_free, 0);
+
+	IFG(global).classes = EG(class_table);
+	IFG(global).functions = EG(function_table);
 
 	return SUCCESS;
 }
