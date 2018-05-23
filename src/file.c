@@ -34,17 +34,12 @@
 
 zend_class_entry *php_inspector_file_ce;
 
-typedef zend_op_array* (*zend_compile_file_function_t)(zend_file_handle *, int);
+typedef void (*zend_execute_function_t)(zend_execute_data *);
 
-static zend_compile_file_function_t zend_compile_file_function;
+static zend_execute_function_t zend_execute_function;
 
 ZEND_BEGIN_MODULE_GLOBALS(inspector_file)
 	HashTable pending;
-
-	struct {
-		HashTable *classes;
-		HashTable *functions;
-	} global;
 ZEND_END_MODULE_GLOBALS(inspector_file)
 
 ZEND_DECLARE_MODULE_GLOBALS(inspector_file);
@@ -99,41 +94,22 @@ int php_inspector_file_resolve(zval *zv, zend_function *ops) {
 	return ZEND_HASH_APPLY_REMOVE;
 }
 
-static zend_op_array* php_inspector_file_compile(zend_file_handle *fh, int type) {
-	zend_op_array *op_array = zend_compile_file_function(fh, type);
-	HashTable *pending;
-
-	if (!op_array) {
-		return NULL;
-	}
-
-	pending = 
+static zend_op_array* php_inspector_file_execute(zend_execute_data *execute_data) {
+	zend_op_array *ops = &EX(func)->op_array;
+	HashTable *pending = zend_hash_num_elements(&IFG(pending)) ?
 		(HashTable*) 
-			zend_hash_find_ptr(&IFG(pending), op_array->filename);
+			zend_hash_find_ptr(&IFG(pending), ops->filename) : NULL;
 
 	if (UNEXPECTED(pending)) {
-		/* shouldn't be necessary, may be turned into assertion */
-		HashTable *classes = CG(class_table),
-			  *functions = CG(function_table);
-
-		php_inspector_breaks_disable(op_array->opcodes, op_array->opcodes + op_array->last);
-
-		/* opcache messes with tables */
-		EG(class_table) = IFG(global).classes;
-		EG(function_table) = IFG(global).functions;
-
 		zend_hash_apply_with_argument(
 			pending, 
 			(apply_func_arg_t) 
-				php_inspector_file_resolve, op_array);
+				php_inspector_file_resolve, ops);
 
-		zend_hash_del(&IFG(pending), op_array->filename);
-
-		EG(class_table) = classes;
-		EG(function_table) = functions;
+		zend_hash_del(&IFG(pending), ops->filename);
 	}
 
-	return op_array;
+	zend_execute_function(execute_data);
 }
 
 zend_bool php_inspector_file_executing(zend_string *file, zend_execute_data *frame) {
@@ -221,15 +197,15 @@ PHP_MINIT_FUNCTION(inspector_file)
 
 	php_inspector_file_ce = zend_register_internal_class_ex(&ce, php_inspector_function_ce);
 
-	zend_compile_file_function = zend_compile_file;
-	zend_compile_file = php_inspector_file_compile;
+	zend_execute_function = zend_execute_ex;
+	zend_execute_ex = php_inspector_file_execute;
 
 	return SUCCESS;
 }
 
 PHP_MSHUTDOWN_FUNCTION(inspector_file)
 {
-	zend_compile_file = zend_compile_file_function;
+	zend_execute_ex = zend_execute_function;
 
 	return SUCCESS;
 }
@@ -243,9 +219,6 @@ static void php_inspector_file_table_free(zval *zv) {
 PHP_RINIT_FUNCTION(inspector_file)
 {
 	zend_hash_init(&IFG(pending), 8, NULL, php_inspector_file_table_free, 0);
-
-	IFG(global).classes = EG(class_table);
-	IFG(global).functions = EG(function_table);
 
 	return SUCCESS;
 }
