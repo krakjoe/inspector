@@ -367,18 +367,35 @@ static zend_always_inline int php_inspector_break_vm_dispatch(zend_uchar opcode,
 	return ZEND_USER_OPCODE_DISPATCH;
 }
 
-static int php_inspector_break_vm_persist(zend_execute_data *execute_data) {	
-	zval *name = RT_CONSTANT(&EX(func)->op_array, EX(opline)->op2);
+static int php_inspector_break_vm_persist(zend_execute_data *execute_data) {
+	zval *op1 = RT_CONSTANT(&EX(func)->op_array, EX(opline)->op1);
+	zval *op2 = RT_CONSTANT(&EX(func)->op_array, EX(opline)->op2);
 	HashTable *table = 
 		(EX(opline)->opcode == ZEND_DECLARE_FUNCTION) ? 
 			CG(function_table) : CG(class_table);
 
-	if (UNEXPECTED(name && Z_TYPE_P(name) == IS_STRING)) {
-		if (zend_hash_exists(table, Z_STR_P(name))) {
-			EX(opline)++;
+	switch (EX(opline)->opcode) {
+		case ZEND_DECLARE_CLASS:
+		case ZEND_DECLARE_FUNCTION:
+			if (zend_hash_exists(table, Z_STR_P(op2))) {
+				EX(opline)++;
 
-			return ZEND_USER_OPCODE_CONTINUE;
-		}
+				return ZEND_USER_OPCODE_CONTINUE;
+			}
+		break;
+
+		case ZEND_DECLARE_INHERITED_CLASS: 
+		case ZEND_DECLARE_INHERITED_CLASS_DELAYED: {
+			zend_class_entry *ce = 
+				(zend_class_entry*) 
+					zend_hash_find_ptr(CG(class_table), Z_STR_P(op1));
+			zend_class_entry *parent = Z_CE_P(EX_VAR(EX(opline)->extended_value));
+
+			if (instanceof_function(ce, parent)) {
+				EX(opline)++;
+				return ZEND_USER_OPCODE_CONTINUE;
+			}
+		} break;
 	}
 
 	return php_inspector_break_vm_dispatch(EX(opline)->opcode, execute_data);
