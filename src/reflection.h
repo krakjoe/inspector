@@ -19,6 +19,9 @@
 #ifndef HAVE_INSPECTOR_REFLECTION_H
 #define HAVE_INSPECTOR_REFLECTION_H
 
+#include "zend_exceptions.h"
+
+extern zend_class_entry *reflector_ptr;
 extern zend_class_entry *reflection_function_ptr;
 extern zend_class_entry *reflection_method_ptr;
 extern zend_class_entry *reflection_class_ptr;
@@ -54,4 +57,23 @@ typedef struct {
 
 #define php_reflection_object_function(z) ((zend_function*) (php_reflection_object_fetch(z)->ptr))
 #define php_reflection_object_class(z) ((zend_class_entry*) (php_reflection_object_fetch(z)->ptr))
+
+static zend_always_inline zend_bool php_inspector_reflection_guard(zval *object) {
+	php_reflection_object_t *reflection =
+		php_reflection_object_fetch(object);
+
+	if (reflection->ref_type == PHP_REF_TYPE_PENDING) {
+		zend_throw_exception_ex(reflection_exception_ptr, 0, 
+			"Reflector is pending");
+		return 0;
+	}
+
+	if (reflection->ref_type == PHP_REF_TYPE_EXPIRED) {
+		zend_throw_exception_ex(reflection_exception_ptr, 0, 
+			"Reflector is expired");
+		return 0;
+	}
+
+	return 1;
+}
 #endif

@@ -21,7 +21,8 @@
 
 extern zend_class_entry *php_inspector_function_ce;
 
-void php_inspector_function_factory(zend_function *function, zval *return_value);
+void php_inspector_function_factory(zend_function *function, zval *return_value, zend_bool replace);
+int php_inspector_function_resolve(zval *function, zend_function *ops);
 
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorFunction_getInstruction_arginfo, 0, 0, Inspector\\InspectorInstruction, 1)
@@ -57,6 +58,10 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_flush_arginfo, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_onResolve_arginfo, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+extern PHP_METHOD(InspectorFunction, onResolve);
 extern PHP_METHOD(InspectorFunction, getInstruction);
 extern PHP_METHOD(InspectorFunction, getInstructionCount);
 extern PHP_METHOD(InspectorFunction, getEntryInstruction);

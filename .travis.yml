@@ -6,7 +6,6 @@ addons:
     packages:
       - valgrind
 php:
-  - 7.0
   - 7.1
   - 7.2
   - nightly
@@ -27,7 +26,13 @@ env:
 matrix:
   allow_failures:
     - php: nightly
+      env: OPCACHE=0 TEST_PHP_ARGS="$DEF"
+    - php: nightly
+      env: OPCACHE=1 TEST_PHP_ARGS="$DEF"
+    - php: nightly
       env: OPCACHE=0 TEST_PHP_ARGS="$DEF $MEMCHECK"
+    - php: nightly
+      env: OPCACHE=0 TEST_PHP_ARGS="$DEF" CONF="enable-inspector-coverage" RULE="inspector-test-coverage-travis"
 
 before_install:
   - test $CONF != "enable-inspector-coverage" || pip install --user cpp-coveralls

@@ -67,7 +67,7 @@ void php_inspector_frame_factory(zend_execute_data *execute_data, zval *return_v
 	frame = php_inspector_frame_fetch(return_value);
 	frame->frame = execute_data;
 
-	php_inspector_function_factory(frame->frame->func, &frame->function);
+	php_inspector_function_factory(frame->frame->func, &frame->function, 0);
 
 	if (frame->frame->func->type == ZEND_USER_FUNCTION && frame->frame->opline) {
 		php_inspector_instruction_factory(
@@ -259,11 +259,7 @@ static PHP_METHOD(InspectorFrame, getThis)
 	php_inspector_frame_t *frame =
 		php_inspector_frame_this();
 
-	if (
-#if PHP_VERSION_ID < 70100
-		frame->frame->called_scope &&
-#endif
-		Z_TYPE(frame->frame->This) == IS_OBJECT) {
+	if (Z_TYPE(frame->frame->This) == IS_OBJECT) {
 		ZVAL_COPY(return_value, &frame->frame->This);
 	}
 }

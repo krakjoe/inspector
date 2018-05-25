@@ -46,8 +46,9 @@ PHP_RSHUTDOWN_FUNCTION(inspector_break);
 
 void php_inspector_break_find(zval *return_value, php_inspector_instruction_t *instruction);
 php_inspector_break_t* php_inspector_break_find_ptr(php_inspector_instruction_t *instruction);
+php_inspector_break_t* php_inspector_break_find_opline(zend_op *op);
 zend_function *php_inspector_break_source(zend_string *file);
 void php_inspector_break_pending(zend_string *file, zval *function);
 int php_inspector_break_resolve(zval *zv, zend_function *ops);
-void php_inspector_breaks_disable(zend_op *begin, zend_op *end);
+void php_inspector_breaks_purge(zend_function *ops);
 #endif

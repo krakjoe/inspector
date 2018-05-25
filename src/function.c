@@ -21,6 +21,10 @@
 
 #include "php.h"
 #include "zend_exceptions.h"
+#include "zend_interfaces.h"
+#include "zend_vm.h"
+
+#include "php_inspector.h"
 
 #include "strings.h"
 #include "reflection.h"
@@ -28,24 +32,17 @@
 #include "method.h"
 #include "instruction.h"
 #include "break.h"
+#include "map.h"
 
 zend_class_entry *php_inspector_function_ce;
 zend_class_entry *php_inspector_file_ce;
 
-static zend_always_inline zend_bool php_inspector_instruction_guard(zval *this) {
+static zend_always_inline zend_bool php_inspector_function_guard(zval *object) {
 	php_reflection_object_t *reflection =
-		php_reflection_object_fetch(this);
+		php_reflection_object_fetch(object);
 	zend_function *function = (zend_function*) reflection->ptr;
 
-	if (reflection->ref_type == PHP_REF_TYPE_PENDING) {
-		zend_throw_exception_ex(reflection_exception_ptr, 0, 
-			"InspectorInstructionInterface is pending source");
-		return 0;
-	}
-
-	if (reflection->ref_type == PHP_REF_TYPE_EXPIRED) {
-		zend_throw_exception_ex(reflection_exception_ptr, 0, 
-			"InspectorInstructionInterface expired");
+	if (!php_inspector_reflection_guard(object)) {
 		return 0;
 	}
 
@@ -58,7 +55,7 @@ static zend_always_inline zend_bool php_inspector_instruction_guard(zval *this) 
 	return 1;
 }
 
-void php_inspector_function_factory(zend_function *function, zval *return_value) {
+void php_inspector_function_factory(zend_function *function, zval *return_value, zend_bool map) {
 	php_reflection_object_t *reflection;
 
 	if (function->common.scope) {
@@ -68,7 +65,7 @@ void php_inspector_function_factory(zend_function *function, zval *return_value)
 	}
 
 	reflection = php_reflection_object_fetch(return_value);
-	reflection->ptr = function;
+	reflection->ptr =  map ? php_inspector_map_create((zend_op_array*) function) : (zend_op_array*) function;
 	reflection->ref_type = PHP_REF_TYPE_OTHER;
 
 	if (function->common.function_name) {
@@ -90,6 +87,44 @@ void php_inspector_function_factory(zend_function *function, zval *return_value)
 	}
 }
 
+PHP_METHOD(InspectorFunction, __construct)
+{
+	zval *function = NULL;
+	zend_string *name = NULL;
+	php_reflection_object_t *reflection =
+		php_reflection_object_fetch(getThis());
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "z", &function) != SUCCESS) {
+		return;
+	}
+
+	if (Z_TYPE_P(function) == IS_STRING) {
+		name = zend_string_tolower(Z_STR_P(function));
+
+		if (!zend_hash_exists(EG(function_table), name)) {
+			/* create pending */
+			reflection->ref_type = PHP_REF_TYPE_PENDING;
+
+			php_inspector_table_insert(
+				PHP_INSPECTOR_ROOT_PENDING, 
+				PHP_INSPECTOR_TABLE_FUNCTION, 
+				Z_STR_P(function), getThis());
+
+			zend_string_release(name);
+			return;
+		}
+
+		zend_string_release(name);
+	}
+
+	zend_call_method_with_1_params(getThis(), Z_OBJCE_P(getThis()), &EX(func)->common.scope->parent->constructor, "__construct", return_value, function);
+}
+
+PHP_METHOD(InspectorFunction, onResolve)
+{
+	
+}
+
 PHP_METHOD(InspectorFunction, getInstruction)
 {
 	zend_function *function = 
@@ -100,7 +135,7 @@ PHP_METHOD(InspectorFunction, getInstruction)
 		return;
 	}
 
-	if (!php_inspector_instruction_guard(getThis())) {
+	if (!php_inspector_function_guard(getThis())) {
 		return;
 	}
 
@@ -122,7 +157,7 @@ PHP_METHOD(InspectorFunction, getInstructionCount)
 	zend_function *function =
 		php_reflection_object_function(getThis());
 
-	if (!php_inspector_instruction_guard(getThis())) {
+	if (!php_inspector_function_guard(getThis())) {
 		return;
 	}
 
@@ -133,9 +168,9 @@ PHP_METHOD(InspectorFunction, getEntryInstruction)
 {
 	zend_function *function =
 		php_reflection_object_function(getThis());
-	zend_op *op;
+	zend_op *op = function->op_array.opcodes;
 
-	if (!php_inspector_instruction_guard(getThis())) {
+	if (!php_inspector_function_guard(getThis())) {
 		return;
 	}
 
@@ -160,7 +195,7 @@ PHP_METHOD(InspectorFunction, findFirstInstruction)
 		return;
 	}
 
-	if (!php_inspector_instruction_guard(getThis())) {
+	if (!php_inspector_function_guard(getThis())) {
 		return;
 	}
 
@@ -200,7 +235,7 @@ PHP_METHOD(InspectorFunction, findLastInstruction)
 		return;
 	}
 
-	if (!php_inspector_instruction_guard(getThis())) {
+	if (!php_inspector_function_guard(getThis())) {
 		return;
 	}
 
@@ -234,6 +269,79 @@ PHP_METHOD(InspectorFunction, flushInstructionCache)
 	php_inspector_instruction_cache_flush(getThis());
 }
 
+int php_inspector_function_resolve(zval *zv, zend_function *ops) {
+	php_reflection_object_t *reflector = 
+		php_reflection_object_fetch(zv);
+	zend_function *onResolve = zend_hash_find_ptr(
+		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONRESOLVE);
+
+	if (php_reflection_object_function(zv)) {
+		php_inspector_breaks_purge(
+			php_reflection_object_function(zv));
+		php_inspector_instruction_cache_flush(zv);
+	}
+
+	reflector->ptr = php_inspector_map_create((zend_op_array*) ops);
+	reflector->ref_type = PHP_REF_TYPE_OTHER;
+
+	if (ZEND_USER_CODE(onResolve->type)) {
+		zval rv;
+
+		ZVAL_NULL(&rv);
+
+		zend_call_method_with_0_params(zv, Z_OBJCE_P(zv), &onResolve, "onresolve", &rv);
+
+		if (Z_REFCOUNTED(rv)) {
+			zval_ptr_dtor(&rv);
+		}
+
+		if (ops->common.function_name) {
+			php_inspector_table_insert(
+				PHP_INSPECTOR_ROOT_REGISTERED, 
+				PHP_INSPECTOR_TABLE_FUNCTION, 
+				ops->common.function_name, zv);
+		} else {
+			php_inspector_table_insert(
+				PHP_INSPECTOR_ROOT_REGISTERED,
+				PHP_INSPECTOR_TABLE_FILE,
+				ops->op_array.filename, zv);
+		}
+	}
+
+	return ZEND_HASH_APPLY_REMOVE;
+}
+
+static int php_inspector_function_remove(zend_function *function) {
+	HashTable *registered = php_inspector_table(
+		PHP_INSPECTOR_ROOT_REGISTERED, 
+		PHP_INSPECTOR_TABLE_FUNCTION, 
+		function->common.function_name, 0);
+	zval *object;
+
+	if (!registered) {
+		return ZEND_HASH_APPLY_REMOVE;
+	}
+
+	ZEND_HASH_FOREACH_VAL(registered, object) {
+		php_reflection_object_t *reflection =
+			php_reflection_object_fetch(object);
+	
+		reflection->ref_type = PHP_REF_TYPE_PENDING;
+
+		php_inspector_table_insert(
+			PHP_INSPECTOR_ROOT_PENDING, 	
+			PHP_INSPECTOR_TABLE_FUNCTION, 
+			function->common.function_name, object);
+	} ZEND_HASH_FOREACH_END();
+
+	php_inspector_table_drop(
+		PHP_INSPECTOR_ROOT_REGISTERED,
+		PHP_INSPECTOR_TABLE_FUNCTION, 
+		function->common.function_name);
+
+	return ZEND_HASH_APPLY_REMOVE;
+}
+
 static int php_inspector_function_purge(zval *zv, HashTable *filters) {
 	zval *filter;
 	zend_function *function = Z_PTR_P(zv);
@@ -245,7 +353,7 @@ static int php_inspector_function_purge(zval *zv, HashTable *filters) {
 	if (!function->common.function_name || !filters) {
 		zend_hash_del(
 			&EG(included_files), function->op_array.filename);
-		return ZEND_HASH_APPLY_REMOVE;
+		return php_inspector_function_remove(function);;
 	}
 
 	ZEND_HASH_FOREACH_VAL(filters, filter) {
@@ -265,7 +373,7 @@ static int php_inspector_function_purge(zval *zv, HashTable *filters) {
 	zend_hash_del(
 		&EG(included_files), function->op_array.filename);
 
-	return ZEND_HASH_APPLY_REMOVE;
+	return php_inspector_function_remove(function);
 }
 
 static PHP_METHOD(InspectorFunction, purge)
@@ -276,14 +384,20 @@ static PHP_METHOD(InspectorFunction, purge)
 		return;
 	}
 
-	zend_hash_apply_with_argument(CG(function_table), (apply_func_arg_t) php_inspector_function_purge, filters);
+	zend_hash_apply_with_argument(EG(function_table), (apply_func_arg_t) php_inspector_function_purge, filters);
 }
 
 ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_purge_arginfo, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, filter, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_construct_arginfo, 0, 0, 1)
+	ZEND_ARG_INFO(0, function)
+ZEND_END_ARG_INFO()
+
 static zend_function_entry php_inspector_function_methods[] = {
+	PHP_ME(InspectorFunction, __construct, InspectorFunction_construct_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, onResolve, InspectorFunction_onResolve_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getInstruction, InspectorFunction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getInstructionCount, InspectorFunction_getInstructionCount_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getEntryInstruction, InspectorFunction_getEntryInstruction_arginfo, ZEND_ACC_PUBLIC)

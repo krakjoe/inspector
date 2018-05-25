@@ -43,6 +43,7 @@ static PHP_METHOD(InspectorMethod, getDeclaringClass)
 }
 
 static zend_function_entry php_inspector_method_methods[] = {
+	PHP_ME(InspectorFunction, onResolve, InspectorFunction_onResolve_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getInstruction, InspectorFunction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getInstructionCount, InspectorFunction_getInstructionCount_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getEntryInstruction, InspectorFunction_getEntryInstruction_arginfo, ZEND_ACC_PUBLIC)
@@ -66,6 +67,7 @@ PHP_MINIT_FUNCTION(inspector_method) {
 	zend_declare_property_null(
 		php_inspector_method_ce, 
 		ZEND_STRL("instructionCache"), ZEND_ACC_PROTECTED);
+
 	return SUCCESS;
 } /* }}} */
 #endif

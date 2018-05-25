@@ -41,30 +41,10 @@ typedef enum _php_inspector_break_state_t {
 
 ZEND_BEGIN_MODULE_GLOBALS(inspector_break)
 	php_inspector_break_state_t state;
-	HashTable files;
-	HashTable pending;
 	HashTable breaks;
 ZEND_END_MODULE_GLOBALS(inspector_break)
 
 ZEND_DECLARE_MODULE_GLOBALS(inspector_break);
-
-static user_opcode_handler_t php_inspector_break_vm[6];
-
-#define PHP_INSPECTOR_BREAK_DECL_CLASS 0			/* ZEND_DECLARE_CLASS */
-#define PHP_INSPECTOR_BREAK_DECL_INHERITED_CLASS 1		/* ZEND_DECLARE_INHERITED_CLASS */
-#define PHP_INSPECTOR_BREAK_DECL_INHERITED_CLASS_DELAYED 2	/* ZEND_DECLARE_INHERITED_CLASS_DELAYED */
-#define PHP_INSPECTOR_BREAK_DECL_ANON_CLASS 3			/* ZEND_DECARRE_ANON_CLASS */
-#define PHP_INSPECTOR_BREAK_DECL_ANON_INHERITED_CLASS 4		/* ZEND_DECLARE_ANON_INHERITED_CLASS */
-#define PHP_INSPECTOR_BREAK_DECL_FUNCTION 5			/* ZEND_DECLARE_FUNCTION */
-
-static zend_uchar php_inspector_break_vm_map[6] = {
-	ZEND_DECLARE_CLASS,
-	ZEND_DECLARE_INHERITED_CLASS,
-	ZEND_DECLARE_INHERITED_CLASS_DELAYED,
-	ZEND_DECLARE_ANON_CLASS,
-	ZEND_DECLARE_ANON_INHERITED_CLASS,
-	ZEND_DECLARE_FUNCTION
-};
 
 #ifdef ZTS
 #define BRK(v) TSRMG(inspector_break_globals_id, zend_inspector_break_globals *, v)
@@ -150,17 +130,29 @@ static inline zend_bool php_inspector_break_disable(php_inspector_break_t *brk) 
 	return zend_hash_index_del(&BRK(breaks), (zend_ulong) instruction->opline) == SUCCESS;
 }
 
-void php_inspector_breaks_disable(zend_op *begin, zend_op *end) {
-	const zend_op *address = begin;
+void php_inspector_breaks_purge(zend_function *ops) {
+	zend_op *opline, *end;
 
-	while (address < end) {
-		zend_hash_index_del(&BRK(breaks), (zend_ulong) address);
-		address++;
+	if (!ZEND_USER_CODE(ops->type)) {
+		return;
+	}
+	
+	opline = ops->op_array.opcodes;
+	end    = opline + ops->op_array.last;
+
+	while (opline < end) {
+		zend_hash_index_del(
+			&BRK(breaks), (zend_ulong) opline);
+		opline++;
 	}
 }
 
+php_inspector_break_t* php_inspector_break_find_opline(zend_op *op) {
+	return zend_hash_index_find_ptr(&BRK(breaks), (zend_ulong) op);
+}
+
 php_inspector_break_t* php_inspector_break_find_ptr(php_inspector_instruction_t *instruction) {
-	return zend_hash_index_find_ptr(&BRK(breaks), (zend_ulong) instruction->opline);;
+	return php_inspector_break_find_opline(instruction->opline);
 }
 
 void php_inspector_break_find(zval *return_value, php_inspector_instruction_t *instruction) {
@@ -331,82 +323,6 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 	return ZEND_USER_OPCODE_DISPATCH_TO | brk->opcode;
 }
 
-static zend_always_inline int php_inspector_break_vm_dispatch(zend_uchar opcode, zend_execute_data *execute_data) {
-	user_opcode_handler_t php_inspector_break_vm_handler = NULL;
-
-	switch (opcode) {
-		case ZEND_DECLARE_CLASS: 
-			php_inspector_break_vm_handler = 
-				php_inspector_break_vm[PHP_INSPECTOR_BREAK_DECL_CLASS]; 
-		break;
-
-		case ZEND_DECLARE_INHERITED_CLASS:
-			php_inspector_break_vm_handler = 
-				php_inspector_break_vm[PHP_INSPECTOR_BREAK_DECL_INHERITED_CLASS]; 
-		break;
-
-		case ZEND_DECLARE_INHERITED_CLASS_DELAYED:
-			php_inspector_break_vm_handler = 
-				php_inspector_break_vm[PHP_INSPECTOR_BREAK_DECL_INHERITED_CLASS_DELAYED]; 
-		break;
-
-		case ZEND_DECLARE_ANON_CLASS:
-			php_inspector_break_vm_handler = 
-				php_inspector_break_vm[PHP_INSPECTOR_BREAK_DECL_ANON_CLASS]; 
-		break;
-
-		case ZEND_DECLARE_ANON_INHERITED_CLASS:
-			php_inspector_break_vm_handler = 
-				php_inspector_break_vm[PHP_INSPECTOR_BREAK_DECL_ANON_INHERITED_CLASS]; 
-		break;
-
-		case ZEND_DECLARE_FUNCTION:
-			php_inspector_break_vm_handler = 
-				php_inspector_break_vm[PHP_INSPECTOR_BREAK_DECL_FUNCTION];
-		break;
-	}
-
-	if (UNEXPECTED(php_inspector_break_vm_handler)) {
-		return php_inspector_break_vm_handler(execute_data);
-	}
-
-	return ZEND_USER_OPCODE_DISPATCH;
-}
-
-static int php_inspector_break_vm_persist(zend_execute_data *execute_data) {
-	zval *op1 = RT_CONSTANT(&EX(func)->op_array, EX(opline)->op1);
-	zval *op2 = RT_CONSTANT(&EX(func)->op_array, EX(opline)->op2);
-	HashTable *table = 
-		(EX(opline)->opcode == ZEND_DECLARE_FUNCTION) ? 
-			CG(function_table) : CG(class_table);
-
-	switch (EX(opline)->opcode) {
-		case ZEND_DECLARE_CLASS:
-		case ZEND_DECLARE_FUNCTION:
-			if (zend_hash_exists(table, Z_STR_P(op2))) {
-				EX(opline)++;
-
-				return ZEND_USER_OPCODE_CONTINUE;
-			}
-		break;
-
-		case ZEND_DECLARE_INHERITED_CLASS: 
-		case ZEND_DECLARE_INHERITED_CLASS_DELAYED: {
-			zend_class_entry *ce = 
-				(zend_class_entry*) 
-					zend_hash_find_ptr(CG(class_table), Z_STR_P(op1));
-			zend_class_entry *parent = Z_CE_P(EX_VAR(EX(opline)->extended_value));
-
-			if (instanceof_function(ce, parent)) {
-				EX(opline)++;
-				return ZEND_USER_OPCODE_CONTINUE;
-			}
-		} break;
-	}
-
-	return php_inspector_break_vm_dispatch(EX(opline)->opcode, execute_data);
-}
-
 PHP_MINIT_FUNCTION(inspector_break) {
 	zend_class_entry ce;
 
@@ -424,39 +340,11 @@ PHP_MINIT_FUNCTION(inspector_break) {
 
 	zend_set_user_opcode_handler(INSPECTOR_DEBUG_BREAK, php_inspector_break_handler);
 
-	{
-		user_opcode_handler_t *handler = php_inspector_break_vm;
-		user_opcode_handler_t *last    = handler + 
-			(sizeof(php_inspector_break_vm) / sizeof(user_opcode_handler_t));
-
-		while (handler < last) {
-			php_inspector_break_vm[(last - handler) - 1] = 
-				zend_get_user_opcode_handler(
-					php_inspector_break_vm_map[(last - handler) - 1]);
-			zend_set_user_opcode_handler(
-				php_inspector_break_vm_map[(last - handler) - 1], 
-				php_inspector_break_vm_persist);
-			
-			handler++;
-		}
-	}
-
 	return SUCCESS;
 } 
 
 PHP_MSHUTDOWN_FUNCTION(inspector_break)
-{
-	user_opcode_handler_t *handler = php_inspector_break_vm;
-	user_opcode_handler_t *last    = handler + 
-		(sizeof(php_inspector_break_vm) / sizeof(user_opcode_handler_t));
-
-	while (handler < last) {
-		zend_set_user_opcode_handler(
-			php_inspector_break_vm_map[(last - handler) - 1], 
-			php_inspector_break_vm[(last - handler) - 1]);
-		handler++;
-	}
-	
+{	
 	return SUCCESS;
 }
 /* }}} */
@@ -468,6 +356,10 @@ static void php_inspector_break_unset(zval *zv) {
 		php_inspector_instruction_fetch(&brk->instruction);
 	php_reflection_object_t *reflection =
 		php_reflection_object_fetch(&instruction->function);
+
+	if (BRK(state) != INSPECTOR_BREAK_RUNTIME) {
+		return;
+	}
 
 	if (reflection->ref_type != PHP_REF_TYPE_EXPIRED) {
 		instruction->opline->opcode = brk->opcode;

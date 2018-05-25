@@ -22,6 +22,7 @@
 extern zend_class_entry *php_inspector_class_ce;
 
 void php_inspector_class_factory(zend_class_entry *ce, zval *return_value);
+int php_inspector_class_resolve(zval *zv, zend_class_entry *class);
 
 PHP_MINIT_FUNCTION(inspector_class);
 #endif

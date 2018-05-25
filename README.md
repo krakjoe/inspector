@@ -16,6 +16,9 @@ The following API is provided:
 namespace Inspector
 {
 	class InspectorClass extends \ReflectionClass {
+		public function isPending() : bool;
+		public function onResolve();
+
 		public function getMethod(string name) : InspectorMethod;
 		public function getMethods(int filter = 0) : array;
 
@@ -29,6 +32,9 @@ namespace Inspector
 	}
 
 	class InspectorFunction extends \ReflectionFunction implements InspectorInstructionInterface {
+		public function isPending() : bool;
+		public function onResolve();
+
 		public static function purge(array filters = []);
 
 		protected $instructionCache;
@@ -38,8 +44,9 @@ namespace Inspector
 		public function __construct(string file);
 
 		public function isPending() : bool;
+		public function onResolve();
 
-		abstract public function onResolve() : void;
+		public static function purge(array filters = []);
 
 		protected $instructionCache;
 	}

@@ -16,14 +16,16 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef HAVE_INSPECTOR_FILE_H
-#define HAVE_INSPECTOR_FILE_H
+#ifndef HAVE_INSPECTOR_MAP_H
+#define HAVE_INSPECTOR_MAP_H
 
-extern zend_class_entry *php_inspector_file_ce;
+PHP_MINIT_FUNCTION(inspector_map);
+PHP_RINIT_FUNCTION(inspector_map);
+PHP_RSHUTDOWN_FUNCTION(inspector_map);
 
-PHP_MINIT_FUNCTION(inspector_file);
-PHP_RINIT_FUNCTION(inspector_file);
-PHP_RSHUTDOWN_FUNCTION(inspector_file);
+zend_op_array* php_inspector_map_create(zend_op_array *source);
 
-int php_inspector_file_resolve(zval *zv, zend_function *ops);
+zend_op_array* php_inspector_map_fetch(zend_op_array *source);
+
+void php_inspector_map_destroy(zend_op_array *map);
 #endif
