@@ -71,14 +71,27 @@ static zend_always_inline HashTable* php_inspector_file_pending(zend_string *fil
 int php_inspector_file_resolve(zval *zv, zend_function *ops) {
 	php_reflection_object_t *reflector = 
 		php_reflection_object_fetch(zv);
+	zend_function *oldFunction = 
+		php_reflection_object_function(zv);	
 	zend_function *onResolve = zend_hash_find_ptr(
 		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONRESOLVE);
+	
+	if (oldFunction && ops->op_array.opcodes == oldFunction->op_array.opcodes) {
+		
+		reflector->ref_type = PHP_REF_TYPE_OTHER;
+
+		return ZEND_HASH_APPLY_REMOVE;
+	}
 
 	reflector->ptr = ops;
 	reflector->ref_type = PHP_REF_TYPE_OTHER;
 
+	php_inspector_instruction_cache_flush(zv);
+
 	if (onResolve->type != ZEND_INTERNAL_FUNCTION) {
 		zval rv;
+		HashTable *registered = ops->common.function_name ?
+			php_inspector_registered_function(ops->common.function_name, 1) : NULL;
 
 		ZVAL_NULL(&rv);
 
@@ -87,12 +100,19 @@ int php_inspector_file_resolve(zval *zv, zend_function *ops) {
 		if (Z_REFCOUNTED(rv)) {
 			zval_ptr_dtor(&rv);
 		}
+
+		if (registered && zend_hash_next_index_insert(registered, zv)) {
+			Z_ADDREF_P(zv);
+		}
 	}
 
-	reflector->ref_type = PHP_REF_TYPE_EXPIRED;
+	if (instanceof_function(Z_OBJCE_P(zv), php_inspector_file_ce)) {
+		reflector->ref_type = PHP_REF_TYPE_EXPIRED;
+	}
 
 	return ZEND_HASH_APPLY_REMOVE;
 }
+
 
 static zend_op_array* php_inspector_file_execute(zend_execute_data *execute_data) {
 	zend_op_array *ops = &EX(func)->op_array;
@@ -109,6 +129,34 @@ static zend_op_array* php_inspector_file_execute(zend_execute_data *execute_data
 		zend_hash_del(&IFG(pending), ops->filename);
 	}
 
+	{
+		zend_string *name;
+
+		ZEND_HASH_FOREACH_STR_KEY_PTR(&PIG(pending).function, name, pending) {
+			zend_function *function = 
+				(zend_function*)
+					zend_hash_find_ptr(EG(function_table), name);
+
+			if (!function) {
+				continue;
+			}
+
+			if (ZEND_HASH_GET_APPLY_COUNT(pending) == 0) {
+				ZEND_HASH_INC_APPLY_COUNT(pending);
+
+				zend_hash_apply_with_argument(
+					pending, 
+					(apply_func_arg_t) 
+						php_inspector_file_resolve, (zend_op_array*) function);
+
+				ZEND_HASH_DEC_APPLY_COUNT(pending);
+
+				zend_hash_del(&PIG(pending).function, name);
+			}			
+		} ZEND_HASH_FOREACH_END();
+	}
+
+zend_execute_function_forward:
 	zend_execute_function(execute_data);
 }
 
@@ -183,7 +231,6 @@ static zend_function_entry php_inspector_file_methods[] = {
 	PHP_ME(InspectorFile, __construct, InspectorFile_construct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFile, isPending, InspectorFile_state_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFile, isExpired, InspectorFile_state_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ABSTRACT_ME(InspectorFile, onResolve, InspectorFile_stateChanged_arginfo)
 	PHP_FE_END
 };
 

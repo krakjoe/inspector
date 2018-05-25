@@ -21,6 +21,9 @@
 
 #include "php.h"
 #include "zend_exceptions.h"
+#include "zend_interfaces.h"
+
+#include "php_inspector.h"
 
 #include "strings.h"
 #include "reflection.h"
@@ -88,6 +91,51 @@ void php_inspector_function_factory(zend_function *function, zval *return_value)
 
 		zend_std_write_property(return_value, &k, &v, NULL);
 	}
+}
+
+static zend_always_inline void php_inspector_function_pending(zend_string *name, zval *object) {
+	php_reflection_object_t *reflection = 	
+		php_reflection_object_fetch(object);
+	HashTable *pending = 
+		php_inspector_pending_function(name, 1);
+
+	zend_hash_next_index_insert(pending, object);
+
+	reflection->ref_type = PHP_REF_TYPE_PENDING;
+
+	Z_ADDREF_P(object);
+}
+
+PHP_METHOD(InspectorFunction, __construct)
+{
+	zval *function = NULL;
+	zend_string *name = NULL;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "z", &function) != SUCCESS) {
+		return;
+	}
+
+	if (Z_TYPE_P(function) == IS_STRING) {
+		name = zend_string_tolower(Z_STR_P(function));
+
+		if (!zend_hash_exists(EG(function_table), name)) {
+			/* create pending */
+			php_inspector_function_pending(name, getThis());
+
+			zend_string_release(name);
+
+			return;
+		}
+
+		zend_string_release(name);
+	}
+
+	zend_call_method_with_1_params(getThis(), Z_OBJCE_P(getThis()), &EX(func)->common.scope->parent->constructor, "__construct", return_value, function);
+}
+
+PHP_METHOD(InspectorFunction, onResolve)
+{
+	
 }
 
 PHP_METHOD(InspectorFunction, getInstruction)
@@ -234,6 +282,36 @@ PHP_METHOD(InspectorFunction, flushInstructionCache)
 	php_inspector_instruction_cache_flush(getThis());
 }
 
+static int php_inspector_function_remove(zend_function *function) {
+	HashTable *pending;
+	HashTable *registered = php_inspector_registered_function(function->common.function_name, 0);
+	zval *object;
+
+	if (!registered) {
+		return ZEND_HASH_APPLY_REMOVE;
+	}
+
+	pending = php_inspector_pending_function(function->common.function_name, 1);
+
+	ZEND_HASH_FOREACH_VAL(registered, object) {
+		php_reflection_object_t *reflection =
+			php_reflection_object_fetch(object);
+	
+		reflection->ref_type = PHP_REF_TYPE_PENDING;
+
+		if (zend_hash_next_index_insert(pending, object)) {
+			Z_ADDREF_P(object);
+		}
+
+		php_inspector_instruction_cache_flush(object);
+	} ZEND_HASH_FOREACH_END();
+
+	zend_hash_index_del(
+		&PIG(registered).function, (zend_ulong) function->op_array.opcodes);
+
+	return ZEND_HASH_APPLY_REMOVE;
+}
+
 static int php_inspector_function_purge(zval *zv, HashTable *filters) {
 	zval *filter;
 	zend_function *function = Z_PTR_P(zv);
@@ -245,7 +323,7 @@ static int php_inspector_function_purge(zval *zv, HashTable *filters) {
 	if (!function->common.function_name || !filters) {
 		zend_hash_del(
 			&EG(included_files), function->op_array.filename);
-		return ZEND_HASH_APPLY_REMOVE;
+		return php_inspector_function_remove(function);;
 	}
 
 	ZEND_HASH_FOREACH_VAL(filters, filter) {
@@ -265,7 +343,7 @@ static int php_inspector_function_purge(zval *zv, HashTable *filters) {
 	zend_hash_del(
 		&EG(included_files), function->op_array.filename);
 
-	return ZEND_HASH_APPLY_REMOVE;
+	return php_inspector_function_remove(function);
 }
 
 static PHP_METHOD(InspectorFunction, purge)
@@ -276,14 +354,20 @@ static PHP_METHOD(InspectorFunction, purge)
 		return;
 	}
 
-	zend_hash_apply_with_argument(CG(function_table), (apply_func_arg_t) php_inspector_function_purge, filters);
+	zend_hash_apply_with_argument(EG(function_table), (apply_func_arg_t) php_inspector_function_purge, filters);
 }
 
 ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_purge_arginfo, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, filter, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_construct_arginfo, 0, 0, 1)
+	ZEND_ARG_INFO(0, function)
+ZEND_END_ARG_INFO()
+
 static zend_function_entry php_inspector_function_methods[] = {
+	PHP_ME(InspectorFunction, __construct, InspectorFunction_construct_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, onResolve, InspectorFunction_onResolve_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getInstruction, InspectorFunction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getInstructionCount, InspectorFunction_getInstructionCount_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getEntryInstruction, InspectorFunction_getEntryInstruction_arginfo, ZEND_ACC_PUBLIC)

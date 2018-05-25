@@ -422,7 +422,22 @@ static PHP_METHOD(InspectorInstruction, getBreakPoint)
 
 	php_inspector_break_find(return_value, instruction);
 }
+
+static PHP_METHOD(InspectorInstruction, getAddress)
+{
+	php_inspector_instruction_t *instruction =
+		php_inspector_instruction_this();
+
+	RETURN_LONG((zend_ulong) instruction->opline);
+}
 /* }}} */
+
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorInstruction_getAddress_arginfo, 0, 0, IS_LONG, 0)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorInstruction_getAddress_arginfo, 0, 0, IS_LONG, NULL, 0)
+#endif
+ZEND_END_ARG_INFO()
 
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorInstruction_getOpcode_arginfo, 0, 0, IS_LONG, 0)
@@ -501,6 +516,7 @@ static zend_function_entry php_inspector_instruction_methods[] = {
 	PHP_ME(InspectorInstruction, getPrevious, InspectorInstruction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getRelative, InspectorInstruction_getRelative_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getOffset, InspectorInstruction_getOffset_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorInstruction, getAddress, InspectorInstruction_getAddress_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getBreakPoint, InspectorInstruction_getBreakPoint_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 }; /* }}} */
@@ -549,12 +565,13 @@ PHP_MINIT_FUNCTION(inspector_instruction) {
 
 /* {{{ */
 static zend_function_entry php_inspector_instruction_interface_methods[] = {
-	PHP_ABSTRACT_ME(InspectorFunction, getInstruction, InspectorFunction_getInstruction_arginfo)
-	PHP_ABSTRACT_ME(InspectorFunction, getInstructionCount, InspectorFunction_getInstructionCount_arginfo)
-	PHP_ABSTRACT_ME(InspectorFunction, getEntryInstruction, InspectorFunction_getEntryInstruction_arginfo)
-	PHP_ABSTRACT_ME(InspectorFunction, findFirstInstruction, InspectorFunction_find_arginfo)
-	PHP_ABSTRACT_ME(InspectorFunction, findLastInstruction, InspectorFunction_find_arginfo)
-	PHP_ABSTRACT_ME(InspectorFunction, flushInstructionCache, InspectorFunction_flush_arginfo)
+	PHP_ABSTRACT_ME(InspectorInstructionInterface, onResolve, InspectorFunction_onResolve_arginfo)
+	PHP_ABSTRACT_ME(InspectorInstructionInterface, getInstruction, InspectorFunction_getInstruction_arginfo)
+	PHP_ABSTRACT_ME(InspectorInstructionInterface, getInstructionCount, InspectorFunction_getInstructionCount_arginfo)
+	PHP_ABSTRACT_ME(InspectorInstructionInterface, getEntryInstruction, InspectorFunction_getEntryInstruction_arginfo)
+	PHP_ABSTRACT_ME(InspectorInstructionInterface, findFirstInstruction, InspectorFunction_find_arginfo)
+	PHP_ABSTRACT_ME(InspectorInstructionInterface, findLastInstruction, InspectorFunction_find_arginfo)
+	PHP_ABSTRACT_ME(InspectorInstructionInterface, flushInstructionCache, InspectorFunction_flush_arginfo)
 	PHP_FE_END
 }; /* }}} */
 

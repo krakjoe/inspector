@@ -57,6 +57,10 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_flush_arginfo, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_onResolve_arginfo, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+extern PHP_METHOD(InspectorFunction, onResolve);
 extern PHP_METHOD(InspectorFunction, getInstruction);
 extern PHP_METHOD(InspectorFunction, getInstructionCount);
 extern PHP_METHOD(InspectorFunction, getEntryInstruction);

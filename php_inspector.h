@@ -37,6 +37,63 @@ extern zend_module_entry inspector_module_entry;
 #include "TSRM.h"
 #endif
 
+ZEND_BEGIN_MODULE_GLOBALS(inspector)
+	struct {
+		HashPosition function;
+		HashPosition class;
+	} pointers;
+	struct {
+		HashTable function;
+		HashTable class;
+	} pending;
+	struct {
+		HashTable function;
+		HashTable class;
+	} registered;
+ZEND_END_MODULE_GLOBALS(inspector)
+
+ZEND_DECLARE_MODULE_GLOBALS(inspector);
+
+#ifdef ZTS
+#define PIG(v) TSRMG(inspector_globals_id, zend_inspector_globals *, v)
+#else
+#define PIG(v) (inspector_globals.v)
+#endif
+
+static zend_always_inline HashTable* php_inspector_pending_function(zend_string *name, zend_bool create) {
+	zend_string *lookup = zend_string_tolower(name);
+	HashTable *pending = zend_hash_find_ptr(&PIG(pending).function, lookup);
+	
+	if (!pending && create) {
+		ALLOC_HASHTABLE(pending);
+
+		zend_hash_init(pending, 8, NULL, ZVAL_PTR_DTOR, 0);
+
+		zend_hash_update_ptr(&PIG(pending).function, lookup, pending);
+	}
+
+	zend_string_release(lookup);
+
+	return pending;
+}
+
+static zend_always_inline HashTable* php_inspector_registered_function(zend_string *name, zend_bool create) {
+	zend_string *lookup = zend_string_tolower(name);
+	HashTable *registered = zend_hash_find_ptr(&PIG(registered).function, lookup);
+	
+	if (!registered && create) {
+		ALLOC_HASHTABLE(registered);
+
+		zend_hash_init(registered, 8, NULL, ZVAL_PTR_DTOR, 0);
+
+		zend_hash_update_ptr(&PIG(registered).function, lookup, registered);
+	}
+
+	zend_string_release(lookup);
+
+	return registered;
+}
+
 #if defined(ZTS) && defined(COMPILE_DL_INSPECTOR)
 ZEND_TSRMLS_CACHE_EXTERN();
 #endif

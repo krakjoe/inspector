@@ -25,8 +25,8 @@
 #include "zend_closures.h"
 
 #include "ext/standard/info.h"
-#include "php_inspector.h"
 
+#include "php_inspector.h"
 #include "src/strings.h"
 #include "src/file.h"
 #include "src/class.h"
@@ -38,10 +38,18 @@
 #include "src/break.h"
 #include "src/frame.h"
 
+ZEND_DECLARE_MODULE_GLOBALS(inspector);
+
+static void php_inspector_globals_init(zend_inspector_globals *PIG) {
+	memset(PIG, 0, sizeof(*PIG));
+}
+
 /* {{{ PHP_MINIT_FUNCTION
  */
 PHP_MINIT_FUNCTION(inspector)
 {
+	ZEND_INIT_MODULE_GLOBALS(inspector, php_inspector_globals_init, NULL);
+
 	PHP_MINIT(inspector_instruction_interface)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_strings)(INIT_FUNC_ARGS_PASSTHRU);
 
@@ -69,6 +77,11 @@ PHP_MSHUTDOWN_FUNCTION(inspector)
 	return SUCCESS;
 } /* }}} */
 
+static void php_inspector_table_free(zval *zv) {
+	zend_hash_destroy(Z_PTR_P(zv));
+	efree(Z_PTR_P(zv));
+}
+
 /* {{{ PHP_RINIT_FUNCTION
  */
 PHP_RINIT_FUNCTION(inspector)
@@ -80,6 +93,17 @@ PHP_RINIT_FUNCTION(inspector)
 	PHP_RINIT(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_RINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 
+	{
+		zend_hash_init(&PIG(pending).function, 8, NULL, php_inspector_table_free, 0);
+		zend_hash_init(&PIG(pending).class, 8, NULL, php_inspector_table_free, 0);
+
+		zend_hash_init(&PIG(registered).function, 8, NULL, php_inspector_table_free, 0);
+		zend_hash_init(&PIG(registered).class, 8, NULL, php_inspector_table_free, 0);
+
+		zend_hash_internal_pointer_end_ex(CG(function_table), &PIG(pointers).function);
+		zend_hash_internal_pointer_end_ex(CG(class_table), &PIG(pointers).class);
+	}
+
 	return SUCCESS;
 }
 /* }}} */
@@ -90,6 +114,13 @@ PHP_RSHUTDOWN_FUNCTION(inspector)
 	PHP_RSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_RSHUTDOWN(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 
+	{
+		zend_hash_destroy(&PIG(pending).class);
+		zend_hash_destroy(&PIG(pending).function);
+
+		zend_hash_destroy(&PIG(registered).class);
+		zend_hash_destroy(&PIG(registered).function);
+	}
 	return SUCCESS;
 }
 /* }}} */
