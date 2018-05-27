@@ -38,10 +38,68 @@
 #include "src/break.h"
 #include "src/frame.h"
 
+static void (*zend_execute_function)(zend_execute_data *);
+
 ZEND_DECLARE_MODULE_GLOBALS(inspector);
 
 static void php_inspector_globals_init(zend_inspector_globals *PIG) {
 	memset(PIG, 0, sizeof(*PIG));
+}
+
+static zend_op_array* php_inspector_execute(zend_execute_data *execute_data) {
+	zend_op_array *ops = &EX(func)->op_array;
+	zend_string   *name = ops->filename;
+	HashTable     *pending;
+
+	if (UNEXPECTED(zend_hash_num_elements(&PIG(pending).file))) {
+		pending = php_inspector_table(
+				PHP_INSPECTOR_ROOT_PENDING, 
+				PHP_INSPECTOR_TABLE_FILE, 
+				name, 0);
+
+		if (UNEXPECTED(pending)) {
+			zend_hash_apply_with_argument(
+				pending, 
+				(apply_func_arg_t) 
+					php_inspector_function_resolve, ops);
+
+			php_inspector_table_drop(
+				PHP_INSPECTOR_ROOT_PENDING, 
+				PHP_INSPECTOR_TABLE_FILE, 
+				ops->filename);
+		}
+	}
+
+	ZEND_HASH_FOREACH_STR_KEY_PTR(php_inspector_table_select(
+				PHP_INSPECTOR_ROOT_PENDING, 
+				PHP_INSPECTOR_TABLE_FUNCTION), name, pending) {
+
+		zend_function *function = 
+			(zend_function*)
+				zend_hash_find_ptr(EG(function_table), name);
+
+		if (!function) {
+			continue;
+		}
+
+		if (ZEND_HASH_GET_APPLY_COUNT(pending) == 0) {
+			ZEND_HASH_INC_APPLY_COUNT(pending);
+
+			zend_hash_apply_with_argument(
+				pending, 
+				(apply_func_arg_t) 
+					php_inspector_function_resolve, (zend_op_array*) function);
+
+			ZEND_HASH_DEC_APPLY_COUNT(pending);
+
+			php_inspector_table_drop(
+				PHP_INSPECTOR_ROOT_PENDING, 
+				PHP_INSPECTOR_TABLE_FUNCTION, name);
+		}
+	} ZEND_HASH_FOREACH_END();
+
+zend_execute_function_forward:
+	zend_execute_function(execute_data);
 }
 
 /* {{{ PHP_MINIT_FUNCTION
@@ -63,6 +121,9 @@ PHP_MINIT_FUNCTION(inspector)
 	PHP_MINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_frame)(INIT_FUNC_ARGS_PASSTHRU);
 
+	zend_execute_function = zend_execute_ex;
+	zend_execute_ex = php_inspector_execute;
+
 	return SUCCESS;
 }
 /* }}} */
@@ -70,9 +131,10 @@ PHP_MINIT_FUNCTION(inspector)
 /* {{{ */
 PHP_MSHUTDOWN_FUNCTION(inspector)
 {
-	PHP_MSHUTDOWN(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MSHUTDOWN(inspector_strings)(INIT_FUNC_ARGS_PASSTHRU);
+
+	zend_execute_ex = zend_execute_function;
 
 	return SUCCESS;
 } /* }}} */
@@ -90,18 +152,16 @@ PHP_RINIT_FUNCTION(inspector)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
-	PHP_RINIT(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_RINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 
 	{
+		zend_hash_init(&PIG(pending).file, 8, NULL, php_inspector_table_free, 0);
 		zend_hash_init(&PIG(pending).function, 8, NULL, php_inspector_table_free, 0);
 		zend_hash_init(&PIG(pending).class, 8, NULL, php_inspector_table_free, 0);
 
+		zend_hash_init(&PIG(registered).file, 8, NULL, php_inspector_table_free, 0);
 		zend_hash_init(&PIG(registered).function, 8, NULL, php_inspector_table_free, 0);
 		zend_hash_init(&PIG(registered).class, 8, NULL, php_inspector_table_free, 0);
-
-		zend_hash_internal_pointer_end_ex(CG(function_table), &PIG(pointers).function);
-		zend_hash_internal_pointer_end_ex(CG(class_table), &PIG(pointers).class);
 	}
 
 	return SUCCESS;
@@ -111,16 +171,18 @@ PHP_RINIT_FUNCTION(inspector)
 /* {{{ */
 PHP_RSHUTDOWN_FUNCTION(inspector)
 {
-	PHP_RSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
-	PHP_RSHUTDOWN(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
-
 	{
 		zend_hash_destroy(&PIG(pending).class);
 		zend_hash_destroy(&PIG(pending).function);
+		zend_hash_destroy(&PIG(pending).file);
 
 		zend_hash_destroy(&PIG(registered).class);
 		zend_hash_destroy(&PIG(registered).function);
+		zend_hash_destroy(&PIG(registered).file);
 	}
+
+	PHP_RSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
+
 	return SUCCESS;
 }
 /* }}} */

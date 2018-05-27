@@ -150,12 +150,20 @@ static inline zend_bool php_inspector_break_disable(php_inspector_break_t *brk) 
 	return zend_hash_index_del(&BRK(breaks), (zend_ulong) instruction->opline) == SUCCESS;
 }
 
-void php_inspector_breaks_disable(zend_op *begin, zend_op *end) {
-	const zend_op *address = begin;
+void php_inspector_breaks_purge(zend_function *ops) {
+	zend_op *opline, *end;
 
-	while (address < end) {
-		zend_hash_index_del(&BRK(breaks), (zend_ulong) address);
-		address++;
+	if (!ZEND_USER_CODE(ops->type)) {
+		return;
+	}
+	
+	opline = ops->op_array.opcodes;
+	end    = opline + ops->op_array.last;
+
+	while (opline < end) {
+		zend_hash_index_del(
+			&BRK(breaks), (zend_ulong) opline);
+		opline++;
 	}
 }
 
@@ -369,6 +377,10 @@ static void php_inspector_break_unset(zval *zv) {
 	php_reflection_object_t *reflection =
 		php_reflection_object_fetch(&instruction->function);
 
+	if (BRK(state) != INSPECTOR_BREAK_RUNTIME) {
+		return;
+	}
+
 	if (reflection->ref_type != PHP_REF_TYPE_EXPIRED) {
 		instruction->opline->opcode = brk->opcode;
 
@@ -379,6 +391,7 @@ static void php_inspector_break_unset(zval *zv) {
 /* {{{ */
 PHP_RINIT_FUNCTION(inspector_break) 
 {
+
 	BRK(state) = INSPECTOR_BREAK_RUNTIME;
 
 	zend_hash_init(&BRK(breaks), 8, NULL, php_inspector_break_unset, 0);

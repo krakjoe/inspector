@@ -37,19 +37,26 @@ extern zend_module_entry inspector_module_entry;
 #include "TSRM.h"
 #endif
 
+typedef enum {
+	PHP_INSPECTOR_ROOT_PENDING,
+	PHP_INSPECTOR_ROOT_REGISTERED,
+} php_inspector_root_t;
+
+typedef enum {
+	PHP_INSPECTOR_TABLE_FILE,
+	PHP_INSPECTOR_TABLE_FUNCTION,
+	PHP_INSPECTOR_TABLE_CLASS,
+} php_inspector_table_t;
+
+typedef struct _php_inspector_tables_t {
+	HashTable file;
+	HashTable function;
+	HashTable class;
+} php_inspector_tables_t;
+
 ZEND_BEGIN_MODULE_GLOBALS(inspector)
-	struct {
-		HashPosition function;
-		HashPosition class;
-	} pointers;
-	struct {
-		HashTable function;
-		HashTable class;
-	} pending;
-	struct {
-		HashTable function;
-		HashTable class;
-	} registered;
+	php_inspector_tables_t pending;
+	php_inspector_tables_t registered;
 ZEND_END_MODULE_GLOBALS(inspector)
 
 ZEND_DECLARE_MODULE_GLOBALS(inspector);
@@ -60,38 +67,71 @@ ZEND_DECLARE_MODULE_GLOBALS(inspector);
 #define PIG(v) (inspector_globals.v)
 #endif
 
-static zend_always_inline HashTable* php_inspector_pending_function(zend_string *name, zend_bool create) {
-	zend_string *lookup = zend_string_tolower(name);
-	HashTable *pending = zend_hash_find_ptr(&PIG(pending).function, lookup);
-	
-	if (!pending && create) {
-		ALLOC_HASHTABLE(pending);
+static zend_always_inline HashTable* php_inspector_table_select(php_inspector_root_t root, php_inspector_table_t type) {
+	php_inspector_tables_t *tables;
 
-		zend_hash_init(pending, 8, NULL, ZVAL_PTR_DTOR, 0);
+	switch (root) {
+		case PHP_INSPECTOR_ROOT_PENDING:
+			tables = &PIG(pending);
+		break;
 
-		zend_hash_update_ptr(&PIG(pending).function, lookup, pending);
+		case PHP_INSPECTOR_ROOT_REGISTERED:
+			tables = &PIG(registered);
+		break;
+
+		default:
+			return NULL;
 	}
 
-	zend_string_release(lookup);
+	switch (type) {
+		case PHP_INSPECTOR_TABLE_FILE:
+			return &tables->file;
+		case PHP_INSPECTOR_TABLE_FUNCTION:
+			return &tables->function;
+		case PHP_INSPECTOR_TABLE_CLASS:
+			return &tables->class;
+	}
 
-	return pending;
+	return NULL;
 }
 
-static zend_always_inline HashTable* php_inspector_registered_function(zend_string *name, zend_bool create) {
-	zend_string *lookup = zend_string_tolower(name);
-	HashTable *registered = zend_hash_find_ptr(&PIG(registered).function, lookup);
-	
-	if (!registered && create) {
-		ALLOC_HASHTABLE(registered);
+static zend_always_inline HashTable* php_inspector_table_create(php_inspector_root_t root, php_inspector_table_t type, 	zend_string *key) {
+	HashTable *rt = php_inspector_table_select(root, type);
+	HashTable *table;
 
-		zend_hash_init(registered, 8, NULL, ZVAL_PTR_DTOR, 0);
+	ALLOC_HASHTABLE(table);
+	zend_hash_init(table, 8, NULL, ZVAL_PTR_DTOR, 0);
 
-		zend_hash_update_ptr(&PIG(registered).function, lookup, registered);
+	return zend_hash_update_ptr(rt, (zend_string*) key, table);
+}
+
+static zend_always_inline HashTable* php_inspector_table(php_inspector_root_t root, php_inspector_table_t type, zend_string *key, zend_bool create) {
+	HashTable *rt = php_inspector_table_select(root, type);
+	HashTable *table = 
+		(HashTable*) zend_hash_find_ptr(rt, key);
+
+	if (!table && create) {
+		return php_inspector_table_create(root, type, key);
 	}
 
-	zend_string_release(lookup);
+	return table;
+}
 
-	return registered;
+static zend_always_inline void php_inspector_table_insert(php_inspector_root_t root, php_inspector_table_t type, zend_string *key, zval *zv) {
+	HashTable *table = php_inspector_table(root, type, key, 1);
+
+	if (!table) {
+		return;
+	}
+
+	zend_hash_next_index_insert(table, zv);
+}
+
+static zend_always_inline void php_inspector_table_drop(php_inspector_root_t root, php_inspector_table_t type, zend_string *key) {
+	HashTable *rt = 
+		php_inspector_table_select(root, type);
+	
+	zend_hash_del(rt, key);
 }
 
 #if defined(ZTS) && defined(COMPILE_DL_INSPECTOR)

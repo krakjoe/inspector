@@ -22,6 +22,7 @@
 extern zend_class_entry *php_inspector_function_ce;
 
 void php_inspector_function_factory(zend_function *function, zval *return_value);
+int php_inspector_function_resolve(zval *function, zend_function *ops);
 
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(InspectorFunction_getInstruction_arginfo, 0, 0, Inspector\\InspectorInstruction, 1)

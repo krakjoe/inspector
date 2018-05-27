@@ -93,23 +93,12 @@ void php_inspector_function_factory(zend_function *function, zval *return_value)
 	}
 }
 
-static zend_always_inline void php_inspector_function_pending(zend_string *name, zval *object) {
-	php_reflection_object_t *reflection = 	
-		php_reflection_object_fetch(object);
-	HashTable *pending = 
-		php_inspector_pending_function(name, 1);
-
-	zend_hash_next_index_insert(pending, object);
-
-	reflection->ref_type = PHP_REF_TYPE_PENDING;
-
-	Z_ADDREF_P(object);
-}
-
 PHP_METHOD(InspectorFunction, __construct)
 {
 	zval *function = NULL;
 	zend_string *name = NULL;
+	php_reflection_object_t *reflection =
+		php_reflection_object_fetch(getThis());
 
 	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "z", &function) != SUCCESS) {
 		return;
@@ -120,10 +109,14 @@ PHP_METHOD(InspectorFunction, __construct)
 
 		if (!zend_hash_exists(EG(function_table), name)) {
 			/* create pending */
-			php_inspector_function_pending(name, getThis());
+			reflection->ref_type = PHP_REF_TYPE_PENDING;
+
+			php_inspector_table_insert(
+				PHP_INSPECTOR_ROOT_PENDING, 
+				PHP_INSPECTOR_TABLE_FUNCTION, 
+				name, getThis());
 
 			zend_string_release(name);
-
 			return;
 		}
 
@@ -282,16 +275,66 @@ PHP_METHOD(InspectorFunction, flushInstructionCache)
 	php_inspector_instruction_cache_flush(getThis());
 }
 
+int php_inspector_function_resolve(zval *zv, zend_function *ops) {
+	php_reflection_object_t *reflector = 
+		php_reflection_object_fetch(zv);
+	zend_function *oldFunction = 
+		php_reflection_object_function(zv);	
+	zend_function *onResolve = zend_hash_find_ptr(
+		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONRESOLVE);
+
+	if (oldFunction) {
+		if (ops->op_array.opcodes == oldFunction->op_array.opcodes) {
+			reflector->ref_type = PHP_REF_TYPE_OTHER;
+
+			return ZEND_HASH_APPLY_REMOVE;
+		}
+
+		php_inspector_instruction_cache_flush(zv);
+
+		/* want to purge breaks on old addresses for named functions ... */
+	}
+
+	reflector->ptr = ops;
+	reflector->ref_type = PHP_REF_TYPE_OTHER;
+
+	if (ZEND_USER_CODE(onResolve->type)) {
+		zval rv;
+
+		ZVAL_NULL(&rv);
+
+		zend_call_method_with_0_params(zv, Z_OBJCE_P(zv), &onResolve, "onresolve", &rv);
+
+		if (Z_REFCOUNTED(rv)) {
+			zval_ptr_dtor(&rv);
+		}
+
+		if (ops->common.function_name) {
+			php_inspector_table_insert(
+				PHP_INSPECTOR_ROOT_REGISTERED, 
+				PHP_INSPECTOR_TABLE_FUNCTION, 
+				ops->common.function_name, zv);
+			Z_ADDREF_P(zv);
+		}
+	}
+
+	if (instanceof_function(Z_OBJCE_P(zv), php_inspector_file_ce)) {
+		reflector->ref_type = PHP_REF_TYPE_EXPIRED;
+	}
+
+	return ZEND_HASH_APPLY_REMOVE;
+}
+
 static int php_inspector_function_remove(zend_function *function) {
-	HashTable *pending;
-	HashTable *registered = php_inspector_registered_function(function->common.function_name, 0);
+	HashTable *registered = php_inspector_table(
+		PHP_INSPECTOR_ROOT_REGISTERED, 
+		PHP_INSPECTOR_TABLE_FUNCTION, 
+		function->common.function_name, 0);
 	zval *object;
 
 	if (!registered) {
 		return ZEND_HASH_APPLY_REMOVE;
 	}
-
-	pending = php_inspector_pending_function(function->common.function_name, 1);
 
 	ZEND_HASH_FOREACH_VAL(registered, object) {
 		php_reflection_object_t *reflection =
@@ -299,15 +342,18 @@ static int php_inspector_function_remove(zend_function *function) {
 	
 		reflection->ref_type = PHP_REF_TYPE_PENDING;
 
-		if (zend_hash_next_index_insert(pending, object)) {
-			Z_ADDREF_P(object);
-		}
+		php_inspector_table_insert(
+			PHP_INSPECTOR_ROOT_PENDING, 	
+			PHP_INSPECTOR_TABLE_FUNCTION, 
+			function->common.function_name, object);
 
-		php_inspector_instruction_cache_flush(object);
+		Z_ADDREF_P(object);
 	} ZEND_HASH_FOREACH_END();
 
-	zend_hash_index_del(
-		&PIG(registered).function, (zend_ulong) function->op_array.opcodes);
+	php_inspector_table_drop(
+		PHP_INSPECTOR_ROOT_REGISTERED,
+		PHP_INSPECTOR_TABLE_FUNCTION, 
+		function->common.function_name);
 
 	return ZEND_HASH_APPLY_REMOVE;
 }
