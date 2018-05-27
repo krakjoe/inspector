@@ -62,14 +62,12 @@ static PHP_METHOD(InspectorFile, __construct)
 		return;
 	}
 
+	reflection->ref_type = PHP_REF_TYPE_PENDING;
+
 	php_inspector_table_insert(
 		PHP_INSPECTOR_ROOT_PENDING, 
 		PHP_INSPECTOR_TABLE_FILE, 
 		file, getThis());
-
-	reflection->ref_type = PHP_REF_TYPE_PENDING;
-
-	Z_ADDREF_P(getThis());
 }
 
 static PHP_METHOD(InspectorFile, isPending)
@@ -87,6 +85,53 @@ static PHP_METHOD(InspectorFile, isExpired)
 
 	RETURN_BOOL(reflector->ref_type == PHP_REF_TYPE_EXPIRED);
 }
+
+static PHP_METHOD(InspectorFile, purge)
+{
+	HashTable *filters = NULL;
+	zend_string *included;
+	
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "|H", &filters) != SUCCESS) {
+		return;
+	}
+
+	ZEND_HASH_FOREACH_STR_KEY(&EG(included_files), included) {
+		HashTable *registered = php_inspector_table(
+			PHP_INSPECTOR_ROOT_REGISTERED, 
+			PHP_INSPECTOR_TABLE_FILE, 
+			included, 0);
+		zval *object;
+
+		if (!registered) {
+			zend_hash_del(
+				&EG(included_files), included);
+			continue;
+		}
+
+		ZEND_HASH_FOREACH_VAL(registered, object) {
+			php_reflection_object_t *reflection =
+				php_reflection_object_fetch(object);
+		
+			reflection->ref_type = PHP_REF_TYPE_PENDING;
+
+			php_inspector_table_insert(
+				PHP_INSPECTOR_ROOT_PENDING, 	
+				PHP_INSPECTOR_TABLE_FILE, 
+				included, object);
+		} ZEND_HASH_FOREACH_END();
+
+		php_inspector_table_drop(
+			PHP_INSPECTOR_ROOT_REGISTERED,
+			PHP_INSPECTOR_TABLE_FUNCTION, 
+			included);
+
+		zend_hash_del(&EG(included_files), included);
+	} ZEND_HASH_FOREACH_END();
+}
+
+ZEND_BEGIN_ARG_INFO_EX(InspectorFile_purge_arginfo, 0, 0, 0)
+	ZEND_ARG_TYPE_INFO(0, filter, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(InspectorFile_construct_arginfo, 0, 0, 1)
 	ZEND_ARG_INFO(0, file)
@@ -106,6 +151,7 @@ static zend_function_entry php_inspector_file_methods[] = {
 	PHP_ME(InspectorFile, __construct, InspectorFile_construct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFile, isPending, InspectorFile_state_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFile, isExpired, InspectorFile_state_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFile, purge, InspectorFile_purge_arginfo, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_FE_END
 };
 

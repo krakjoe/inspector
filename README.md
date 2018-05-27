@@ -19,6 +19,8 @@ namespace Inspector
 		public function getMethod(string name) : InspectorMethod;
 		public function getMethods(int filter = 0) : array;
 
+		public function onResolve();
+
 		public static function purge(array filters = []);
 	}
 
@@ -31,6 +33,8 @@ namespace Inspector
 	class InspectorFunction extends \ReflectionFunction implements InspectorInstructionInterface {
 		public static function purge(array filters = []);
 
+		public function onResolve();
+
 		protected $instructionCache;
 	}
 
@@ -40,6 +44,8 @@ namespace Inspector
 		public function isPending() : bool;
 
 		abstract public function onResolve() : void;
+
+		public static function purge(array filters = []);
 
 		protected $instructionCache;
 	}

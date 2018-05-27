@@ -23,6 +23,7 @@
 #include "php_inspector.h"
 
 #include "zend_exceptions.h"
+#include "zend_interfaces.h"
 
 #include "strings.h"
 #include "reflection.h"
@@ -30,6 +31,14 @@
 #include "function.h"
 
 zend_class_entry *php_inspector_class_ce;
+
+static zend_always_inline zend_bool php_inspector_class_guard(zval *object) {
+	if (!php_inspector_reflection_guard(object)) {
+		return 0;
+	}
+
+	return 1;
+}
 
 /* {{{ */
 void php_inspector_class_factory(zend_class_entry *ce, zval *return_value) {
@@ -62,6 +71,41 @@ zend_function* php_inspector_method_find(zend_class_entry *class, zend_string *n
 } /* }}} */
 
 /* {{{ */
+static PHP_METHOD(InspectorClass, __construct)
+{
+	zval *class = NULL;
+	zend_string *name = NULL;
+	php_reflection_object_t *reflection =
+		php_reflection_object_fetch(getThis());
+	zend_class_entry *ce;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "z", &class) != SUCCESS) {
+		return;
+	}
+
+	if (Z_TYPE_P(class) == IS_STRING) {
+		name = zend_string_tolower(Z_STR_P(class));
+
+		if (!(ce = zend_hash_find_ptr(EG(class_table), name))) {
+			reflection->ref_type = PHP_REF_TYPE_PENDING;
+
+			php_inspector_table_insert(
+				PHP_INSPECTOR_ROOT_PENDING, 
+				PHP_INSPECTOR_TABLE_CLASS,
+				Z_STR_P(class), getThis());
+
+			zend_string_release(name);
+			return;
+		}
+
+		ce->refcount++;
+
+		zend_string_release(name);
+	}
+
+	zend_call_method_with_1_params(getThis(), Z_OBJCE_P(getThis()), &EX(func)->common.scope->parent->constructor, "__construct", return_value, class);
+}
+
 static PHP_METHOD(InspectorClass, getMethod) {
 	zend_class_entry *ce =
 		php_reflection_object_class(getThis());
@@ -69,6 +113,10 @@ static PHP_METHOD(InspectorClass, getMethod) {
 	zend_function *function;
 
 	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "S", &method) != SUCCESS) {
+		return;
+	}
+
+	if (!php_inspector_class_guard(getThis())) {
 		return;
 	}
 
@@ -93,6 +141,10 @@ static PHP_METHOD(InspectorClass, getMethods)
 		return;
 	}
 
+	if (!php_inspector_class_guard(getThis())) {
+		return;
+	}
+
 	array_init(return_value);
 
 	ZEND_HASH_FOREACH_STR_KEY_PTR(&ce->function_table, name, function) {
@@ -107,11 +159,103 @@ static PHP_METHOD(InspectorClass, getMethods)
 	} ZEND_HASH_FOREACH_END();
 }
 
+int php_inspector_method_clean(zval *zv) {
+	zend_function *function = 
+		(zend_function*) Z_PTR_P(zv);
+
+	if (!ZEND_USER_CODE(function->type)) {
+		return ZEND_HASH_APPLY_KEEP;
+	}
+
+	php_inspector_breaks_purge(function);
+
+	return ZEND_HASH_APPLY_KEEP;	
+}
+
+static zend_always_inline void php_inspector_class_destroy(zend_class_entry *ce) {
+	zval tmp;
+	
+	ZVAL_PTR(&tmp, ce);
+
+	zend_hash_apply(&ce->function_table, php_inspector_method_clean);
+
+	destroy_zend_class(&tmp);
+}
+
+int php_inspector_class_resolve(zval *zv, zend_class_entry *class) {
+	php_reflection_object_t *reflector = 
+		php_reflection_object_fetch(zv);
+	zend_class_entry *oldClass = 
+		php_reflection_object_class(zv);
+	zend_function *onResolve = zend_hash_find_ptr(
+		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONRESOLVE);
+
+	if (oldClass) {
+		php_inspector_class_destroy(oldClass);
+	}
+
+	reflector->ptr = class;
+
+	class->refcount++;
+
+	reflector->ref_type = PHP_REF_TYPE_OTHER;
+
+	if (ZEND_USER_CODE(onResolve->type)) {
+		zval rv;
+
+		ZVAL_NULL(&rv);
+
+		zend_call_method_with_0_params(zv, Z_OBJCE_P(zv), &onResolve, "onresolve", &rv);
+
+		if (Z_REFCOUNTED(rv)) {
+			zval_ptr_dtor(&rv);
+		}
+
+		php_inspector_table_insert(
+			PHP_INSPECTOR_ROOT_REGISTERED,
+			PHP_INSPECTOR_TABLE_CLASS,
+			class->name, zv);
+	}
+
+	return ZEND_HASH_APPLY_REMOVE;
+}
+
+static int php_inspector_class_remove(zend_class_entry *class) {
+	HashTable *registered = php_inspector_table(
+		PHP_INSPECTOR_ROOT_REGISTERED, 
+		PHP_INSPECTOR_TABLE_CLASS, 
+		class->name, 0);
+	zval *object;
+
+	if (!registered) {
+		return ZEND_HASH_APPLY_REMOVE;
+	}
+
+	ZEND_HASH_FOREACH_VAL(registered, object) {
+		php_reflection_object_t *reflection =
+			php_reflection_object_fetch(object);
+	
+		reflection->ref_type = PHP_REF_TYPE_PENDING;
+
+		php_inspector_table_insert(
+			PHP_INSPECTOR_ROOT_PENDING, 	
+			PHP_INSPECTOR_TABLE_CLASS, 
+			class->name, object);
+	} ZEND_HASH_FOREACH_END();
+
+	php_inspector_table_drop(
+		PHP_INSPECTOR_ROOT_REGISTERED,
+		PHP_INSPECTOR_TABLE_CLASS, 
+		class->name);
+
+	return ZEND_HASH_APPLY_REMOVE;
+}
+
 static int php_inspector_class_purge(zval *zv, HashTable *filters) {
 	zval *filter;
 	zend_class_entry *ce = Z_PTR_P(zv);
 
-	if (ce->type != ZEND_USER_CLASS) {
+	if (ce->type != ZEND_USER_CLASS || instanceof_function(ce, reflector_ptr)) {
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
@@ -119,7 +263,7 @@ static int php_inspector_class_purge(zval *zv, HashTable *filters) {
 		zend_hash_del(
 			&EG(included_files), ce->info.user.filename);
 
-		return ZEND_HASH_APPLY_REMOVE;
+		return php_inspector_class_remove(ce);
 	}
 
 	ZEND_HASH_FOREACH_VAL(filters, filter) {
@@ -138,7 +282,7 @@ static int php_inspector_class_purge(zval *zv, HashTable *filters) {
 
 	zend_hash_del(&EG(included_files), ce->info.user.filename);
 
-	return ZEND_HASH_APPLY_REMOVE;
+	return php_inspector_class_remove(ce);
 }
 
 static PHP_METHOD(InspectorClass, purge)
@@ -150,7 +294,25 @@ static PHP_METHOD(InspectorClass, purge)
 
 	zend_hash_apply_with_argument(CG(class_table), (apply_func_arg_t) php_inspector_class_purge, filters);
 }
+
+static PHP_METHOD(InspectorClass, onResolve) {}
+
+static PHP_METHOD(InspectorClass, __destruct) {
+	zend_class_entry *class = 
+		php_reflection_object_class(getThis());
+
+	php_inspector_class_destroy(class);
+}
 /* }}} */
+
+/* {{{ */
+ZEND_BEGIN_ARG_INFO_EX(InspectorClass_construct_arginfo, 0, 0, 1)
+	ZEND_ARG_INFO(0, class)
+ZEND_END_ARG_INFO() /* }}} */
+
+/* {{{ */
+ZEND_BEGIN_ARG_INFO_EX(InspectorClass_destruct_arginfo, 0, 0, 1)
+ZEND_END_ARG_INFO() /* }}} */
 
 /* {{{ */
 ZEND_BEGIN_ARG_INFO(InspectorClass_getMethod_arginfo, 1)
@@ -168,9 +330,16 @@ ZEND_BEGIN_ARG_INFO_EX(InspectorClass_purge_arginfo, 0, 0, 0)
 ZEND_END_ARG_INFO() /* }}} */
 
 /* {{{ */
+ZEND_BEGIN_ARG_INFO_EX(InspectorClass_onResolve_arginfo, 0, 0, 0)
+ZEND_END_ARG_INFO() /* }}} */
+
+/* {{{ */
 static zend_function_entry php_inspector_class_methods[] = {
+	PHP_ME(InspectorClass, __construct, InspectorClass_construct_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorClass, onResolve, InspectorClass_onResolve_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorClass, getMethod, InspectorClass_getMethod_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorClass, getMethods, InspectorClass_getMethods_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorClass, __destruct, InspectorClass_destruct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorClass, purge, InspectorClass_purge_arginfo, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_FE_END
 }; /* }}} */
