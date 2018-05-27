@@ -22,6 +22,7 @@
 #include "php.h"
 #include "zend_exceptions.h"
 #include "zend_interfaces.h"
+#include "zend_vm.h"
 
 #include "php_inspector.h"
 
@@ -34,6 +35,8 @@
 
 zend_class_entry *php_inspector_function_ce;
 zend_class_entry *php_inspector_file_ce;
+
+zend_function* php_inspector_function_replace(zend_function *function);
 
 static zend_always_inline zend_bool php_inspector_function_guard(zval *object) {
 	php_reflection_object_t *reflection =
@@ -53,7 +56,7 @@ static zend_always_inline zend_bool php_inspector_function_guard(zval *object) {
 	return 1;
 }
 
-void php_inspector_function_factory(zend_function *function, zval *return_value) {
+void php_inspector_function_factory(zend_function *function, zval *return_value, zend_bool replace) {
 	php_reflection_object_t *reflection;
 
 	if (function->common.scope) {
@@ -63,7 +66,7 @@ void php_inspector_function_factory(zend_function *function, zval *return_value)
 	}
 
 	reflection = php_reflection_object_fetch(return_value);
-	reflection->ptr = function;
+	reflection->ptr = replace ? php_inspector_function_replace(function) : function;
 	reflection->ref_type = PHP_REF_TYPE_OTHER;
 
 	if (function->common.function_name) {
@@ -267,6 +270,188 @@ PHP_METHOD(InspectorFunction, flushInstructionCache)
 	php_inspector_instruction_cache_flush(getThis());
 }
 
+zend_string** php_inspector_function_copy_vars(zend_string **vars, uint32_t last) {
+	zend_string **copy = ecalloc(last, sizeof(zend_string*) * last);
+	zend_string **var, **end;
+
+	memcpy(copy, vars, sizeof(zend_string*) * last);
+
+	var = copy;
+	end = var + last;
+
+	while (var < end) {
+		zend_string_addref(*var);
+		var++;
+	}
+
+	return copy;
+}
+
+zend_op* php_inspector_function_copy_opcodes(zend_op_array *function, zend_op *opcodes, uint32_t last) {
+	zend_op *copy = ecalloc(last, sizeof(zend_op));
+	zend_op *opline, *end;
+
+	memcpy(copy, opcodes, sizeof(zend_op) * last);
+
+	opline = opcodes;
+	end    = opline + last;
+
+	while (opline < end) {
+		if (opline->op1_type == IS_CONST) {
+			ZEND_PASS_TWO_UNDO_CONSTANT(function, opline->op1);
+		}
+		if (opline->op2_type == IS_CONST) {
+			ZEND_PASS_TWO_UNDO_CONSTANT(function, opline->op2);
+		}
+		switch (opline->opcode) {
+			case ZEND_JMP:
+			case ZEND_FAST_CALL:
+			case ZEND_DECLARE_ANON_CLASS:
+			case ZEND_DECLARE_ANON_INHERITED_CLASS:
+				ZEND_PASS_TWO_UNDO_JMP_TARGET(function, opline, opline->op1);
+				break;
+			case ZEND_JMPZNZ:
+				opline->extended_value = ZEND_OFFSET_TO_OPLINE_NUM(function, opline, opline->extended_value);
+				/* break omitted intentionally */
+			case ZEND_JMPZ:
+			case ZEND_JMPNZ:
+			case ZEND_JMPZ_EX:
+			case ZEND_JMPNZ_EX:
+			case ZEND_JMP_SET:
+			case ZEND_COALESCE:
+			case ZEND_NEW:
+			case ZEND_FE_RESET_R:
+			case ZEND_FE_RESET_RW:
+			case ZEND_ASSERT_CHECK:
+				ZEND_PASS_TWO_UNDO_JMP_TARGET(function, opline, opline->op2);
+				break;
+			case ZEND_FE_FETCH_R:
+			case ZEND_FE_FETCH_RW:
+				opline->extended_value = ZEND_OFFSET_TO_OPLINE_NUM(function, opline, opline->extended_value);
+				break;
+		}
+		opline++;
+	}
+
+	opline = opcodes;
+	end    = opline + last;
+
+	while (opline < end) {
+		if (opline->op1_type == IS_CONST) {
+			ZEND_PASS_TWO_UPDATE_CONSTANT(function, opline->op1);
+		}
+		if (opline->op2_type == IS_CONST) {
+			ZEND_PASS_TWO_UPDATE_CONSTANT(function, opline->op2);
+		}
+		switch (opline->opcode) {
+			case ZEND_JMP:
+			case ZEND_FAST_CALL:
+			case ZEND_DECLARE_ANON_CLASS:
+			case ZEND_DECLARE_ANON_INHERITED_CLASS:
+				ZEND_PASS_TWO_UPDATE_JMP_TARGET(function, opline, opline->op1);
+				break;
+			case ZEND_JMPZNZ:
+				opline->extended_value = ZEND_OPLINE_NUM_TO_OFFSET(function, opline, opline->extended_value);
+				/* break omitted intentionally */
+			case ZEND_JMPZ:
+			case ZEND_JMPNZ:
+			case ZEND_JMPZ_EX:
+			case ZEND_JMPNZ_EX:
+			case ZEND_JMP_SET:
+			case ZEND_COALESCE:
+			case ZEND_NEW:
+			case ZEND_FE_RESET_R:
+			case ZEND_FE_RESET_RW:
+			case ZEND_ASSERT_CHECK:
+				ZEND_PASS_TWO_UPDATE_JMP_TARGET(function, opline, opline->op2);
+				break;
+			case ZEND_FE_FETCH_R:
+			case ZEND_FE_FETCH_RW:
+				opline->extended_value = ZEND_OPLINE_NUM_TO_OFFSET(function, opline, opline->extended_value);
+				break;
+		}
+		zend_vm_set_opcode_handler(opline);
+		opline++;
+	}
+
+	return copy;	
+}
+
+zval* php_inspector_function_copy_literals(zval *literals, int last) {
+	zval *literal, *end;
+	zval *copy = (zval*) ecalloc(last, sizeof(zval));
+
+	memcpy(copy, literals, sizeof(zval) * last);
+
+	literal = copy;
+	end     = literal + last - 1;
+
+	while (literal < end) {
+		Z_TRY_ADDREF_P(literal);
+		literal++;
+	}
+
+	return copy;
+}
+
+zend_arg_info* php_inspector_function_copy_arginfo(zend_function *function, zend_arg_info *arg_info, int last) {
+	zend_arg_info *copy;
+	
+	if (function->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
+		last++;
+		arg_info--;
+	}
+
+	copy = ecalloc(last, sizeof(zend_arg_info));
+
+	memcpy(copy, arg_info, sizeof(zend_arg_info) * last);
+
+	if (function->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
+		copy++;
+	}
+
+	return copy;
+}
+
+zend_function* php_inspector_function_replace(zend_function *function) {
+	zend_op_array *copy;
+	zend_op *opline, *end;
+	zend_string *var;
+
+	if (!ZEND_USER_CODE(function->type)) {
+		return function;
+	}
+
+	copy = (zend_op_array*) zend_arena_alloc(&CG(arena), sizeof(zend_op_array));
+
+	memcpy(copy, function, sizeof(zend_op_array));
+
+	copy->refcount = ecalloc(1, sizeof(uint32_t));
+	(*copy->refcount) = 2;
+
+	copy->opcodes  = php_inspector_function_copy_opcodes(
+		copy, function->op_array.opcodes, function->op_array.last);
+	copy->vars     = php_inspector_function_copy_vars(
+		function->op_array.vars, function->op_array.last_var);
+	copy->literals = php_inspector_function_copy_literals(
+		function->op_array.literals, function->op_array.last_literal);
+	copy->arg_info = php_inspector_function_copy_arginfo(function, function->op_array.arg_info, function->op_array.num_args);
+
+	if (copy->function_name) {
+		zend_string *name = zend_string_tolower(copy->function_name);
+
+		if (copy->scope) {
+			zend_hash_update_ptr(&copy->scope->function_table, name, copy);
+		} else {
+			zend_hash_update_ptr(EG(function_table), name, copy);
+		}
+	} else {
+		memcpy(function, copy, sizeof(zend_op_array));
+	}
+
+	return copy;
+}
+
 int php_inspector_function_resolve(zval *zv, zend_function *ops) {
 	php_reflection_object_t *reflector = 
 		php_reflection_object_fetch(zv);
@@ -276,17 +461,12 @@ int php_inspector_function_resolve(zval *zv, zend_function *ops) {
 		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONRESOLVE);
 
 	if (oldFunction) {
-		if (ops->op_array.opcodes == oldFunction->op_array.opcodes) {
-			reflector->ref_type = PHP_REF_TYPE_OTHER;
+		php_inspector_breaks_purge(oldFunction);
 
-			return ZEND_HASH_APPLY_REMOVE;
-		}
-
-		php_inspector_breaks_purge(ops);
 		php_inspector_instruction_cache_flush(zv);
 	}
 
-	reflector->ptr = ops;
+	reflector->ptr = php_inspector_function_replace(ops);
 	reflector->ref_type = PHP_REF_TYPE_OTHER;
 
 	if (ZEND_USER_CODE(onResolve->type)) {
@@ -396,6 +576,18 @@ static PHP_METHOD(InspectorFunction, purge)
 	zend_hash_apply_with_argument(EG(function_table), (apply_func_arg_t) php_inspector_function_purge, filters);
 }
 
+PHP_METHOD(InspectorFunction, __destruct)
+{
+	zend_op_array* function = 
+		php_reflection_object_function(getThis());
+
+	if (!ZEND_USER_CODE(function->type)) {
+		return;
+	}
+
+	destroy_op_array(function);
+}
+
 ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_purge_arginfo, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, filter, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -413,6 +605,7 @@ static zend_function_entry php_inspector_function_methods[] = {
 	PHP_ME(InspectorFunction, findFirstInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, findLastInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, flushInstructionCache, InspectorFunction_flush_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, __destruct, InspectorFunction_destruct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, purge, InspectorFunction_purge_arginfo, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_FE_END
 };

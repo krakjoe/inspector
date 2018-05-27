@@ -41,30 +41,10 @@ typedef enum _php_inspector_break_state_t {
 
 ZEND_BEGIN_MODULE_GLOBALS(inspector_break)
 	php_inspector_break_state_t state;
-	HashTable files;
-	HashTable pending;
 	HashTable breaks;
 ZEND_END_MODULE_GLOBALS(inspector_break)
 
 ZEND_DECLARE_MODULE_GLOBALS(inspector_break);
-
-static user_opcode_handler_t php_inspector_break_vm[6];
-
-#define PHP_INSPECTOR_BREAK_DECL_CLASS 0			/* ZEND_DECLARE_CLASS */
-#define PHP_INSPECTOR_BREAK_DECL_INHERITED_CLASS 1		/* ZEND_DECLARE_INHERITED_CLASS */
-#define PHP_INSPECTOR_BREAK_DECL_INHERITED_CLASS_DELAYED 2	/* ZEND_DECLARE_INHERITED_CLASS_DELAYED */
-#define PHP_INSPECTOR_BREAK_DECL_ANON_CLASS 3			/* ZEND_DECARRE_ANON_CLASS */
-#define PHP_INSPECTOR_BREAK_DECL_ANON_INHERITED_CLASS 4		/* ZEND_DECLARE_ANON_INHERITED_CLASS */
-#define PHP_INSPECTOR_BREAK_DECL_FUNCTION 5			/* ZEND_DECLARE_FUNCTION */
-
-static zend_uchar php_inspector_break_vm_map[6] = {
-	ZEND_DECLARE_CLASS,
-	ZEND_DECLARE_INHERITED_CLASS,
-	ZEND_DECLARE_INHERITED_CLASS_DELAYED,
-	ZEND_DECLARE_ANON_CLASS,
-	ZEND_DECLARE_ANON_INHERITED_CLASS,
-	ZEND_DECLARE_FUNCTION
-};
 
 #ifdef ZTS
 #define BRK(v) TSRMG(inspector_break_globals_id, zend_inspector_break_globals *, v)
@@ -391,7 +371,6 @@ static void php_inspector_break_unset(zval *zv) {
 /* {{{ */
 PHP_RINIT_FUNCTION(inspector_break) 
 {
-
 	BRK(state) = INSPECTOR_BREAK_RUNTIME;
 
 	zend_hash_init(&BRK(breaks), 8, NULL, php_inspector_break_unset, 0);

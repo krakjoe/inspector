@@ -126,7 +126,7 @@ static PHP_METHOD(InspectorClass, getMethod) {
 		return;
 	}
 
-	php_inspector_function_factory(function, return_value);
+	php_inspector_function_factory(function, return_value, 1);
 }
 
 static PHP_METHOD(InspectorClass, getMethods)
@@ -151,7 +151,7 @@ static PHP_METHOD(InspectorClass, getMethods)
 		if (function->common.fn_flags & filter) {
 			zval inspector;
 
-			php_inspector_function_factory(function, &inspector);
+			php_inspector_function_factory(function, &inspector, 1);
 
 			zend_hash_add(
 				Z_ARRVAL_P(return_value), name, &inspector);
