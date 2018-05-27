@@ -1,0 +1,2 @@
+<?php
+return $a + $b;
