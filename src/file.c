@@ -50,7 +50,6 @@ static PHP_METHOD(InspectorFile, __construct)
 {
 	php_reflection_object_t *reflection = php_reflection_object_fetch(getThis());
 	zend_string *file = NULL;
-	HashTable *pending;
 
 	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "S", &file) != SUCCESS) {
 		return;

@@ -95,11 +95,23 @@ static zend_always_inline HashTable* php_inspector_table_select(php_inspector_ro
 }
 
 zend_function* php_inspector_function_find(zend_function *function) {
-	return zend_hash_index_find_ptr(&PIG(map), (zend_ulong) function);
+	if (function->common.scope) {
+		return zend_hash_index_find_ptr(&PIG(map), (zend_ulong) function);
+	} else if (function->common.function_name) {
+		return zend_hash_find_ptr(&PIG(map), function->common.function_name);
+	} else {
+		return zend_hash_find_ptr(&PIG(map), function->op_array.filename);
+	}
 }
 
-void php_inspector_function_map(zend_function *source, zend_function *destination) {
-	zend_hash_index_update_ptr(&PIG(map), (zend_ulong) source, destination);
+void php_inspector_function_map(zend_function *source, zend_op_array *destination) {
+	if (source->common.scope) {
+		zend_hash_index_update_ptr(&PIG(map), (zend_ulong) source, destination);
+	} else if (source->common.function_name) {
+		zend_hash_update_ptr(&PIG(map), source->common.function_name, destination);
+	} else {
+		zend_hash_update_ptr(&PIG(map), source->op_array.filename, destination);
+	}
 }
 
 static zend_always_inline HashTable* php_inspector_table_create(php_inspector_root_t root, php_inspector_table_t type, 	zend_string *key) {
@@ -144,26 +156,23 @@ void php_inspector_table_drop(php_inspector_root_t root, php_inspector_table_t t
 }
 
 static zend_op_array* php_inspector_execute(zend_execute_data *execute_data) {
-	zend_op_array *ops;
+	zend_op_array *map;
 	zend_string   *name;
 	HashTable     *pending;
 
-	if (UNEXPECTED(ops = (zend_op_array*) php_inspector_function_find(EX(func)))) {
+	if (UNEXPECTED(map = (zend_op_array*) php_inspector_function_find(EX(func)))) {
 		uint32_t offset = 
 			EX(opline) - EX(func)->op_array.opcodes;
 
-		EX(func) = (zend_function*) ops;
+		EX(func) = (zend_function*) map;
 		EX(opline) = EX(func)->op_array.opcodes + offset;
 	}
 
-	ops = &EX(func)->op_array;
-	name = ops->filename;
-
-	if (UNEXPECTED(!ops->function_name && zend_hash_num_elements(&PIG(pending).file))) {
+	if (UNEXPECTED(!EX(func)->op_array.function_name && zend_hash_num_elements(&PIG(pending).file))) {
 		pending = php_inspector_table(
 				PHP_INSPECTOR_ROOT_PENDING, 
 				PHP_INSPECTOR_TABLE_FILE, 
-				name, 0);
+				EX(func)->op_array.filename, 0);
 
 		if (UNEXPECTED(pending)) {
 			if (ZEND_HASH_GET_APPLY_COUNT(pending) == 0) {
@@ -172,14 +181,14 @@ static zend_op_array* php_inspector_execute(zend_execute_data *execute_data) {
 				zend_hash_apply_with_argument(
 					pending, 
 					(apply_func_arg_t) 
-						php_inspector_function_resolve, ops);
+						php_inspector_function_resolve, EX(func));
 
 				ZEND_HASH_DEC_APPLY_COUNT(pending);
 
 				php_inspector_table_drop(
 					PHP_INSPECTOR_ROOT_PENDING, 
 					PHP_INSPECTOR_TABLE_FILE, 
-					ops->filename);
+					EX(func)->op_array.filename);
 			}
 		}
 	}

@@ -332,7 +332,7 @@ zend_function* php_inspector_function_replace(zend_function *function) {
 
 	php_inspector_function_map(function, copy);
 
-	return copy;
+	return (zend_function*) copy;
 }
 
 int php_inspector_function_resolve(zval *zv, zend_function *ops) {
