@@ -413,6 +413,36 @@ zend_arg_info* php_inspector_function_copy_arginfo(zend_function *function, zend
 	return copy;
 }
 
+HashTable* php_inspector_function_copy_static(zend_function *function) {
+	if (!function->op_array.static_variables) {
+		return NULL;
+	}
+
+	return zend_array_dup(function->op_array.static_variables);
+}
+
+zend_try_catch_element* php_inspector_function_copy_try_catch(zend_try_catch_element *old, int end) {	
+	zend_try_catch_element *try_catch = safe_emalloc(end, sizeof(zend_try_catch_element), 0);
+	
+	memcpy(
+		try_catch, 
+		old,
+		sizeof(zend_try_catch_element) * end);
+	
+	return try_catch;
+}
+
+zend_live_range* php_inspector_function_copy_live_range(zend_live_range *old, int end) {
+	zend_live_range *range = safe_emalloc(end, sizeof(zend_live_range), 0);
+
+	memcpy(
+		range,
+		old,
+		sizeof(zend_live_range) * end);
+
+	return range;
+}
+
 zend_function* php_inspector_function_replace(zend_function *function) {
 	zend_op_array *copy;
 	zend_op *opline, *end;
@@ -427,8 +457,9 @@ zend_function* php_inspector_function_replace(zend_function *function) {
 	memcpy(copy, function, sizeof(zend_op_array));
 
 	copy->refcount = ecalloc(1, sizeof(uint32_t));
-	(*copy->refcount) = 2;
+	(*copy->refcount) = 1;
 
+	copy->static_variables = php_inspector_function_copy_static(function);
 	copy->opcodes  = php_inspector_function_copy_opcodes(
 		copy, function->op_array.opcodes, function->op_array.last);
 	copy->vars     = php_inspector_function_copy_vars(
@@ -436,6 +467,10 @@ zend_function* php_inspector_function_replace(zend_function *function) {
 	copy->literals = php_inspector_function_copy_literals(
 		function->op_array.literals, function->op_array.last_literal);
 	copy->arg_info = php_inspector_function_copy_arginfo(function, function->op_array.arg_info, function->op_array.num_args);
+	copy->try_catch_array = php_inspector_function_copy_try_catch(
+		function->op_array.try_catch_array, function->op_array.last_try_catch);
+	copy->live_range = php_inspector_function_copy_live_range(
+		function->op_array.live_range, function->op_array.last_live_range);
 
 	if (copy->function_name) {
 		zend_string *name = zend_string_tolower(copy->function_name);
@@ -445,8 +480,12 @@ zend_function* php_inspector_function_replace(zend_function *function) {
 		} else {
 			zend_hash_update_ptr(EG(function_table), name, copy);
 		}
+
+		zend_string_release(name);
+		
+		(*copy->refcount)++;
 	} else {
-		memcpy(function, copy, sizeof(zend_op_array));
+		
 	}
 
 	return copy;
@@ -455,14 +494,12 @@ zend_function* php_inspector_function_replace(zend_function *function) {
 int php_inspector_function_resolve(zval *zv, zend_function *ops) {
 	php_reflection_object_t *reflector = 
 		php_reflection_object_fetch(zv);
-	zend_function *oldFunction = 
-		php_reflection_object_function(zv);
 	zend_function *onResolve = zend_hash_find_ptr(
 		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONRESOLVE);
 
-	if (oldFunction) {
-		php_inspector_breaks_purge(oldFunction);
-
+	if (php_reflection_object_function(zv)) {
+		php_inspector_breaks_purge(
+			php_reflection_object_function(zv));
 		php_inspector_instruction_cache_flush(zv);
 	}
 
