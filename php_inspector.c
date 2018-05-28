@@ -148,7 +148,7 @@ static zend_op_array* php_inspector_execute(zend_execute_data *execute_data) {
 	zend_string   *name;
 	HashTable     *pending;
 
-	if ((ops = php_inspector_function_find(EX(func)))) {
+	if (UNEXPECTED(ops = (zend_op_array*) php_inspector_function_find(EX(func)))) {
 		uint32_t offset = 
 			EX(opline) - EX(func)->op_array.opcodes;
 
