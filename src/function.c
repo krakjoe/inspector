@@ -319,6 +319,11 @@ zend_function* php_inspector_function_replace(zend_function *function) {
 		return function;
 	}
 
+	if ((copy = php_inspector_function_find(function)) && copy->function_name) {
+		(*copy->refcount)++;
+		return copy;
+	}
+
 	copy = (zend_op_array*) ecalloc(1, sizeof(zend_op_array));
 
 	memcpy(copy, function, sizeof(zend_op_array));

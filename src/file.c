@@ -34,6 +34,8 @@
 
 zend_class_entry *php_inspector_file_ce;
 
+zend_op_array* (*zend_compile_function)(zend_file_handle *, int);
+
 static zend_always_inline zend_bool php_inspector_file_executing(zend_string *file, zend_execute_data *frame) {
 	while (frame && (!frame->func || !ZEND_USER_CODE(frame->func->type))) {
 		frame = frame->prev_execute_data;
@@ -154,6 +156,36 @@ static zend_function_entry php_inspector_file_methods[] = {
 	PHP_FE_END
 };
 
+static zend_op_array* php_inspector_compile(zend_file_handle *fh, int type) {
+	zend_op_array *function = zend_compile_function(fh, type);
+	
+	HashTable *pending = php_inspector_table(
+				PHP_INSPECTOR_ROOT_PENDING, 
+				PHP_INSPECTOR_TABLE_FILE, 
+				function->filename, 0);
+
+	if (UNEXPECTED(pending)) {
+
+		if (ZEND_HASH_GET_APPLY_COUNT(pending) == 0) {
+			ZEND_HASH_INC_APPLY_COUNT(pending);
+
+			zend_hash_apply_with_argument(
+				pending, 
+				(apply_func_arg_t) 
+					php_inspector_function_resolve, function);
+
+			ZEND_HASH_DEC_APPLY_COUNT(pending);
+
+			php_inspector_table_drop(
+				PHP_INSPECTOR_ROOT_PENDING, 
+				PHP_INSPECTOR_TABLE_FILE, 
+				function->filename);
+		}
+	}
+	
+	return function;
+}
+
 PHP_MINIT_FUNCTION(inspector_file) 
 {
 	zend_class_entry ce;
@@ -161,6 +193,9 @@ PHP_MINIT_FUNCTION(inspector_file)
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorFile", php_inspector_file_methods);
 
 	php_inspector_file_ce = zend_register_internal_class_ex(&ce, php_inspector_function_ce);
+
+	zend_compile_function = zend_compile_file;
+	zend_compile_file     = php_inspector_compile;
 
 	return SUCCESS;
 }
