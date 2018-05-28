@@ -280,11 +280,12 @@ PHP_MSHUTDOWN_FUNCTION(inspector)
 	return SUCCESS;
 } /* }}} */
 
-static void php_inspector_function_free(zval *zv) {
-	zend_op_array *ops = Z_PTR_P(zv);
+static void php_inspector_map_free(zval *zv) {
+	zend_op_array *map = Z_PTR_P(zv);
 
-	efree(ops->opcodes);
-	efree(ops);
+	efree(map->opcodes);
+	efree(map->refcount);
+	efree(map);
 }
 
 static void php_inspector_table_free(zval *zv) {
@@ -311,7 +312,7 @@ PHP_RINIT_FUNCTION(inspector)
 		zend_hash_init(&PIG(registered).class, 8, NULL, php_inspector_table_free, 0);
 		zend_hash_init(&PIG(registered).function, 8, NULL, php_inspector_table_free, 0);
 
-		zend_hash_init(&PIG(map), 8, NULL, php_inspector_function_free, 0);
+		zend_hash_init(&PIG(map), 8, NULL, php_inspector_map_free, 0);
 	}
 
 	return SUCCESS;

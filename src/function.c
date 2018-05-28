@@ -270,45 +270,46 @@ PHP_METHOD(InspectorFunction, flushInstructionCache)
 	php_inspector_instruction_cache_flush(getThis());
 }
 
-zend_op* php_inspector_function_copy_opcodes(zend_op_array *function, const zend_op *opcodes, uint32_t last) {
+static zend_always_inline zend_op* php_inspector_function_copy_opcodes(zend_op_array *function, const zend_op *opcodes, uint32_t last) {
 	zend_op *copy = 
 		(zend_op*) ecalloc(last, sizeof(zend_op));
 
 	memcpy(copy, opcodes, sizeof(zend_op) * last);
 
 #if ZEND_USE_ABS_JMP_ADDR
-	zend_op *opline, *end;
-	opline = copy;
-	end    = opline + last;
+	{
+		zend_op *opline = copy, 
+			*end    = opline + last;
 
-	while (opline < end) {
-		switch (opline->opcode) {
-			case ZEND_JMP:
-			case ZEND_FAST_CALL:
-			case ZEND_DECLARE_ANON_CLASS:
-			case ZEND_DECLARE_ANON_INHERITED_CLASS:
-				opline->op1.jmp_addr = copy + (opline->op1.jmp_addr - opcodes);
-				break;
+		while (opline < end) {
+			switch (opline->opcode) {
+				case ZEND_JMP:
+				case ZEND_FAST_CALL:
+				case ZEND_DECLARE_ANON_CLASS:
+				case ZEND_DECLARE_ANON_INHERITED_CLASS:
+					opline->op1.jmp_addr = copy + (opline->op1.jmp_addr - opcodes);
+					break;
 
-			case ZEND_JMPZNZ:
-			case ZEND_JMPZ:
-			case ZEND_JMPNZ:
-			case ZEND_JMPZ_EX:
-			case ZEND_JMPNZ_EX:
-			case ZEND_JMP_SET:
-			case ZEND_COALESCE:
-			case ZEND_NEW:
-			case ZEND_FE_RESET_R:
-			case ZEND_FE_RESET_RW:
-			case ZEND_ASSERT_CHECK:
-				opline->op2.jmp_addr = copy + (opline->op2.jmp_addr - opcodes);
-				break;
+				case ZEND_JMPZNZ:
+				case ZEND_JMPZ:
+				case ZEND_JMPNZ:
+				case ZEND_JMPZ_EX:
+				case ZEND_JMPNZ_EX:
+				case ZEND_JMP_SET:
+				case ZEND_COALESCE:
+				case ZEND_NEW:
+				case ZEND_FE_RESET_R:
+				case ZEND_FE_RESET_RW:
+				case ZEND_ASSERT_CHECK:
+					opline->op2.jmp_addr = copy + (opline->op2.jmp_addr - opcodes);
+					break;
+			}
+			opline++;
 		}
-		opline++;
 	}
 #endif
 
-	return copy;	
+	return copy;
 }
 
 zend_function* php_inspector_function_replace(zend_function *function) {
@@ -321,6 +322,10 @@ zend_function* php_inspector_function_replace(zend_function *function) {
 	copy = (zend_op_array*) ecalloc(1, sizeof(zend_op_array));
 
 	memcpy(copy, function, sizeof(zend_op_array));
+
+	copy->refcount = ecalloc(1, sizeof(uint32_t));
+
+	(*copy->refcount) = 1;
 
 	copy->opcodes  = php_inspector_function_copy_opcodes(
 		copy, copy->opcodes, copy->last);
@@ -452,18 +457,6 @@ static PHP_METHOD(InspectorFunction, purge)
 	zend_hash_apply_with_argument(EG(function_table), (apply_func_arg_t) php_inspector_function_purge, filters);
 }
 
-PHP_METHOD(InspectorFunction, __destruct)
-{
-	zend_op_array* function = 
-		php_reflection_object_function(getThis());
-
-	if (!ZEND_USER_CODE(function->type)) {
-		return;
-	}
-
-	destroy_op_array(function);
-}
-
 ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_purge_arginfo, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, filter, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -481,7 +474,6 @@ static zend_function_entry php_inspector_function_methods[] = {
 	PHP_ME(InspectorFunction, findFirstInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, findLastInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, flushInstructionCache, InspectorFunction_flush_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(InspectorFunction, __destruct, InspectorFunction_destruct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, purge, InspectorFunction_purge_arginfo, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_FE_END
 };
