@@ -38,8 +38,6 @@
 #include "src/break.h"
 #include "src/frame.h"
 
-static void php_inspector_function_free(zval *zv);
-
 static void (*zend_execute_function)(zend_execute_data *);
 
 typedef struct _php_inspector_tables_t {
@@ -155,7 +153,7 @@ void php_inspector_table_drop(php_inspector_root_t root, php_inspector_table_t t
 	zend_hash_del(rt, key);
 }
 
-static zend_op_array* php_inspector_execute(zend_execute_data *execute_data) {
+static void php_inspector_execute(zend_execute_data *execute_data) {
 	zend_function *map;
 	zend_string   *name;
 	HashTable     *pending;

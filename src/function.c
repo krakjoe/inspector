@@ -285,7 +285,7 @@ static zend_always_inline zend_op* php_inspector_function_copy_opcodes(zend_op_a
 			switch (opline->opcode) {
 				case ZEND_JMP:
 				case ZEND_FAST_CALL:
-#if PHP_VERSION_ID >= 70300
+#if PHP_VERSION_ID < 70300
 				case ZEND_DECLARE_ANON_CLASS:
 				case ZEND_DECLARE_ANON_INHERITED_CLASS:
 #endif
@@ -305,7 +305,6 @@ static zend_always_inline zend_op* php_inspector_function_copy_opcodes(zend_op_a
 				case ZEND_ASSERT_CHECK:
 					opline->op2.jmp_addr = copy + (opline->op2.jmp_addr - opcodes);
 					break;
-
 #if PHP_VERSION_ID >= 70300
 				case ZEND_CATCH:
 					if (!(opline->extended_value & ZEND_LAST_CATCH)) {
