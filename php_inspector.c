@@ -38,6 +38,8 @@
 #include "src/break.h"
 #include "src/frame.h"
 
+static void php_inspector_function_free(zval *zv);
+
 static void (*zend_execute_function)(zend_execute_data *);
 
 typedef struct _php_inspector_tables_t {
@@ -49,6 +51,7 @@ typedef struct _php_inspector_tables_t {
 ZEND_BEGIN_MODULE_GLOBALS(inspector)
 	php_inspector_tables_t pending;
 	php_inspector_tables_t registered;
+	HashTable              map;
 ZEND_END_MODULE_GLOBALS(inspector)
 
 ZEND_DECLARE_MODULE_GLOBALS(inspector);
@@ -89,6 +92,14 @@ static zend_always_inline HashTable* php_inspector_table_select(php_inspector_ro
 	}
 
 	return NULL;
+}
+
+zend_function* php_inspector_function_find(zend_function *function) {
+	return zend_hash_index_find_ptr(&PIG(map), (zend_ulong) function);
+}
+
+void php_inspector_function_map(zend_function *source, zend_function *destination) {
+	zend_hash_index_update_ptr(&PIG(map), (zend_ulong) source, destination);
 }
 
 static zend_always_inline HashTable* php_inspector_table_create(php_inspector_root_t root, php_inspector_table_t type, 	zend_string *key) {
@@ -133,9 +144,20 @@ void php_inspector_table_drop(php_inspector_root_t root, php_inspector_table_t t
 }
 
 static zend_op_array* php_inspector_execute(zend_execute_data *execute_data) {
-	zend_op_array *ops = &EX(func)->op_array;
-	zend_string   *name = ops->filename;
+	zend_op_array *ops;
+	zend_string   *name;
 	HashTable     *pending;
+
+	if ((ops = php_inspector_function_find(EX(func)))) {
+		uint32_t offset = 
+			EX(opline) - EX(func)->op_array.opcodes;
+
+		EX(func) = (zend_function*) ops;
+		EX(opline) = EX(func)->op_array.opcodes + offset;
+	}
+
+	ops = &EX(func)->op_array;
+	name = ops->filename;
 
 	if (UNEXPECTED(!ops->function_name && zend_hash_num_elements(&PIG(pending).file))) {
 		pending = php_inspector_table(
@@ -158,7 +180,7 @@ static zend_op_array* php_inspector_execute(zend_execute_data *execute_data) {
 					PHP_INSPECTOR_ROOT_PENDING, 
 					PHP_INSPECTOR_TABLE_FILE, 
 					ops->filename);
-			}			
+			}
 		}
 	}
 
@@ -258,6 +280,13 @@ PHP_MSHUTDOWN_FUNCTION(inspector)
 	return SUCCESS;
 } /* }}} */
 
+static void php_inspector_function_free(zval *zv) {
+	zend_op_array *ops = Z_PTR_P(zv);
+
+	efree(ops->opcodes);
+	efree(ops);
+}
+
 static void php_inspector_table_free(zval *zv) {
 	zend_hash_destroy(Z_PTR_P(zv));
 	efree(Z_PTR_P(zv));
@@ -281,6 +310,8 @@ PHP_RINIT_FUNCTION(inspector)
 		zend_hash_init(&PIG(registered).file, 8, NULL, php_inspector_table_free, 0);
 		zend_hash_init(&PIG(registered).class, 8, NULL, php_inspector_table_free, 0);
 		zend_hash_init(&PIG(registered).function, 8, NULL, php_inspector_table_free, 0);
+
+		zend_hash_init(&PIG(map), 8, NULL, php_inspector_function_free, 0);
 	}
 
 	return SUCCESS;
@@ -298,6 +329,8 @@ PHP_RSHUTDOWN_FUNCTION(inspector)
 		zend_hash_destroy(&PIG(registered).file);
 		zend_hash_destroy(&PIG(registered).class);
 		zend_hash_destroy(&PIG(registered).function);
+
+		zend_hash_destroy(&PIG(map));
 	}
 
 	PHP_RSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);

@@ -270,23 +270,6 @@ PHP_METHOD(InspectorFunction, flushInstructionCache)
 	php_inspector_instruction_cache_flush(getThis());
 }
 
-zend_string** php_inspector_function_copy_vars(zend_string **vars, uint32_t last) {
-	zend_string **copy = ecalloc(last, sizeof(zend_string*) * last);
-	zend_string **var, **end;
-
-	memcpy(copy, vars, sizeof(zend_string*) * last);
-
-	var = copy;
-	end = var + last;
-
-	while (var < end) {
-		zend_string_addref(*var);
-		var++;
-	}
-
-	return copy;
-}
-
 zend_op* php_inspector_function_copy_opcodes(zend_op_array *function, zend_op *opcodes, uint32_t last) {
 	zend_op *copy = ecalloc(last, sizeof(zend_op));
 	zend_op *opline, *end;
@@ -377,116 +360,21 @@ zend_op* php_inspector_function_copy_opcodes(zend_op_array *function, zend_op *o
 	return copy;	
 }
 
-zval* php_inspector_function_copy_literals(zval *literals, int last) {
-	zval *literal, *end;
-	zval *copy = (zval*) ecalloc(last, sizeof(zval));
-
-	memcpy(copy, literals, sizeof(zval) * last);
-
-	literal = copy;
-	end     = literal + last - 1;
-
-	while (literal < end) {
-		Z_TRY_ADDREF_P(literal);
-		literal++;
-	}
-
-	return copy;
-}
-
-zend_arg_info* php_inspector_function_copy_arginfo(zend_function *function, zend_arg_info *arg_info, int last) {
-	zend_arg_info *copy;
-	
-	if (function->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
-		last++;
-		arg_info--;
-	}
-
-	copy = ecalloc(last, sizeof(zend_arg_info));
-
-	memcpy(copy, arg_info, sizeof(zend_arg_info) * last);
-
-	if (function->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
-		copy++;
-	}
-
-	return copy;
-}
-
-HashTable* php_inspector_function_copy_static(zend_function *function) {
-	if (!function->op_array.static_variables) {
-		return NULL;
-	}
-
-	return zend_array_dup(function->op_array.static_variables);
-}
-
-zend_try_catch_element* php_inspector_function_copy_try_catch(zend_try_catch_element *old, int end) {	
-	zend_try_catch_element *try_catch = safe_emalloc(end, sizeof(zend_try_catch_element), 0);
-	
-	memcpy(
-		try_catch, 
-		old,
-		sizeof(zend_try_catch_element) * end);
-	
-	return try_catch;
-}
-
-zend_live_range* php_inspector_function_copy_live_range(zend_live_range *old, int end) {
-	zend_live_range *range = safe_emalloc(end, sizeof(zend_live_range), 0);
-
-	memcpy(
-		range,
-		old,
-		sizeof(zend_live_range) * end);
-
-	return range;
-}
-
 zend_function* php_inspector_function_replace(zend_function *function) {
 	zend_op_array *copy;
-	zend_op *opline, *end;
-	zend_string *var;
 
 	if (!ZEND_USER_CODE(function->type)) {
 		return function;
 	}
 
-	copy = (zend_op_array*) zend_arena_alloc(&CG(arena), sizeof(zend_op_array));
+	copy = (zend_op_array*) ecalloc(1, sizeof(zend_op_array));
 
 	memcpy(copy, function, sizeof(zend_op_array));
 
-	copy->refcount = ecalloc(1, sizeof(uint32_t));
-	(*copy->refcount) = 1;
-
-	copy->static_variables = php_inspector_function_copy_static(function);
 	copy->opcodes  = php_inspector_function_copy_opcodes(
-		copy, function->op_array.opcodes, function->op_array.last);
-	copy->vars     = php_inspector_function_copy_vars(
-		function->op_array.vars, function->op_array.last_var);
-	copy->literals = php_inspector_function_copy_literals(
-		function->op_array.literals, function->op_array.last_literal);
-	copy->arg_info = php_inspector_function_copy_arginfo(function, function->op_array.arg_info, function->op_array.num_args);
-	copy->try_catch_array = php_inspector_function_copy_try_catch(
-		function->op_array.try_catch_array, function->op_array.last_try_catch);
-	copy->live_range = php_inspector_function_copy_live_range(
-		function->op_array.live_range, function->op_array.last_live_range);
+		copy, copy->opcodes, copy->last);
 
-	if (copy->function_name) {
-		zend_string *name = zend_string_tolower(copy->function_name);
-
-		if (copy->scope) {
-			zend_hash_update_ptr(&copy->scope->function_table, name, copy);
-		} else {
-			zend_hash_update_ptr(EG(function_table), name, copy);
-		}
-
-		zend_string_release(name);
-		
-		(*copy->refcount)++;
-	} else {
-		
-	}
+	php_inspector_function_map(function, copy);
 
 	return copy;
 }

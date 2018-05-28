@@ -40,6 +40,7 @@ extern zend_module_entry inspector_module_entry;
 typedef enum {
 	PHP_INSPECTOR_ROOT_PENDING,
 	PHP_INSPECTOR_ROOT_REGISTERED,
+	PHP_INSPECTOR_ROOT_LOCALS,
 } php_inspector_root_t;
 
 typedef enum {
@@ -63,6 +64,11 @@ void php_inspector_table_drop(
 void php_inspector_table_insert(
 	php_inspector_root_t root, php_inspector_table_t type, 
 	zend_string *key, zval *zv);
+
+void php_inspector_function_map(
+	zend_function *source, zend_function *destination);
+
+zend_function* php_inspector_function_find(zend_function *function);
 
 #endif	/* PHP_INSPECTOR_H */
 
