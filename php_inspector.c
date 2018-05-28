@@ -180,15 +180,28 @@ static zend_op_array* php_inspector_execute(zend_execute_data *execute_data) {
 			continue;
 		}
 
+#if PHP_VERSION_ID >= 70300
+		if (!GC_IS_RECURSIVE(pending)) {
+#else
 		if (ZEND_HASH_GET_APPLY_COUNT(pending) == 0) {
+#endif
+
+#if PHP_VERSION_ID >= 70300
+			GC_PROTECT_RECURSION(pending);
+#else
 			ZEND_HASH_INC_APPLY_COUNT(pending);
+#endif
 
 			zend_hash_apply_with_argument(
 				pending, 
 				(apply_func_arg_t) 
 					php_inspector_class_resolve, (zend_class_entry*) ce);
 
+#if PHP_VERSION_ID >= 70300
+			GC_UNPROTECT_RECURSION(pending);
+#else
 			ZEND_HASH_DEC_APPLY_COUNT(pending);
+#endif
 
 			php_inspector_table_drop(
 				PHP_INSPECTOR_ROOT_PENDING, 
@@ -208,15 +221,28 @@ static zend_op_array* php_inspector_execute(zend_execute_data *execute_data) {
 			continue;
 		}
 
+#if PHP_VERSION_ID >= 70300
+		if (!GC_IS_RECURSIVE(pending)) {
+#else
 		if (ZEND_HASH_GET_APPLY_COUNT(pending) == 0) {
+#endif
+
+#if PHP_VERSION_ID >= 70300
+			GC_PROTECT_RECURSION(pending);
+#else
 			ZEND_HASH_INC_APPLY_COUNT(pending);
+#endif
 
 			zend_hash_apply_with_argument(
 				pending, 
 				(apply_func_arg_t) 
 					php_inspector_function_resolve, (zend_op_array*) function);
 
+#if PHP_VERSION_ID >= 70300
+			GC_UNPROTECT_RECURSION(pending);
+#else
 			ZEND_HASH_DEC_APPLY_COUNT(pending);
+#endif
 
 			php_inspector_table_drop(
 				PHP_INSPECTOR_ROOT_PENDING, 
