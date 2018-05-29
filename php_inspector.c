@@ -165,14 +165,14 @@ void php_inspector_table_drop(php_inspector_root_t root, php_inspector_table_t t
 }
 
 static void php_inspector_execute_mapping(zend_execute_data *execute_data, zend_function *map) {
-	uint32_t offset = 
-			EX(opline) - EX(func)->op_array.opcodes;
+	uint32_t offset = EX(opline) - EX(func)->op_array.opcodes;
 
 	EX(func) = map;
 	EX(opline) = EX(func)->op_array.opcodes + offset;
 }
 
 static void php_inspector_execute(zend_execute_data *execute_data) {
+	zend_function *function = EX(func);
 	zend_function *map;
 	zend_string   *name;
 	HashTable     *pending;
@@ -294,12 +294,17 @@ static void php_inspector_execute(zend_execute_data *execute_data) {
 					PHP_INSPECTOR_TABLE_FILE, 
 					EX(func)->op_array.filename);
 		}
+
 		php_inspector_execute_mapping(execute_data, map);
 	} else if (UNEXPECTED(map = (zend_function*) php_inspector_function_find(EX(func)))) {
 		php_inspector_execute_mapping(execute_data, map);
 	}
 
 	zend_execute_function(execute_data);
+
+	if (map && EX(func) == map) {
+		EX(func) = function;
+	}
 }
 
 /* {{{ PHP_MINIT_FUNCTION
@@ -353,7 +358,7 @@ PHP_RINIT_FUNCTION(inspector)
 #endif
 
 	PHP_RINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
-
+	PHP_RINIT(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 	{
 		zend_hash_init(&PIG(pending).file, 8, NULL, php_inspector_table_free, 0);
 		zend_hash_init(&PIG(pending).class, 8, NULL, php_inspector_table_free, 0);
@@ -375,6 +380,7 @@ PHP_RINIT_FUNCTION(inspector)
 PHP_RSHUTDOWN_FUNCTION(inspector)
 {
 	PHP_RSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_RSHUTDOWN(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 	{
 		zend_hash_destroy(&PIG(pending).file);
 		zend_hash_destroy(&PIG(pending).class);

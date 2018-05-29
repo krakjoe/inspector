@@ -220,8 +220,20 @@ PHP_MINIT_FUNCTION(inspector_file)
 
 	php_inspector_file_ce = zend_register_internal_class_ex(&ce, php_inspector_function_ce);
 
+	return SUCCESS;
+}
+
+PHP_RINIT_FUNCTION(inspector_file)
+{
 	zend_compile_function = zend_compile_file;
-	zend_compile_file     = php_inspector_compile;
+	zend_compile_file = php_inspector_compile;
+
+	return SUCCESS;
+}
+
+PHP_RSHUTDOWN_FUNCTION(inspector_file)
+{
+	zend_compile_file = zend_compile_function;
 
 	return SUCCESS;
 }

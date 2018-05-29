@@ -189,10 +189,8 @@ static void php_inspector_map_destruct(zend_op_array *mapped) {
 	}
 	
 	if (mapped->static_variables) {
-		if (!(GC_FLAGS(mapped->static_variables) & IS_ARRAY_IMMUTABLE)) {
-			if (GC_DELREF(mapped->static_variables) == 0) {
-				zend_array_destroy(mapped->static_variables);
-			}
+		if (GC_DELREF(mapped->static_variables) == 0) {
+			zend_array_destroy(mapped->static_variables);
 		}
 	}
 
@@ -255,9 +253,7 @@ static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped
 #endif
 
 	if (mapped->static_variables) {
-		if (!(GC_FLAGS(mapped->static_variables) & IS_ARRAY_IMMUTABLE)) {
-			GC_ADDREF(mapped->static_variables);
-		}
+		mapped->static_variables = zend_array_dup(mapped->static_variables);
 	}
 
 	if (mapped->num_args) {

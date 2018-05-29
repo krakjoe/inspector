@@ -22,7 +22,6 @@
 extern zend_class_entry *php_inspector_file_ce;
 
 PHP_MINIT_FUNCTION(inspector_file);
-PHP_MSHUTDOWN_FUNCTION(inspector_file);
 PHP_RINIT_FUNCTION(inspector_file);
 PHP_RSHUTDOWN_FUNCTION(inspector_file);
 
