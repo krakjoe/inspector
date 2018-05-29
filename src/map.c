@@ -305,7 +305,4 @@ void php_inspector_map_destroy(zval *zv) {
 		1, sizeof(zend_op_array), 
 		(php_inspector_map_callback_t) php_inspector_map_destruct);
 }
-
-
-
 #endif

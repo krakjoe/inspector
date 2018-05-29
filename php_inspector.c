@@ -96,11 +96,11 @@ static zend_always_inline HashTable* php_inspector_table_select(php_inspector_ro
 }
 
 zend_function* php_inspector_file_find(zend_function *function) {
-	return zend_hash_find_ptr(&PIG(source), function->op_array.filename);
+	return zend_hash_index_find_ptr(&PIG(source), (zend_ulong) function);
 }
 
 void php_inspector_file_map(zend_function *source, zend_function *destination) {
-	zend_hash_update_ptr(&PIG(source), source->op_array.filename, destination);
+	zend_hash_index_update_ptr(&PIG(source), (zend_ulong) source, destination);
 }
 
 zend_function* php_inspector_function_find(zend_function *function) {
@@ -374,6 +374,7 @@ PHP_RINIT_FUNCTION(inspector)
 /* {{{ */
 PHP_RSHUTDOWN_FUNCTION(inspector)
 {
+	PHP_RSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 	{
 		zend_hash_destroy(&PIG(pending).file);
 		zend_hash_destroy(&PIG(pending).class);
@@ -386,8 +387,6 @@ PHP_RSHUTDOWN_FUNCTION(inspector)
 		zend_hash_destroy(&PIG(map));
 		zend_hash_destroy(&PIG(source));
 	}
-
-	PHP_RSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 
 	return SUCCESS;
 }
