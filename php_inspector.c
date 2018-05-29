@@ -38,6 +38,8 @@
 #include "src/break.h"
 #include "src/frame.h"
 
+#include "src/map.h"
+
 static void (*zend_execute_function)(zend_execute_data *);
 
 typedef struct _php_inspector_tables_t {
@@ -337,14 +339,6 @@ PHP_MSHUTDOWN_FUNCTION(inspector)
 	return SUCCESS;
 } /* }}} */
 
-static void php_inspector_map_free(zval *zv) {
-	zend_op_array *map = Z_PTR_P(zv);
-
-	destroy_op_array(map);
-
-	efree(map);
-}
-
 static void php_inspector_table_free(zval *zv) {
 	zend_hash_destroy(Z_PTR_P(zv));
 	efree(Z_PTR_P(zv));
@@ -369,8 +363,8 @@ PHP_RINIT_FUNCTION(inspector)
 		zend_hash_init(&PIG(registered).class, 8, NULL, php_inspector_table_free, 0);
 		zend_hash_init(&PIG(registered).function, 8, NULL, php_inspector_table_free, 0);
 
-		zend_hash_init(&PIG(map), 8, NULL, php_inspector_map_free, 0);
-		zend_hash_init(&PIG(source), 8, NULL, php_inspector_map_free, 0);
+		zend_hash_init(&PIG(map), 8, NULL, php_inspector_map_destroy, 0);
+		zend_hash_init(&PIG(source), 8, NULL, php_inspector_map_destroy, 0);
 	}
 
 	return SUCCESS;

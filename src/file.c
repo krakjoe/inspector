@@ -202,7 +202,7 @@ static zend_op_array* php_inspector_compile(zend_file_handle *fh, int type) {
 				PHP_INSPECTOR_TABLE_FILE, 
 				function->filename, 0))) {
 
-		zend_function *mapped = 
+		zend_op_array *mapped = 
 			php_inspector_map_create(function);
 
 		php_inspector_file_map(

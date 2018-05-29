@@ -21,4 +21,5 @@
 
 zend_op_array* php_inspector_map_create(zend_op_array *source);
 
+void php_inspector_map_destroy(zval *zv);
 #endif
