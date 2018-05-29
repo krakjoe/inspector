@@ -270,7 +270,7 @@ PHP_METHOD(InspectorFunction, flushInstructionCache)
 	php_inspector_instruction_cache_flush(getThis());
 }
 
-static zend_always_inline zend_op* php_inspector_function_copy_opcodes(zend_op_array *function, const zend_op *opcodes, uint32_t last) {
+zend_op* php_inspector_function_copy_opcodes(zend_op_array *function, const zend_op *opcodes, uint32_t last) {
 	zend_op *copy = 
 		(zend_op*) ecalloc(last, sizeof(zend_op));
 
@@ -328,9 +328,10 @@ zend_function* php_inspector_function_replace(zend_function *function) {
 		return function;
 	}
 
-	if ((copy = php_inspector_function_find(function)) && copy->function_name) {
+	if ((copy = php_inspector_function_find(function))) {
 		(*copy->refcount)++;
-		return copy;
+
+		return (zend_function*) copy;
 	}
 
 	copy = (zend_op_array*) ecalloc(1, sizeof(zend_op_array));
@@ -386,10 +387,6 @@ int php_inspector_function_resolve(zval *zv, zend_function *ops) {
 				PHP_INSPECTOR_TABLE_FILE,
 				ops->op_array.filename, zv);
 		}
-	}
-
-	if (instanceof_function(Z_OBJCE_P(zv), php_inspector_file_ce)) {
-		reflector->ref_type = PHP_REF_TYPE_EXPIRED;
 	}
 
 	return ZEND_HASH_APPLY_REMOVE;

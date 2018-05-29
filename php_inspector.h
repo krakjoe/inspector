@@ -68,7 +68,12 @@ void php_inspector_table_insert(
 void php_inspector_function_map(
 	zend_function *source, zend_op_array *destination);
 
+void php_inspector_file_map(
+	zend_function *source, zend_op_array *destination);
+
 zend_function* php_inspector_function_find(zend_function *function);
+
+zend_function* php_inspector_file_find(zend_function *function);
 
 #endif	/* PHP_INSPECTOR_H */
 

@@ -558,7 +558,7 @@ PHP_MINIT_FUNCTION(inspector_instruction) {
 
 			opcode++;
 		}
-	}	
+	}
 
 	return SUCCESS;
 } /* }}} */

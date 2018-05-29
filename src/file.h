@@ -25,4 +25,6 @@ PHP_MINIT_FUNCTION(inspector_file);
 PHP_MSHUTDOWN_FUNCTION(inspector_file);
 PHP_RINIT_FUNCTION(inspector_file);
 PHP_RSHUTDOWN_FUNCTION(inspector_file);
+
+int php_inspector_file_resolve(zval *zv, zend_function *ops);
 #endif

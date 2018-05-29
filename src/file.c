@@ -156,45 +156,74 @@ static zend_function_entry php_inspector_file_methods[] = {
 	PHP_FE_END
 };
 
+int php_inspector_file_resolve(zval *zv, zend_function *ops) {
+	php_reflection_object_t *reflector = 
+		php_reflection_object_fetch(zv);
+	zend_function *onResolve = zend_hash_find_ptr(
+		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONRESOLVE);
+
+	if (php_reflection_object_function(zv)) {
+		php_inspector_breaks_purge(
+			php_reflection_object_function(zv));
+		php_inspector_instruction_cache_flush(zv);
+	}
+
+	reflector->ptr = ops;
+	reflector->ref_type = PHP_REF_TYPE_OTHER;
+
+	if (ZEND_USER_CODE(onResolve->type)) {
+		zval rv;
+
+		ZVAL_NULL(&rv);
+
+		zend_call_method_with_0_params(zv, Z_OBJCE_P(zv), &onResolve, "onresolve", &rv);
+
+		if (Z_REFCOUNTED(rv)) {
+			zval_ptr_dtor(&rv);
+		}
+
+		php_inspector_table_insert(
+			PHP_INSPECTOR_ROOT_REGISTERED,
+			PHP_INSPECTOR_TABLE_FILE,
+			ops->op_array.filename, zv);
+	}
+
+	reflector->ref_type = PHP_REF_TYPE_EXPIRED;
+
+	return ZEND_HASH_APPLY_REMOVE;
+}
+
+zend_function* php_inspector_file_replace(zend_function *file) {
+	zend_op_array *copy = 
+		(zend_op_array*) 
+			ecalloc(1, sizeof(zend_op_array));
+
+	memcpy(copy, file, sizeof(zend_op_array));
+
+	copy->refcount = ecalloc(1, sizeof(uint32_t));
+
+	(*copy->refcount) = 1;
+
+	copy->opcodes  = php_inspector_function_copy_opcodes(
+		copy, copy->opcodes, copy->last);
+
+	return (zend_function*) copy;
+}
+
 static zend_op_array* php_inspector_compile(zend_file_handle *fh, int type) {
 	zend_op_array *function = zend_compile_function(fh, type);
-	
-	HashTable *pending = php_inspector_table(
+
+	if (UNEXPECTED(php_inspector_table(
 				PHP_INSPECTOR_ROOT_PENDING, 
 				PHP_INSPECTOR_TABLE_FILE, 
-				function->filename, 0);
+				function->filename, 0))) {
+		zend_op_array *map = 
+			(zend_op_array*) 
+				php_inspector_file_replace(function);
 
-	if (UNEXPECTED(pending)) {
-#if PHP_VERSION_ID >= 70300
-		if (!GC_IS_RECURSIVE(pending)) {
-#else
-		if (ZEND_HASH_GET_APPLY_COUNT(pending) == 0) {
-#endif
-
-#if PHP_VERSION_ID >= 70300
-			GC_PROTECT_RECURSION(pending);
-#else
-			ZEND_HASH_INC_APPLY_COUNT(pending);
-#endif
-
-			zend_hash_apply_with_argument(
-				pending, 
-				(apply_func_arg_t) 
-					php_inspector_function_resolve, function);
-
-#if PHP_VERSION_ID >= 70300
-			GC_UNPROTECT_RECURSION(pending);
-#else
-			ZEND_HASH_DEC_APPLY_COUNT(pending);
-#endif
-
-			php_inspector_table_drop(
-				PHP_INSPECTOR_ROOT_PENDING, 
-				PHP_INSPECTOR_TABLE_FILE, 
-				function->filename);
-		}
+		php_inspector_file_map((zend_function*) function, map);
 	}
-	
+
 	return function;
 }
 

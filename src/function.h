@@ -70,4 +70,6 @@ extern PHP_METHOD(InspectorFunction, findLastInstruction);
 extern PHP_METHOD(InspectorFunction, flushInstructionCache);
 
 extern PHP_MINIT_FUNCTION(inspector_function);
+
+zend_op* php_inspector_function_copy_opcodes(zend_op_array *function, const zend_op *opcodes, uint32_t last);
 #endif

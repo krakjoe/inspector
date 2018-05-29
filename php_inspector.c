@@ -50,6 +50,7 @@ ZEND_BEGIN_MODULE_GLOBALS(inspector)
 	php_inspector_tables_t pending;
 	php_inspector_tables_t registered;
 	HashTable              map;
+	HashTable	       source;
 ZEND_END_MODULE_GLOBALS(inspector)
 
 ZEND_DECLARE_MODULE_GLOBALS(inspector);
@@ -90,6 +91,14 @@ static zend_always_inline HashTable* php_inspector_table_select(php_inspector_ro
 	}
 
 	return NULL;
+}
+
+zend_function* php_inspector_file_find(zend_function *function) {
+	return zend_hash_find_ptr(&PIG(source), function->op_array.filename);
+}
+
+void php_inspector_file_map(zend_function *source, zend_op_array *destination) {
+	zend_hash_update_ptr(&PIG(source), source->op_array.filename, destination);
 }
 
 zend_function* php_inspector_function_find(zend_function *function) {
@@ -153,17 +162,57 @@ void php_inspector_table_drop(php_inspector_root_t root, php_inspector_table_t t
 	zend_hash_del(rt, key);
 }
 
+static void php_inspector_execute_mapping(zend_execute_data *execute_data, zend_function *map) {
+	uint32_t offset = 
+			EX(opline) - EX(func)->op_array.opcodes;
+
+	EX(func) = map;
+	EX(opline) = EX(func)->op_array.opcodes + offset;
+}
+
 static void php_inspector_execute(zend_execute_data *execute_data) {
 	zend_function *map;
 	zend_string   *name;
 	HashTable     *pending;
 
-	if (UNEXPECTED(map = (zend_function*) php_inspector_function_find(EX(func)))) {
-		uint32_t offset = 
-			EX(opline) - EX(func)->op_array.opcodes;
+	if (UNEXPECTED(!EX(func)->common.function_name && 
+			(map = (zend_function*) php_inspector_file_find(EX(func))))) {
+		pending = php_inspector_table(
+			PHP_INSPECTOR_ROOT_PENDING,
+			PHP_INSPECTOR_TABLE_FILE,
+			EX(func)->op_array.filename, 0);
 
-		EX(func) = map;
-		EX(opline) = EX(func)->op_array.opcodes + offset;
+#if PHP_VERSION_ID >= 70300
+		if (!GC_IS_RECURSIVE(pending)) {
+#else
+		if (ZEND_HASH_GET_APPLY_COUNT(pending) == 0) {
+#endif
+
+#if PHP_VERSION_ID >= 70300
+				GC_PROTECT_RECURSION(pending);
+#else
+				ZEND_HASH_INC_APPLY_COUNT(pending);
+#endif
+
+				zend_hash_apply_with_argument(
+					pending, 
+					(apply_func_arg_t) 
+						php_inspector_file_resolve, map);
+
+#if PHP_VERSION_ID >= 70300
+				GC_UNPROTECT_RECURSION(pending);
+#else
+				ZEND_HASH_DEC_APPLY_COUNT(pending);
+#endif
+
+				php_inspector_table_drop(
+					PHP_INSPECTOR_ROOT_PENDING, 
+					PHP_INSPECTOR_TABLE_FILE, 
+					EX(func)->op_array.filename);
+		}
+		php_inspector_execute_mapping(execute_data, map);
+	} else if (UNEXPECTED(map = (zend_function*) php_inspector_function_find(EX(func)))) {
+		php_inspector_execute_mapping(execute_data, map);
 	}
 
 	ZEND_HASH_FOREACH_STR_KEY_PTR(php_inspector_table_select(
@@ -321,6 +370,7 @@ PHP_RINIT_FUNCTION(inspector)
 		zend_hash_init(&PIG(registered).function, 8, NULL, php_inspector_table_free, 0);
 
 		zend_hash_init(&PIG(map), 8, NULL, php_inspector_map_free, 0);
+		zend_hash_init(&PIG(source), 8, NULL, php_inspector_map_free, 0);
 	}
 
 	return SUCCESS;
@@ -340,6 +390,7 @@ PHP_RSHUTDOWN_FUNCTION(inspector)
 		zend_hash_destroy(&PIG(registered).function);
 
 		zend_hash_destroy(&PIG(map));
+		zend_hash_destroy(&PIG(source));
 	}
 
 	PHP_RSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
