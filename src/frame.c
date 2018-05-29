@@ -259,11 +259,7 @@ static PHP_METHOD(InspectorFrame, getThis)
 	php_inspector_frame_t *frame =
 		php_inspector_frame_this();
 
-	if (
-#if PHP_VERSION_ID < 70100
-		frame->frame->called_scope &&
-#endif
-		Z_TYPE(frame->frame->This) == IS_OBJECT) {
+	if (Z_TYPE(frame->frame->This) == IS_OBJECT) {
 		ZVAL_COPY(return_value, &frame->frame->This);
 	}
 }

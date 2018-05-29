@@ -98,26 +98,15 @@ zval *php_inspector_instruction_cache_fetch(zval *function) {
 	ZVAL_STR(&k, 
 		PHP_INSPECTOR_STRING_INSTRUCTION_CACHE);
 
-#if PHP_VERSION_ID >= 70100
 	scope = EG(fake_scope);
 
 	EG(fake_scope) = Z_OBJCE_P(function);
-#else
-	scope = EG(scope);
-
-	EG(scope) = Z_OBJCE_P(function);
-#endif
 
 	cache = Z_OBJ_HT_P(function)
 		->read_property(
 			function, &k, BP_VAR_RW, NULL, &reflection->dummy);
 
-#if PHP_VERSION_ID >= 70100
 	EG(fake_scope) = scope;
-#else
-	EG(scope) = scope;
-#endif
-
 
 	return cache;
 }
