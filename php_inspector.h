@@ -66,10 +66,10 @@ void php_inspector_table_insert(
 	zend_string *key, zval *zv);
 
 void php_inspector_function_map(
-	zend_function *source, zend_op_array *destination);
+	zend_function *source, zend_function *destination);
 
 void php_inspector_file_map(
-	zend_function *source, zend_op_array *destination);
+	zend_function *source, zend_function *destination);
 
 zend_function* php_inspector_function_find(zend_function *function);
 

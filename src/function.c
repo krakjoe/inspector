@@ -32,11 +32,12 @@
 #include "method.h"
 #include "instruction.h"
 #include "break.h"
+#include "map.h"
 
 zend_class_entry *php_inspector_function_ce;
 zend_class_entry *php_inspector_file_ce;
 
-zend_function* php_inspector_function_replace(zend_function *function);
+zend_op_array* php_inspector_function_replace(zend_function *function);
 
 static zend_always_inline zend_bool php_inspector_function_guard(zval *object) {
 	php_reflection_object_t *reflection =
@@ -270,84 +271,13 @@ PHP_METHOD(InspectorFunction, flushInstructionCache)
 	php_inspector_instruction_cache_flush(getThis());
 }
 
-zend_op* php_inspector_function_copy_opcodes(zend_op_array *function, const zend_op *opcodes, uint32_t last) {
-	zend_op *copy = 
-		(zend_op*) ecalloc(last, sizeof(zend_op));
+zend_op_array* php_inspector_function_replace(zend_function *function) {
+	zend_op_array *mapped = 
+		php_inspector_map_create(function);
 
-	memcpy(copy, opcodes, sizeof(zend_op) * last);
+	php_inspector_function_map(function, mapped);
 
-#if ZEND_USE_ABS_JMP_ADDR
-	{
-		zend_op *opline = copy, 
-			*end    = opline + last;
-
-		while (opline < end) {
-			switch (opline->opcode) {
-				case ZEND_JMP:
-				case ZEND_FAST_CALL:
-#if PHP_VERSION_ID < 70300
-				case ZEND_DECLARE_ANON_CLASS:
-				case ZEND_DECLARE_ANON_INHERITED_CLASS:
-#endif
-					opline->op1.jmp_addr = copy + (opline->op1.jmp_addr - opcodes);
-					break;
-
-				case ZEND_JMPZNZ:
-				case ZEND_JMPZ:
-				case ZEND_JMPNZ:
-				case ZEND_JMPZ_EX:
-				case ZEND_JMPNZ_EX:
-				case ZEND_JMP_SET:
-				case ZEND_COALESCE:
-				case ZEND_NEW:
-				case ZEND_FE_RESET_R:
-				case ZEND_FE_RESET_RW:
-				case ZEND_ASSERT_CHECK:
-					opline->op2.jmp_addr = copy + (opline->op2.jmp_addr - opcodes);
-					break;
-#if PHP_VERSION_ID >= 70300
-				case ZEND_CATCH:
-					if (!(opline->extended_value & ZEND_LAST_CATCH)) {
-						opline->op2.jmp_addr = copy + (opline->op2.jmp_addr - opcodes);
-					}
-				break;
-#endif
-			}
-			opline++;
-		}
-	}
-#endif
-
-	return copy;
-}
-
-zend_function* php_inspector_function_replace(zend_function *function) {
-	zend_op_array *copy;
-
-	if (!ZEND_USER_CODE(function->type)) {
-		return function;
-	}
-
-	if ((copy = php_inspector_function_find(function))) {
-		(*copy->refcount)++;
-
-		return (zend_function*) copy;
-	}
-
-	copy = (zend_op_array*) ecalloc(1, sizeof(zend_op_array));
-
-	memcpy(copy, function, sizeof(zend_op_array));
-
-	copy->refcount = ecalloc(1, sizeof(uint32_t));
-
-	(*copy->refcount) = 1;
-
-	copy->opcodes  = php_inspector_function_copy_opcodes(
-		copy, copy->opcodes, copy->last);
-
-	php_inspector_function_map(function, copy);
-
-	return (zend_function*) copy;
+	return mapped;
 }
 
 int php_inspector_function_resolve(zval *zv, zend_function *ops) {
@@ -355,6 +285,7 @@ int php_inspector_function_resolve(zval *zv, zend_function *ops) {
 		php_reflection_object_fetch(zv);
 	zend_function *onResolve = zend_hash_find_ptr(
 		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONRESOLVE);
+	zend_op_array *mapped;
 
 	if (php_reflection_object_function(zv)) {
 		php_inspector_breaks_purge(

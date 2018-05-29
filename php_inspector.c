@@ -97,7 +97,7 @@ zend_function* php_inspector_file_find(zend_function *function) {
 	return zend_hash_find_ptr(&PIG(source), function->op_array.filename);
 }
 
-void php_inspector_file_map(zend_function *source, zend_op_array *destination) {
+void php_inspector_file_map(zend_function *source, zend_function *destination) {
 	zend_hash_update_ptr(&PIG(source), source->op_array.filename, destination);
 }
 
@@ -111,7 +111,7 @@ zend_function* php_inspector_function_find(zend_function *function) {
 	}
 }
 
-void php_inspector_function_map(zend_function *source, zend_op_array *destination) {
+void php_inspector_function_map(zend_function *source, zend_function *destination) {
 	if (source->common.scope) {
 		zend_hash_index_update_ptr(&PIG(map), (zend_ulong) source, destination);
 	} else if (source->common.function_name) {
@@ -340,8 +340,8 @@ PHP_MSHUTDOWN_FUNCTION(inspector)
 static void php_inspector_map_free(zval *zv) {
 	zend_op_array *map = Z_PTR_P(zv);
 
-	efree(map->opcodes);
-	efree(map->refcount);
+	destroy_op_array(map);
+
 	efree(map);
 }
 

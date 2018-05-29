@@ -31,6 +31,7 @@
 #include "instruction.h"
 #include "function.h"
 #include "break.h"
+#include "map.h"
 
 zend_class_entry *php_inspector_file_ce;
 
@@ -193,23 +194,6 @@ int php_inspector_file_resolve(zval *zv, zend_function *ops) {
 	return ZEND_HASH_APPLY_REMOVE;
 }
 
-zend_function* php_inspector_file_replace(zend_function *file) {
-	zend_op_array *copy = 
-		(zend_op_array*) 
-			ecalloc(1, sizeof(zend_op_array));
-
-	memcpy(copy, file, sizeof(zend_op_array));
-
-	copy->refcount = ecalloc(1, sizeof(uint32_t));
-
-	(*copy->refcount) = 1;
-
-	copy->opcodes  = php_inspector_function_copy_opcodes(
-		copy, copy->opcodes, copy->last);
-
-	return (zend_function*) copy;
-}
-
 static zend_op_array* php_inspector_compile(zend_file_handle *fh, int type) {
 	zend_op_array *function = zend_compile_function(fh, type);
 
@@ -217,11 +201,12 @@ static zend_op_array* php_inspector_compile(zend_file_handle *fh, int type) {
 				PHP_INSPECTOR_ROOT_PENDING, 
 				PHP_INSPECTOR_TABLE_FILE, 
 				function->filename, 0))) {
-		zend_op_array *map = 
-			(zend_op_array*) 
-				php_inspector_file_replace(function);
 
-		php_inspector_file_map((zend_function*) function, map);
+		zend_function *mapped = 
+			php_inspector_map_create(function);
+
+		php_inspector_file_map(
+			(zend_function*) function, mapped);
 	}
 
 	return function;
