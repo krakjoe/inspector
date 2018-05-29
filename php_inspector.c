@@ -175,46 +175,6 @@ static void php_inspector_execute(zend_execute_data *execute_data) {
 	zend_string   *name;
 	HashTable     *pending;
 
-	if (UNEXPECTED(!EX(func)->common.function_name && 
-			(map = (zend_function*) php_inspector_file_find(EX(func))))) {
-		pending = php_inspector_table(
-			PHP_INSPECTOR_ROOT_PENDING,
-			PHP_INSPECTOR_TABLE_FILE,
-			EX(func)->op_array.filename, 0);
-
-#if PHP_VERSION_ID >= 70300
-		if (!GC_IS_RECURSIVE(pending)) {
-#else
-		if (ZEND_HASH_GET_APPLY_COUNT(pending) == 0) {
-#endif
-
-#if PHP_VERSION_ID >= 70300
-				GC_PROTECT_RECURSION(pending);
-#else
-				ZEND_HASH_INC_APPLY_COUNT(pending);
-#endif
-
-				zend_hash_apply_with_argument(
-					pending, 
-					(apply_func_arg_t) 
-						php_inspector_file_resolve, map);
-
-#if PHP_VERSION_ID >= 70300
-				GC_UNPROTECT_RECURSION(pending);
-#else
-				ZEND_HASH_DEC_APPLY_COUNT(pending);
-#endif
-
-				php_inspector_table_drop(
-					PHP_INSPECTOR_ROOT_PENDING, 
-					PHP_INSPECTOR_TABLE_FILE, 
-					EX(func)->op_array.filename);
-		}
-		php_inspector_execute_mapping(execute_data, map);
-	} else if (UNEXPECTED(map = (zend_function*) php_inspector_function_find(EX(func)))) {
-		php_inspector_execute_mapping(execute_data, map);
-	}
-
 	ZEND_HASH_FOREACH_STR_KEY_PTR(php_inspector_table_select(
 				PHP_INSPECTOR_ROOT_PENDING, 
 				PHP_INSPECTOR_TABLE_CLASS), name, pending) {
@@ -296,6 +256,46 @@ static void php_inspector_execute(zend_execute_data *execute_data) {
 				PHP_INSPECTOR_TABLE_FUNCTION, name);
 		}
 	} ZEND_HASH_FOREACH_END();
+
+	if (UNEXPECTED(!EX(func)->common.function_name && 
+			(map = (zend_function*) php_inspector_file_find(EX(func))))) {
+		pending = php_inspector_table(
+			PHP_INSPECTOR_ROOT_PENDING,
+			PHP_INSPECTOR_TABLE_FILE,
+			EX(func)->op_array.filename, 0);
+
+#if PHP_VERSION_ID >= 70300
+		if (!GC_IS_RECURSIVE(pending)) {
+#else
+		if (ZEND_HASH_GET_APPLY_COUNT(pending) == 0) {
+#endif
+
+#if PHP_VERSION_ID >= 70300
+				GC_PROTECT_RECURSION(pending);
+#else
+				ZEND_HASH_INC_APPLY_COUNT(pending);
+#endif
+
+				zend_hash_apply_with_argument(
+					pending, 
+					(apply_func_arg_t) 
+						php_inspector_file_resolve, map);
+
+#if PHP_VERSION_ID >= 70300
+				GC_UNPROTECT_RECURSION(pending);
+#else
+				ZEND_HASH_DEC_APPLY_COUNT(pending);
+#endif
+
+				php_inspector_table_drop(
+					PHP_INSPECTOR_ROOT_PENDING, 
+					PHP_INSPECTOR_TABLE_FILE, 
+					EX(func)->op_array.filename);
+		}
+		php_inspector_execute_mapping(execute_data, map);
+	} else if (UNEXPECTED(map = (zend_function*) php_inspector_function_find(EX(func)))) {
+		php_inspector_execute_mapping(execute_data, map);
+	}
 
 	zend_execute_function(execute_data);
 }
