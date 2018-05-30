@@ -187,7 +187,7 @@ static zend_always_inline void php_inspector_table_apply(php_inspector_root_t ro
 
 static void php_inspector_execute(zend_execute_data *execute_data) {
 	zend_op_array *function = (zend_op_array*) EX(func);
-	zend_function *map;
+	zend_op_array *map;
 
 	php_inspector_table_apply(
 		PHP_INSPECTOR_ROOT_PENDING,
@@ -215,9 +215,33 @@ static void php_inspector_execute(zend_execute_data *execute_data) {
 		EX(func) = (zend_function*) map;
 		EX(opline) = EX(func)->op_array.opcodes + 
 				(EX(opline) - function->opcodes);
+
+#if ZEND_EX_USE_RUN_TIME_CACHE
+		if (map->run_time_cache)
+			EX(run_time_cache) = map->run_time_cache;
+#endif
+
+#if ZEND_EX_USE_LITERALS
+		EX(literals) = map->literals;
+#endif
 	}
 
 	zend_execute_function(execute_data);
+
+	if (UNEXPECTED(map)) {
+		EX(func) = function;
+		EX(opline) = EX(func)->op_array.opcodes + 
+				(EX(opline) - map->opcodes);
+
+#if ZEND_EX_USE_RUN_TIME_CACHE
+		if (map->run_time_cache)
+			EX(run_time_cache) = function->run_time_cache;
+#endif
+
+#if ZEND_EX_USE_LITERALS
+		EX(literals) = function->literals;
+#endif
+	}
 }
 
 /* {{{ PHP_MINIT_FUNCTION

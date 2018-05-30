@@ -285,7 +285,8 @@ static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped
 		}
 	}
 
-	mapped->run_time_cache = NULL;
+	if (mapped->run_time_cache)
+		mapped->run_time_cache = zend_arena_alloc(&CG(arena), mapped->cache_size);
 }
 
 zend_op_array* php_inspector_map_create(zend_op_array *source) {
@@ -319,7 +320,7 @@ void php_inspector_map_destroy(zend_op_array *map) {
 
 	if (--(*map->refcount) > 0) {
 		return;
-	}	
+	}
 
 	php_inspector_map_free(map, 
 		1, sizeof(zend_op_array), 
