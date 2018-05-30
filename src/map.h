@@ -20,6 +20,8 @@
 #define HAVE_INSPECTOR_MAP_H
 
 PHP_MINIT_FUNCTION(inspector_map);
+PHP_RINIT_FUNCTION(inspector_map);
+PHP_RSHUTDOWN_FUNCTION(inspector_map);
 
 zend_op_array* php_inspector_map_create(zend_op_array *source);
 

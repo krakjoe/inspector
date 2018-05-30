@@ -74,14 +74,14 @@ static void php_inspector_instruction_destroy(zend_object *object) {
 	php_inspector_instruction_t *instruction = 
 		php_inspector_instruction_fetch_from(object);
 
-	zend_object_std_dtor(object);
-
 	if (Z_TYPE(instruction->function) != IS_UNDEF)
 		zval_ptr_dtor(&instruction->function);
 	if (Z_TYPE(instruction->previous) != IS_UNDEF)
 		zval_ptr_dtor(&instruction->previous);
 	if (Z_TYPE(instruction->next) != IS_UNDEF)
 		zval_ptr_dtor(&instruction->next);
+
+	zend_object_std_dtor(object);
 }
 
 zval *php_inspector_instruction_cache_fetch(zval *function) {
@@ -120,12 +120,6 @@ void php_inspector_instruction_cache_flush(zval *function) {
 	if (EXPECTED(cache && Z_TYPE_P(cache) == IS_ARRAY)) {
 		zend_hash_clean(Z_ARRVAL_P(cache));
 	}
-}
-
-static zend_always_inline uint32_t php_inspector_instruction_cache_slot(zval *function) {
-	return instanceof_function(Z_OBJCE_P(function), php_inspector_method_ce) ?
-		php_inspector_method_ce->default_properties_count - 1 :
-		php_inspector_function_ce->default_properties_count - 1;
 }
 
 void php_inspector_instruction_factory(zval *function, zend_op *op, zval *return_value) {

@@ -24,6 +24,18 @@
 
 #include "zend_extensions.h"
 
+ZEND_BEGIN_MODULE_GLOBALS(inspector_map)
+	HashTable table;
+ZEND_END_MODULE_GLOBALS(inspector_map);
+
+ZEND_DECLARE_MODULE_GLOBALS(inspector_map);
+
+#ifdef ZTS
+#define IMG(v) TSRMG(inspector_map_globals_id, zend_inspector_map_globals *, v)
+#else
+#define IMG(v) (inspector_map_globals.v)
+#endif
+
 #ifndef GC_ADDREF
 #	define GC_ADDREF(g) ++GC_REFCOUNT(g)
 #	define GC_DELREF(g) --GC_REFCOUNT(g)
@@ -61,7 +73,9 @@ static zend_always_inline void* php_inspector_map_dup(void *ptr, size_t num, siz
 }
 
 static zend_always_inline zend_string** php_inspector_map_dup_strings(zend_string **strings, size_t size) {
-	zend_string **dup = ecalloc(size, sizeof(zend_string*));
+	zend_string **dup = 
+		(zend_string**) 
+			ecalloc(size, sizeof(zend_string*));
 	size_t string = 0;
 
 	memcpy(dup, strings, sizeof(zend_string*) * size);	
@@ -231,14 +245,17 @@ static void php_inspector_map_destruct(zend_op_array *mapped) {
 			(php_inspector_map_callback_t) php_inspector_map_arginfo_delref);
 	}
 
+	efree(mapped->run_time_cache);
 	efree(mapped->opcodes);
 	efree(mapped->refcount);
 }
 
 static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped) {
-	mapped->refcount = emalloc(sizeof(uint32_t));
+	mapped->fn_flags &= ~ZEND_ACC_ARENA_ALLOCATED;
 
-	(*mapped->refcount) = 1;
+	mapped->refcount = (uint32_t*) emalloc(sizeof(uint32_t));
+
+	(*mapped->refcount) = 2; /* just in case the engine gets ahold of it, and wants to free it */
 
 	if (mapped->filename)
 		zend_string_addref(mapped->filename);
@@ -296,8 +313,9 @@ static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped
 		}
 	}
 
-	if (mapped->run_time_cache)
-		mapped->run_time_cache = zend_arena_alloc(&CG(arena), mapped->cache_size);
+	mapped->run_time_cache = emalloc(mapped->cache_size);
+
+	memset(mapped->run_time_cache, 0, mapped->cache_size);
 }
 
 zend_op_array* php_inspector_map_create(zend_op_array *source) {
@@ -308,8 +326,6 @@ zend_op_array* php_inspector_map_create(zend_op_array *source) {
 	}
 
 	if ((mapped = php_inspector_map_reserved(source))) {
-		(*mapped->refcount)++;
-
 		return mapped;
 	}
 
@@ -320,6 +336,9 @@ zend_op_array* php_inspector_map_create(zend_op_array *source) {
 	php_inspector_map_reserved(source) = mapped;
 	php_inspector_map_reserved(mapped) = source;
 
+	zend_hash_index_update_ptr(
+		&IMG(table), (zend_ulong) source, mapped);
+
 	return mapped;
 }
 
@@ -328,25 +347,49 @@ zend_op_array* php_inspector_map_fetch(zend_op_array *source) {
 }
 
 void php_inspector_map_destroy(zend_op_array *map) {
-
-	if (--(*map->refcount) > 0) {
+	if (!ZEND_USER_CODE(map->type) || !php_inspector_map_reserved(map)) {
 		return;
 	}
 
 	php_inspector_map_free(map, 
 		1, sizeof(zend_op_array), 
 		(php_inspector_map_callback_t) php_inspector_map_destruct);
+
+}
+
+static void php_inspector_map_globals(zend_inspector_map_globals *IMG) {
+	memset(IMG, 0, sizeof(*IMG));
 }
 
 PHP_MINIT_FUNCTION(inspector_map)
 {
 	zend_extension dummy;
 
+	ZEND_INIT_MODULE_GLOBALS(inspector_map, php_inspector_map_globals, NULL);
+
 	php_inspector_map_reserved_id = zend_get_resource_handle(&dummy);
 
 	if (php_inspector_map_reserved_id < 0) {
 		return FAILURE;
 	}
+
+	return SUCCESS;
+}
+
+static void php_inspector_map_table_free(zval *zv) {
+	php_inspector_map_destroy(Z_PTR_P(zv));
+}
+
+PHP_RINIT_FUNCTION(inspector_map)
+{
+	zend_hash_init(&IMG(table), 8, NULL, php_inspector_map_table_free, 0);
+
+	return SUCCESS;
+}
+
+PHP_RSHUTDOWN_FUNCTION(inspector_map)
+{
+	zend_hash_destroy(&IMG(table));
 
 	return SUCCESS;
 }

@@ -387,16 +387,6 @@ static PHP_METHOD(InspectorFunction, purge)
 	zend_hash_apply_with_argument(EG(function_table), (apply_func_arg_t) php_inspector_function_purge, filters);
 }
 
-PHP_METHOD(InspectorFunction, __destruct)
-{
-	zend_op_array *function =
-		(zend_op_array*)
-			php_reflection_object_function(getThis());
-
-	if (ZEND_USER_CODE(function->type) && php_inspector_map_fetch(function))
-		php_inspector_map_destroy(function);
-}
-
 ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_purge_arginfo, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, filter, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -414,7 +404,6 @@ static zend_function_entry php_inspector_function_methods[] = {
 	PHP_ME(InspectorFunction, findFirstInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, findLastInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, flushInstructionCache, InspectorFunction_flush_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ME(InspectorFunction, __destruct, InspectorFunction_destruct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, purge, InspectorFunction_purge_arginfo, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_FE_END
 };

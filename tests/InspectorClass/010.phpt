@@ -11,7 +11,7 @@ $include = sprintf("%s/purge.inc", dirname(__FILE__));
 $inspector = new class("test") extends InspectorClass {
 	public function onResolve() {
 		$method = $this->getMethod("add");
-		
+
 		$instruction = $method->getEntryInstruction();
 
 		unset($this->hook);

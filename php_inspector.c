@@ -295,7 +295,7 @@ PHP_RINIT_FUNCTION(inspector)
 #if defined(COMPILE_DL_INSPECTOR) && defined(ZTS)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
-
+	PHP_RINIT(inspector_map)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_RINIT(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_RINIT(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 	{
@@ -317,6 +317,7 @@ PHP_RSHUTDOWN_FUNCTION(inspector)
 {
 	PHP_RSHUTDOWN(inspector_break)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_RSHUTDOWN(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_RSHUTDOWN(inspector_map)(INIT_FUNC_ARGS_PASSTHRU);
 	{
 		zend_hash_destroy(&PIG(pending).file);
 		zend_hash_destroy(&PIG(pending).class);
