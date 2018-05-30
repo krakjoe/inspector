@@ -51,6 +51,7 @@ static zend_function_entry php_inspector_method_methods[] = {
 	PHP_ME(InspectorFunction, findFirstInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, findLastInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, flushInstructionCache, InspectorFunction_flush_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, __destruct, InspectorFunction_destruct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorMethod, getDeclaringClass, InspectorMethod_getDeclaringClass_arginfo, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };

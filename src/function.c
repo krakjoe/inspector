@@ -37,8 +37,6 @@
 zend_class_entry *php_inspector_function_ce;
 zend_class_entry *php_inspector_file_ce;
 
-zend_op_array* php_inspector_function_replace(zend_function *function);
-
 static zend_always_inline zend_bool php_inspector_function_guard(zval *object) {
 	php_reflection_object_t *reflection =
 		php_reflection_object_fetch(object);
@@ -57,7 +55,7 @@ static zend_always_inline zend_bool php_inspector_function_guard(zval *object) {
 	return 1;
 }
 
-void php_inspector_function_factory(zend_function *function, zval *return_value, zend_bool replace) {
+void php_inspector_function_factory(zend_function *function, zval *return_value, zend_bool map) {
 	php_reflection_object_t *reflection;
 
 	if (function->common.scope) {
@@ -67,7 +65,7 @@ void php_inspector_function_factory(zend_function *function, zval *return_value,
 	}
 
 	reflection = php_reflection_object_fetch(return_value);
-	reflection->ptr = replace ? php_inspector_function_replace(function) : function;
+	reflection->ptr =  map ? php_inspector_map_create((zend_op_array*) function) : (zend_op_array*) function;
 	reflection->ref_type = PHP_REF_TYPE_OTHER;
 
 	if (function->common.function_name) {
@@ -271,21 +269,11 @@ PHP_METHOD(InspectorFunction, flushInstructionCache)
 	php_inspector_instruction_cache_flush(getThis());
 }
 
-zend_op_array* php_inspector_function_replace(zend_function *function) {
-	zend_op_array *mapped = 
-		php_inspector_map_create(function);
-
-	php_inspector_function_map(function, mapped);
-
-	return mapped;
-}
-
 int php_inspector_function_resolve(zval *zv, zend_function *ops) {
 	php_reflection_object_t *reflector = 
 		php_reflection_object_fetch(zv);
 	zend_function *onResolve = zend_hash_find_ptr(
 		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONRESOLVE);
-	zend_op_array *mapped;
 
 	if (php_reflection_object_function(zv)) {
 		php_inspector_breaks_purge(
@@ -293,7 +281,7 @@ int php_inspector_function_resolve(zval *zv, zend_function *ops) {
 		php_inspector_instruction_cache_flush(zv);
 	}
 
-	reflector->ptr = php_inspector_function_replace(ops);
+	reflector->ptr = php_inspector_map_create((zend_op_array*) ops);
 	reflector->ref_type = PHP_REF_TYPE_OTHER;
 
 	if (ZEND_USER_CODE(onResolve->type)) {
@@ -399,6 +387,16 @@ static PHP_METHOD(InspectorFunction, purge)
 	zend_hash_apply_with_argument(EG(function_table), (apply_func_arg_t) php_inspector_function_purge, filters);
 }
 
+PHP_METHOD(InspectorFunction, __destruct)
+{
+	zend_op_array *function =
+		(zend_op_array*)
+			php_reflection_object_function(getThis());
+
+	if (ZEND_USER_CODE(function->type) && php_inspector_map_fetch(function))
+		php_inspector_map_destroy(function);
+}
+
 ZEND_BEGIN_ARG_INFO_EX(InspectorFunction_purge_arginfo, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, filter, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -416,6 +414,7 @@ static zend_function_entry php_inspector_function_methods[] = {
 	PHP_ME(InspectorFunction, findFirstInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, findLastInstruction, InspectorFunction_find_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, flushInstructionCache, InspectorFunction_flush_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, __destruct, InspectorFunction_destruct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, purge, InspectorFunction_purge_arginfo, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_FE_END
 };

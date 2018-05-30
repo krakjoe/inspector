@@ -22,10 +22,16 @@
 #include "php.h"
 #include "php_inspector.h"
 
+#include "zend_extensions.h"
+
 #ifndef GC_ADDREF
 #	define GC_ADDREF(g) ++GC_REFCOUNT(g)
 #	define GC_DELREF(g) --GC_REFCOUNT(g)
 #endif
+
+static int php_inspector_map_reserved_id;
+
+#define php_inspector_map_reserved(function) (function)->reserved[php_inspector_map_reserved_id]
 
 typedef void (*php_inspector_map_callback_t)(void *);
 
@@ -289,16 +295,47 @@ zend_op_array* php_inspector_map_create(zend_op_array *source) {
 		return source;
 	}
 
+	if ((mapped = php_inspector_map_reserved(source))) {
+		(*mapped->refcount)++;
+
+		return mapped;
+	}
+
 	mapped = (zend_op_array*) php_inspector_map_dup(
 		source, 1, sizeof(zend_op_array), 
 		(php_inspector_map_callback_t) php_inspector_map_construct);
 
+	php_inspector_map_reserved(source) = mapped;
+	php_inspector_map_reserved(mapped) = source;
+
 	return mapped;
 }
 
-void php_inspector_map_destroy(zval *zv) {
-	php_inspector_map_free(Z_PTR_P(zv), 
+zend_op_array* php_inspector_map_fetch(zend_op_array *source) {
+	return php_inspector_map_reserved(source);
+}
+
+void php_inspector_map_destroy(zend_op_array *map) {
+
+	if (--(*map->refcount) > 0) {
+		return;
+	}	
+
+	php_inspector_map_free(map, 
 		1, sizeof(zend_op_array), 
 		(php_inspector_map_callback_t) php_inspector_map_destruct);
+}
+
+PHP_MINIT_FUNCTION(inspector_map)
+{
+	zend_extension dummy;
+
+	php_inspector_map_reserved_id = zend_get_resource_handle(&dummy);
+
+	if (php_inspector_map_reserved_id < 0) {
+		return FAILURE;
+	}
+
+	return SUCCESS;
 }
 #endif

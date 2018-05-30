@@ -19,7 +19,11 @@
 #ifndef HAVE_INSPECTOR_MAP_H
 #define HAVE_INSPECTOR_MAP_H
 
+PHP_MINIT_FUNCTION(inspector_map);
+
 zend_op_array* php_inspector_map_create(zend_op_array *source);
 
-void php_inspector_map_destroy(zval *zv);
+zend_op_array* php_inspector_map_fetch(zend_op_array *source);
+
+void php_inspector_map_destroy(zend_op_array *map);
 #endif
