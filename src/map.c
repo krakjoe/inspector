@@ -60,6 +60,19 @@ static zend_always_inline void* php_inspector_map_dup(void *ptr, size_t num, siz
 	return dup;
 }
 
+static zend_always_inline zend_string** php_inspector_map_dup_strings(zend_string **strings, size_t size) {
+	zend_string **dup = ecalloc(size, sizeof(zend_string*));
+	size_t string = 0;
+
+	memcpy(dup, strings, sizeof(zend_string*) * size);	
+
+	for (string = 0; string < size; string++) {
+		zend_string_addref(dup[string]);
+	}
+
+	return dup;	
+}
+
 static zend_always_inline void php_inspector_map_free(void *ptr, size_t num, size_t size, php_inspector_map_callback_t destructor) {
 	if (destructor) {
 		char *begin = (char*) ptr,
@@ -242,9 +255,7 @@ static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped
 	mapped->live_range = (zend_live_range*) php_inspector_map_dup(
 		mapped->live_range, mapped->last_live_range, sizeof(zend_live_range), NULL);
 
-	mapped->vars    = (zend_string**) php_inspector_map_dup(
-		mapped->vars, mapped->last_var, sizeof(zend_string*),
-		(php_inspector_map_callback_t) php_inspector_map_string_addref);
+	mapped->vars    = (zend_string**) php_inspector_map_dup_strings(mapped->vars, mapped->last_var);
 
 	mapped->literals = (zval*) php_inspector_map_dup(
 		mapped->literals, mapped->last_literal, sizeof(zval),
