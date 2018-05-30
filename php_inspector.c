@@ -204,7 +204,7 @@ static void php_inspector_execute(zend_execute_data *execute_data) {
 	map = php_inspector_map_fetch(function);
 
 	if (UNEXPECTED(map)) {
-		if (!UNEXPECTED(function->function_name)) {
+		if (UNEXPECTED(!function->function_name)) {
 			php_inspector_table_apply_specific(
 				PHP_INSPECTOR_ROOT_PENDING,
 				PHP_INSPECTOR_TABLE_FILE,
