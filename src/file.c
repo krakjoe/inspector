@@ -197,6 +197,10 @@ int php_inspector_file_resolve(zval *zv, zend_function *ops) {
 static zend_op_array* php_inspector_compile(zend_file_handle *fh, int type) {
 	zend_op_array *function = zend_compile_function(fh, type);
 
+	if (UNEXPECTED(!function || !function->filename)) {
+		return function;
+	}
+
 	if (UNEXPECTED(php_inspector_table(
 				PHP_INSPECTOR_ROOT_PENDING, 
 				PHP_INSPECTOR_TABLE_FILE, 
