@@ -87,8 +87,10 @@ static PHP_METHOD(InspectorOperand, isJumpTarget) {
 	switch(instruction->opline->opcode) {
 		case ZEND_JMP:
 		case ZEND_FAST_CALL:
+#if PHP_VERSION_ID < 70300
 		case ZEND_DECLARE_ANON_CLASS:
 		case ZEND_DECLARE_ANON_INHERITED_CLASS:
+#endif
 			if (operand->which == PHP_INSPECTOR_OPERAND_OP1) {
 				RETURN_TRUE;
 			}
@@ -265,10 +267,8 @@ static PHP_METHOD(InspectorOperand, getValue) {
 		zval *value = 
 			ZEND_CALL_VAR(frame->frame, operand->op->var);
 
-		if (Z_ISUNDEF_P(value)) {
-			if (Z_PTR_P(value) && php_inspector_operand_is_class(instruction, operand)) {
-				php_inspector_class_factory(Z_PTR_P(value), return_value);
-			}
+		if (Z_PTR_P(value) && php_inspector_operand_is_class(instruction, operand)) {
+			php_inspector_class_factory(Z_PTR_P(value), return_value);
 			return;
 		}
 
@@ -276,7 +276,9 @@ static PHP_METHOD(InspectorOperand, getValue) {
 			value = Z_INDIRECT_P(value);
 		}
 
-		ZVAL_COPY(return_value, value);
+		if (Z_TYPE_P(value) != IS_UNDEF) {
+			ZVAL_COPY(return_value, value);
+		}
 	}
 }
 
@@ -308,8 +310,10 @@ static PHP_METHOD(InspectorOperand, getNumber) {
 	switch(brk ? brk->opcode : instruction->opline->opcode) {
 		case ZEND_JMP:
 		case ZEND_FAST_CALL:
+#if PHP_VERSION_ID < 70300
 		case ZEND_DECLARE_ANON_CLASS:
 		case ZEND_DECLARE_ANON_INHERITED_CLASS:
+#endif
 			if (operand->which == PHP_INSPECTOR_OPERAND_OP1) {
 				znode_op op = *operand->op;
 

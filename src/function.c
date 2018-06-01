@@ -350,6 +350,10 @@ static int php_inspector_function_purge(zval *zv, HashTable *filters) {
 		return ZEND_HASH_APPLY_KEEP;
 	}
 
+	if (function->common.fn_flags & ZEND_ACC_CLOSURE) {
+		return ZEND_HASH_APPLY_KEEP;
+	}
+
 	if (!function->common.function_name || !filters) {
 		zend_hash_del(
 			&EG(included_files), function->op_array.filename);
@@ -365,14 +369,13 @@ static int php_inspector_function_purge(zval *zv, HashTable *filters) {
 		   strncasecmp(
 			ZSTR_VAL(function->common.function_name), 
 			Z_STRVAL_P(filter), 
-			ZSTR_LEN(function->common.function_name)) == SUCCESS) {
+			Z_STRLEN_P(filter)) == SUCCESS) {
 			return ZEND_HASH_APPLY_KEEP;
 		}
 	} ZEND_HASH_FOREACH_END();
 
 	zend_hash_del(
 		&EG(included_files), function->op_array.filename);
-
 	return php_inspector_function_remove(function);
 }
 
