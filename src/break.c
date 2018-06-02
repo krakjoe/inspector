@@ -313,6 +313,7 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 			ZVAL_NULL(EX_VAR(throw->result.var));
 		}
 #endif
+
 		return ZEND_USER_OPCODE_DISPATCH_TO | ZEND_HANDLE_EXCEPTION;
 	}
 

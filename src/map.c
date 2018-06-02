@@ -334,7 +334,6 @@ zend_op_array* php_inspector_map_create(zend_op_array *source) {
 		(php_inspector_map_callback_t) php_inspector_map_construct);
 
 	php_inspector_map_reserved(source) = mapped;
-	php_inspector_map_reserved(mapped) = source;
 
 	zend_hash_index_update_ptr(
 		&IMG(table), (zend_ulong) source, mapped);
@@ -347,7 +346,7 @@ zend_op_array* php_inspector_map_fetch(zend_op_array *source) {
 }
 
 void php_inspector_map_destroy(zend_op_array *map) {
-	if (!ZEND_USER_CODE(map->type) || !php_inspector_map_reserved(map)) {
+	if (!ZEND_USER_CODE(map->type)) {
 		return;
 	}
 

@@ -65,7 +65,14 @@ void php_inspector_function_factory(zend_function *function, zval *return_value,
 	}
 
 	reflection = php_reflection_object_fetch(return_value);
-	reflection->ptr =  map ? php_inspector_map_create((zend_op_array*) function) : (zend_op_array*) function;
+	if (!map) {
+		if (php_inspector_map_fetch(function)) {
+			reflection->ptr = php_inspector_map_fetch(function);
+		} else  reflection->ptr = function;
+	} else {
+		reflection->ptr =  php_inspector_map_create((zend_op_array*) function);
+	}
+	
 	reflection->ref_type = PHP_REF_TYPE_OTHER;
 
 	if (function->common.function_name) {
