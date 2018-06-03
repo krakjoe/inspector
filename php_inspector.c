@@ -100,18 +100,23 @@ static zend_always_inline HashTable* php_inspector_table_create(php_inspector_ro
 	ALLOC_HASHTABLE(table);
 	zend_hash_init(table, 8, NULL, ZVAL_PTR_DTOR, 0);
 
-	return zend_hash_update_ptr(rt, (zend_string*) key, table);
+	zend_hash_update_ptr(rt, key, table);
+
+	return table;
 }
 
 HashTable* php_inspector_table(php_inspector_root_t root, php_inspector_table_t type, zend_string *key, zend_bool create) {
 	HashTable *rt = php_inspector_table_select(root, type);
+	zend_string *name = type != PHP_INSPECTOR_TABLE_FILE ?
+		zend_string_tolower(key) : zend_string_copy(key);
 	HashTable *table = 
-		(HashTable*) zend_hash_find_ptr(rt, key);
+		(HashTable*) zend_hash_find_ptr(rt, name);
 
 	if (!table && create) {
-		return php_inspector_table_create(root, type, key);
+		table = php_inspector_table_create(root, type, name);
 	}
 
+	zend_string_release(name);
 	return table;
 }
 
@@ -130,8 +135,11 @@ void php_inspector_table_insert(php_inspector_root_t root, php_inspector_table_t
 void php_inspector_table_drop(php_inspector_root_t root, php_inspector_table_t type, zend_string *key) {
 	HashTable *rt = 
 		php_inspector_table_select(root, type);
-	
-	zend_hash_del(rt, key);
+	zend_string *keyed = type != PHP_INSPECTOR_TABLE_FILE ?
+			zend_string_tolower(key) : zend_string_copy(key);
+
+	zend_hash_del(rt, keyed);
+	zend_string_release(keyed);
 }
 
 static zend_always_inline void php_inspector_table_apply_specific(php_inspector_root_t root, php_inspector_table_t type, zend_string *name, apply_func_arg_t applicator, void *pointer) {
