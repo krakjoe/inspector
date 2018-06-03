@@ -20,13 +20,15 @@ $break = new class($opline) extends InspectorBreakPoint {
 	public function hit(InspectorFrame $frame) {}
 };
 
-if ($break->disable() == true &&
-    $break->disable() == false &&
-    $break->enable() == true &&
-    $break->enable() == false &&
-    $break->isEnabled() == true) {
-	echo "OK";
-}
+var_dump($break->disable());
+var_dump($break->disable());
+var_dump($break->enable());
+var_dump($break->enable());
+var_dump($break->isEnabled());
 ?>
 --EXPECT--
-OK
+bool(true)
+bool(false)
+bool(true)
+bool(false)
+bool(true)

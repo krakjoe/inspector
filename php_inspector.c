@@ -227,6 +227,21 @@ static void php_inspector_execute(zend_execute_data *execute_data) {
 	}
 
 	zend_execute_function(execute_data);
+
+	if (UNEXPECTED(map)) {
+		EX(func) = function;
+		EX(opline) = EX(func)->op_array.opcodes + 
+				(EX(opline) - map->opcodes);
+
+#if ZEND_EX_USE_RUN_TIME_CACHE
+		if (map->run_time_cache)
+			EX(run_time_cache) = function->run_time_cache;
+#endif
+
+#if ZEND_EX_USE_LITERALS
+		EX(literals) = function->literals;
+#endif
+	}
 }
 
 /* {{{ PHP_MINIT_FUNCTION
