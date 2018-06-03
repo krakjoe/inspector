@@ -250,6 +250,8 @@ PHP_MINIT_FUNCTION(inspector)
 
 	PHP_MINIT(inspector_map)(INIT_FUNC_ARGS_PASSTHRU);
 
+	REGISTER_NS_STRING_CONSTANT("Inspector", "Version", PHP_INSPECTOR_VERSION, CONST_CS | CONST_PERSISTENT);
+
 	zend_execute_function = zend_execute_ex;
 	zend_execute_ex = php_inspector_execute;
 

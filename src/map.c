@@ -44,9 +44,9 @@ ZEND_DECLARE_MODULE_GLOBALS(inspector_map);
 #	define GC_DELREF(g) --GC_REFCOUNT(g)
 #endif
 
-static int php_inspector_map_reserved_id;
+static int php_inspector_map_function_id;
 
-#define php_inspector_map_reserved(function) (function)->reserved[php_inspector_map_reserved_id]
+#define php_inspector_map_function(function) (function)->reserved[php_inspector_map_function_id]
 
 typedef void (*php_inspector_map_callback_t)(void *);
 
@@ -362,13 +362,13 @@ static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped
 	zend_hash_index_update_ptr(
 		&IMG(table), (zend_ulong) IMG(src), IMG(map));
 
-	php_inspector_map_reserved(IMG(src)) = IMG(map);
+	php_inspector_map_function(IMG(src)) = IMG(map);
 
 	IMG(map) = NULL;
 }
 
 zend_op_array* php_inspector_map_fetch(zend_op_array *src) {
-	return php_inspector_map_reserved(src);
+	return php_inspector_map_function(src);
 }
 
 zend_op_array* php_inspector_map_create(zend_op_array *src) {
@@ -413,9 +413,9 @@ PHP_MINIT_FUNCTION(inspector_map)
 
 	ZEND_INIT_MODULE_GLOBALS(inspector_map, php_inspector_map_globals, NULL);
 
-	php_inspector_map_reserved_id = zend_get_resource_handle(&dummy);
+	php_inspector_map_function_id = zend_get_resource_handle(&dummy);
 
-	if (php_inspector_map_reserved_id < 0) {
+	if (php_inspector_map_function_id < 0) {
 		return FAILURE;
 	}
 
