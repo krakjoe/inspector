@@ -26,6 +26,9 @@
 
 ZEND_BEGIN_MODULE_GLOBALS(inspector_map)
 	HashTable table;
+
+	zend_op_array *map;
+	zend_op_array *src;
 ZEND_END_MODULE_GLOBALS(inspector_map);
 
 ZEND_DECLARE_MODULE_GLOBALS(inspector_map);
@@ -72,6 +75,23 @@ static zend_always_inline void* php_inspector_map_dup(void *ptr, size_t num, siz
 	return dup;
 }
 
+static zend_always_inline void php_inspector_map_apply(void *ptr, size_t num, size_t size, php_inspector_map_callback_t constructor) {
+	if (!num) {
+		return;
+	}
+
+	if (constructor) {
+		char *begin = (char*) ptr,
+		     *end   = ((char*) begin) + (num * size);
+
+		while (begin < end) {
+			constructor(
+				(void*) begin);
+			begin += size;
+		}
+	}
+}
+
 static zend_always_inline zend_string** php_inspector_map_dup_strings(zend_string **strings, size_t size) {
 	zend_string **dup = 
 		(zend_string**) 
@@ -102,16 +122,23 @@ static zend_always_inline void php_inspector_map_free(void *ptr, size_t num, siz
 	efree(ptr);
 }
 
-#if ZEND_USE_ABS_JMP_ADDR
 static zend_always_inline void php_inspector_map_opcode(zend_op *opline) {
+	zend_op *old = 
+		IMG(src)->opcodes + (opline - IMG(map)->opcodes);
+
+#if 0
+	php_printf("%p %p -> %p %p\n", IMG(src)->opcodes, old, IMG(map)->opcodes, opline);
+#endif
+
+#if ZEND_USE_ABS_CONST_ADDR
+	
+#endif
+
 	switch (opline->opcode) {
 		case ZEND_JMP:
 		case ZEND_FAST_CALL:
-#if PHP_VERSION_ID < 70300
-		case ZEND_DECLARE_ANON_CLASS:
-		case ZEND_DECLARE_ANON_INHERITED_CLASS:
-#endif
-			opline->op1.jmp_addr = copy + (opline->op1.jmp_addr - opcodes);
+			ZEND_PASS_TWO_UNDO_JMP_TARGET(IMG(src), old, opline->op1);
+			ZEND_PASS_TWO_UPDATE_JMP_TARGET(IMG(map), opline, opline->op1);
 			break;
 
 		case ZEND_JMPZNZ:
@@ -125,18 +152,31 @@ static zend_always_inline void php_inspector_map_opcode(zend_op *opline) {
 		case ZEND_FE_RESET_R:
 		case ZEND_FE_RESET_RW:
 		case ZEND_ASSERT_CHECK:
-			opline->op2.jmp_addr = copy + (opline->op2.jmp_addr - opcodes);
+			ZEND_PASS_TWO_UNDO_JMP_TARGET(IMG(src), old, opline->op2);
+			ZEND_PASS_TWO_UPDATE_JMP_TARGET(IMG(map), opline, opline->op2);
 			break;
+
+		case ZEND_FE_FETCH_R:
+		case ZEND_FE_FETCH_RW:
+#if PHP_VERSION_ID < 70300
+		case ZEND_DECLARE_ANON_CLASS:
+		case ZEND_DECLARE_ANON_INHERITED_CLASS:
+#endif
+			opline->extended_value = 
+				ZEND_OPLINE_NUM_TO_OFFSET(
+					IMG(map), opline, ZEND_OFFSET_TO_OPLINE_NUM(IMG(map), old, old->extended_value));
+		break;
+
 #if PHP_VERSION_ID >= 70300
 		case ZEND_CATCH:
 			if (!(opline->extended_value & ZEND_LAST_CATCH)) {
-				opline->op2.jmp_addr = copy + (opline->op2.jmp_addr - opcodes);
+				ZEND_PASS_TWO_UNDO_JMP_TARGET(IMG(src), old, opline->op2);
+				ZEND_PASS_TWO_UPDATE_JMP_TARGET(IMG(map), opline, opline->op2);
 			}
 		break;
 #endif
 	}
 }
-#endif
 
 static zend_always_inline void php_inspector_map_arginfo_addref(zend_arg_info *info) {
 	if (info->name) {
@@ -251,6 +291,8 @@ static void php_inspector_map_destruct(zend_op_array *mapped) {
 }
 
 static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped) {
+	IMG(map) = mapped;
+
 	mapped->fn_flags &= ~ZEND_ACC_ARENA_ALLOCATED;
 
 	mapped->refcount = (uint32_t*) emalloc(sizeof(uint32_t));
@@ -280,11 +322,11 @@ static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped
 
 	mapped->opcodes = (zend_op*) php_inspector_map_dup(
 		mapped->opcodes, mapped->last, sizeof(zend_op),
-#if ZEND_USE_ABS_JMP_ADDR
-		(php_inspector_map_callback_t) php_inspector_map_opcode);
-#else
 		NULL);
-#endif
+
+	php_inspector_map_apply(
+		mapped->opcodes, mapped->last, sizeof(zend_op), 
+		(php_inspector_map_callback_t) php_inspector_map_opcode);
 
 	if (mapped->static_variables) {
 		mapped->static_variables = zend_array_dup(mapped->static_variables);
@@ -316,33 +358,39 @@ static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped
 	mapped->run_time_cache = emalloc(mapped->cache_size);
 
 	memset(mapped->run_time_cache, 0, mapped->cache_size);
+
+	zend_hash_index_update_ptr(
+		&IMG(table), (zend_ulong) IMG(src), IMG(map));
+
+	php_inspector_map_reserved(IMG(src)) = IMG(map);
+
+	IMG(map) = NULL;
 }
 
-zend_op_array* php_inspector_map_create(zend_op_array *source) {
+zend_op_array* php_inspector_map_fetch(zend_op_array *src) {
+	return php_inspector_map_reserved(src);
+}
+
+zend_op_array* php_inspector_map_create(zend_op_array *src) {
 	zend_op_array *mapped;
 
-	if (!ZEND_USER_CODE(source->type)) {
-		return source;
+	if (!ZEND_USER_CODE(src->type)) {
+		return src;
 	}
 
-	if ((mapped = php_inspector_map_reserved(source))) {
+	if ((mapped = php_inspector_map_fetch(src))) {
 		return mapped;
 	}
 
+	IMG(src) = src;
+
 	mapped = (zend_op_array*) php_inspector_map_dup(
-		source, 1, sizeof(zend_op_array), 
+		src, 1, sizeof(zend_op_array), 
 		(php_inspector_map_callback_t) php_inspector_map_construct);
 
-	php_inspector_map_reserved(source) = mapped;
-
-	zend_hash_index_update_ptr(
-		&IMG(table), (zend_ulong) source, mapped);
+	IMG(src) = NULL;
 
 	return mapped;
-}
-
-zend_op_array* php_inspector_map_fetch(zend_op_array *source) {
-	return php_inspector_map_reserved(source);
 }
 
 void php_inspector_map_destroy(zend_op_array *map) {
@@ -353,7 +401,6 @@ void php_inspector_map_destroy(zend_op_array *map) {
 	php_inspector_map_free(map, 
 		1, sizeof(zend_op_array), 
 		(php_inspector_map_callback_t) php_inspector_map_destruct);
-
 }
 
 static void php_inspector_map_globals(zend_inspector_map_globals *IMG) {

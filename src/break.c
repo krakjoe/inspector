@@ -109,6 +109,8 @@ static inline zend_bool php_inspector_break_enable(php_inspector_break_t *brk) {
 
 	brk->opcode = instruction->opline->opcode;
 
+	ZEND_ASSERT(brk->opcode != 255);
+
 	instruction->opline->opcode = INSPECTOR_DEBUG_BREAK;
 
 	zend_vm_set_opcode_handler(instruction->opline);
@@ -363,6 +365,8 @@ static void php_inspector_break_unset(zval *zv) {
 	}
 
 	if (reflection->ref_type != PHP_REF_TYPE_EXPIRED) {
+		ZEND_ASSERT(brk->opcode != 255);
+
 		instruction->opline->opcode = brk->opcode;
 
 		zend_vm_set_opcode_handler(instruction->opline);
