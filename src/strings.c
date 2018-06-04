@@ -59,13 +59,15 @@ static void php_inspector_strings_init(zend_inspector_strings_globals *sg) {
 	memset(sg, 0, sizeof(*sg));
 }
 
+void php_inspector_string_free(zval *zv) {
+	zend_string_free(Z_STR_P(zv));
+}
+
 PHP_MINIT_FUNCTION(inspector_strings) 
 {
-	php_inspector_string *string;
-
 	ZEND_INIT_MODULE_GLOBALS(inspector_strings, php_inspector_strings_init, NULL);
 
-	zend_hash_init(&ISTR(table), 8, NULL, ZVAL_PTR_DTOR, 1);
+	zend_hash_init(&ISTR(table), 8, NULL, php_inspector_string_free, 1);
 
 	/* negative */
 	{
@@ -73,18 +75,9 @@ PHP_MINIT_FUNCTION(inspector_strings)
 		const php_inspector_string *end    = 
 			string + (sizeof(php_inspector_strings) / sizeof(php_inspector_string));
 
-		while (string < end) {
-			zval value;
-			zend_string *str = 
-				zend_string_init(string->val, string->len, 1);
-
-			ZVAL_STR(&value, str);
-
-			zend_hash_index_update(
-				&ISTR(table), string->idx, &value);
-
-			string++;
-		}	
+		do {
+			zend_hash_index_update_ptr(&ISTR(table), string->idx, zend_string_init(string->val, string->len, 1));
+		} while (++string < end);
 	}
 
 	return SUCCESS;
@@ -98,24 +91,13 @@ PHP_MSHUTDOWN_FUNCTION(inspector_strings)
 }
 
 void php_inspector_strings_register_opcode(zend_uchar opcode, const char *name) {
-	zval value;
-
-	if (!name) {
-		return;
+	if (name) {
+		zend_hash_index_update_ptr(&ISTR(table), opcode, zend_string_init(name, strlen(name), 1));
 	}
 
-	ZVAL_PSTRING(&value, name);
-
-	zend_hash_index_update(&ISTR(table), opcode, &value);
 }
 
 zend_string* php_inspector_strings_fetch(php_inspector_string_t idx) {
-	zval *string = zend_hash_index_find(&ISTR(table), idx);
-
-	if (string && Z_TYPE_P(string) == IS_STRING) {
-		return Z_STR_P(string);
-	}
-
-	return NULL;
+	return (zend_string *) zend_hash_index_find_ptr(&ISTR(table), idx);
 }
 #endif

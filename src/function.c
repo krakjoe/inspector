@@ -35,7 +35,7 @@
 #include "map.h"
 
 zend_class_entry *php_inspector_function_ce;
-zend_class_entry *php_inspector_file_ce;
+extern zend_class_entry *php_inspector_file_ce;
 
 static zend_always_inline zend_bool php_inspector_function_guard(zval *object) {
 	php_reflection_object_t *reflection =
