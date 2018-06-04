@@ -83,8 +83,9 @@ static PHP_METHOD(InspectorOperand, isJumpTarget) {
 		php_inspector_operand_this();
 	php_inspector_instruction_t *instruction =
 		php_inspector_instruction_fetch_from(Z_OBJ(operand->instruction));
+	php_inspector_break_t *brk = php_inspector_break_find_ptr(instruction);
 
-	switch(instruction->opline->opcode) {
+	switch(brk ? brk->opcode : instruction->opline->opcode) {
 		case ZEND_JMP:
 		case ZEND_FAST_CALL:
 #if PHP_VERSION_ID < 70300
