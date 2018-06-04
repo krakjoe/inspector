@@ -84,7 +84,7 @@ void php_inspector_function_factory(zend_function *function, zval *return_value,
 		zend_std_write_property(return_value, &k, &v, NULL);
 	}
 
-	if (function->common.scope && !function->common.fn_flags & ZEND_ACC_CLOSURE) {
+	if (function->common.scope && !(function->common.fn_flags & ZEND_ACC_CLOSURE)) {
 		zval k, v;
 
 		ZVAL_STR(&k, PHP_INSPECTOR_STRING_CLASS);
