@@ -35,7 +35,7 @@
 #include "map.h"
 
 zend_class_entry *php_inspector_function_ce;
-zend_class_entry *php_inspector_file_ce;
+extern zend_class_entry *php_inspector_file_ce;
 
 static zend_always_inline zend_bool php_inspector_function_guard(zval *object) {
 	php_reflection_object_t *reflection =
@@ -84,7 +84,7 @@ void php_inspector_function_factory(zend_function *function, zval *return_value,
 		zend_std_write_property(return_value, &k, &v, NULL);
 	}
 
-	if (function->common.scope && !function->common.fn_flags & ZEND_ACC_CLOSURE) {
+	if (function->common.scope && !(function->common.fn_flags & ZEND_ACC_CLOSURE)) {
 		zval k, v;
 
 		ZVAL_STR(&k, PHP_INSPECTOR_STRING_CLASS);
