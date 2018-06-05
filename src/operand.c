@@ -84,35 +84,16 @@ static PHP_METHOD(InspectorOperand, isJumpTarget) {
 	php_inspector_instruction_t *instruction =
 		php_inspector_instruction_fetch_from(Z_OBJ(operand->instruction));
 	php_inspector_break_t *brk = php_inspector_break_find_ptr(instruction);
+	uint32_t flags = zend_get_opcode_flags(
+		brk ? brk->opcode : instruction->opline->opcode);
 
-	switch(brk ? brk->opcode : instruction->opline->opcode) {
-		case ZEND_JMP:
-		case ZEND_FAST_CALL:
-#if PHP_VERSION_ID < 70300
-		case ZEND_DECLARE_ANON_CLASS:
-		case ZEND_DECLARE_ANON_INHERITED_CLASS:
-#endif
-			if (operand->which == PHP_INSPECTOR_OPERAND_OP1) {
-				RETURN_TRUE;
-			}
-		break;
-
-		case ZEND_JMPZNZ:
-		case ZEND_JMPZ:
-		case ZEND_JMPNZ:
-		case ZEND_JMPZ_EX:
-		case ZEND_JMP_SET:
-		case ZEND_COALESCE:
-		case ZEND_NEW:
-		case ZEND_FE_RESET_R:
-		case ZEND_FE_RESET_RW:
-		case ZEND_ASSERT_CHECK:
-			if (operand->which == PHP_INSPECTOR_OPERAND_OP2) {
-				RETURN_TRUE;
-			}
-		break;
+	switch (operand->which) {
+		case PHP_INSPECTOR_OPERAND_OP1:
+			RETURN_BOOL(ZEND_VM_OP1_FLAGS(flags) & ZEND_VM_OP_JMP_ADDR);
+		case PHP_INSPECTOR_OPERAND_OP2:
+			RETURN_BOOL(ZEND_VM_OP2_FLAGS(flags) & ZEND_VM_OP_JMP_ADDR);
 	}
-	
+
 	RETURN_FALSE;
 }
 
@@ -302,61 +283,42 @@ static PHP_METHOD(InspectorOperand, getNumber) {
 		php_inspector_operand_this();
 	php_inspector_instruction_t *instruction = 
 		php_inspector_instruction_fetch_from(Z_OBJ(operand->instruction));
-	php_inspector_break_t *brk = php_inspector_break_find_ptr(instruction);
-
 	zend_op_array *function = 
 		(zend_op_array*)
 			php_reflection_object_function(&instruction->function);
+	php_inspector_break_t *brk;
+	uint32_t flags;
 
-	switch(brk ? brk->opcode : instruction->opline->opcode) {
-		case ZEND_JMP:
-		case ZEND_FAST_CALL:
-#if PHP_VERSION_ID < 70300
-		case ZEND_DECLARE_ANON_CLASS:
-		case ZEND_DECLARE_ANON_INHERITED_CLASS:
-#endif
-			if (operand->which == PHP_INSPECTOR_OPERAND_OP1) {
-				znode_op op = *operand->op;
+	switch (zend_op_type(operand->type)) {
+		case IS_CONST:
+			RETURN_LONG(function->literals - RT_CONSTANT(function, *operand->op));
+		case IS_VAR:
+		case IS_TMP_VAR:
+			RETURN_LONG(EX_VAR_TO_NUM(operand->op->num - function->last_var));
+		case IS_CV:
+			RETURN_LONG(EX_VAR_TO_NUM(operand->op->num));
+	}
 
-				ZEND_PASS_TWO_UNDO_JMP_TARGET(function, instruction->opline, op);
-				ZVAL_LONG(return_value, op.num);
-				break;
-			}
-		
-		case ZEND_JMPZNZ:
-		case ZEND_JMPZ:
-		case ZEND_JMPNZ:
-		case ZEND_JMPZ_EX:
-		case ZEND_JMP_SET:
-		case ZEND_COALESCE:
-		case ZEND_NEW:
-		case ZEND_FE_RESET_R:
-		case ZEND_FE_RESET_RW:
-		case ZEND_ASSERT_CHECK:
-			if (operand->which == PHP_INSPECTOR_OPERAND_OP2) {
-				znode_op op = *operand->op;;
+	brk = php_inspector_break_find_ptr(instruction);
 
-				ZEND_PASS_TWO_UNDO_JMP_TARGET(function, instruction->opline, op);
+	flags = zend_get_opcode_flags(
+			brk ? 
+				brk->opcode : 
+				instruction->opline->opcode);
 
-				ZVAL_LONG(return_value, op.num);
-				break;
-			}
+	switch (operand->which) {
+		case PHP_INSPECTOR_OPERAND_OP1:
+			flags = ZEND_VM_OP1_FLAGS(flags);
+		break;
 
-		default: {
-			if (zend_op_type(operand->type) == IS_CONST) {
-				znode_op op = *operand->op;
-#if PHP_VERSION_ID >= 70300
-				ZEND_PASS_TWO_UNDO_CONSTANT(function, instruction->opline, op);
-#else
-				ZEND_PASS_TWO_UNDO_CONSTANT(function, op);
-#endif
-				ZVAL_LONG(return_value, op.num);
-			} else if (zend_op_type(operand->type) == IS_TMP_VAR || IS_VAR == zend_op_type(operand->type)) {
-				ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num - function->last_var));
-			} else if (zend_op_type(operand->type) == IS_CV) {
-				ZVAL_LONG(return_value, EX_VAR_TO_NUM(operand->op->num));
-			}
-		}
+		case PHP_INSPECTOR_OPERAND_OP2:
+			flags = ZEND_VM_OP2_FLAGS(flags);
+		break;
+	}	
+
+	switch (flags & ZEND_VM_OP_MASK) {
+		case ZEND_VM_OP_JMP_ADDR:
+			RETURN_LONG(OP_JMP_ADDR(instruction->opline, *operand->op) - function->opcodes);
 	}
 }
 

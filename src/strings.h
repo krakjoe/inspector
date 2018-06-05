@@ -32,6 +32,7 @@ PHP_MSHUTDOWN_FUNCTION(inspector_strings);
 
 zend_string* php_inspector_strings_fetch(php_inspector_string_t id);
 void php_inspector_strings_register_opcode(zend_uchar opcode, const char *name);
+void php_inspector_strings_register_long(zend_long, const char *name);
 
 #define PHP_INSPECTOR_STRING_HIT         	php_inspector_strings_fetch(PHP_INSPECTOR_STR_HIT)
 #define PHP_INSPECTOR_STRING_NAME        	php_inspector_strings_fetch(PHP_INSPECTOR_STR_NAME)

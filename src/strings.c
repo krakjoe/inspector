@@ -94,7 +94,12 @@ void php_inspector_strings_register_opcode(zend_uchar opcode, const char *name) 
 	if (name) {
 		zend_hash_index_update_ptr(&ISTR(table), opcode, zend_string_init(name, strlen(name), 1));
 	}
+}
 
+void php_inspector_strings_register_long(zend_long value, const char *name) {
+	if (name) {
+		zend_hash_index_update_ptr(&ISTR(table), value, zend_string_init(name, strlen(name), 1));
+	}
 }
 
 zend_string* php_inspector_strings_fetch(php_inspector_string_t idx) {

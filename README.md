@@ -73,7 +73,10 @@ namespace Inspector
 		public function getRelative(int offset) : ?InspectorInstruction;
 		public function getBreakPoint() : InspectorBreakPoint;
 
-		/* opcode constants are registered with prefixed ZEND_ */
+		public function getFlags([int which]) : ?int;
+
+		/* opcode constants are registered with prefixed ZEND_ (verbatim) */
+		/* vm constants are registered with prefix ZEND_VM_ (verbatim) */
 	}
 
 	final class InspectorOperand {

@@ -225,97 +225,35 @@ static PHP_METHOD(InspectorInstruction, getOperand) {
 				"the requested operand (%ld) is invalid", operand);
 	}
 #undef NEW_OPERAND
-}
+}		   
 
 static PHP_METHOD(InspectorInstruction, getExtendedValue) {
 	php_inspector_instruction_t *instruction = 
 		php_inspector_instruction_this();
-	zend_op_array *function = 
-		(zend_op_array*)
-			php_reflection_object_function(&instruction->function);
+	php_inspector_break_t *brk = 
+		php_inspector_break_find_ptr(instruction);
+	uint32_t flags = 
+		zend_get_opcode_flags(
+			brk ? brk->opcode : instruction->opline->opcode)
+		& ZEND_VM_EXT_MASK;
 
-	switch (instruction->opline->opcode) {
-		case ZEND_TYPE_CHECK:
-		case ZEND_CAST:
-			RETURN_STRING(zend_get_type_by_const(instruction->opline->extended_value));
-		break;
+	if (!flags) {
+		return;
+	}
 
-		case ZEND_JMPZNZ:
-		case ZEND_FE_FETCH_R:
-		case ZEND_FE_FETCH_RW:
-			RETURN_LONG(ZEND_OFFSET_TO_OPLINE_NUM(function, instruction->opline, instruction->opline->extended_value));
-		break;
-		
-		case ZEND_FETCH_CLASS:
-		case ZEND_FETCH_CLASS_NAME:
-			switch (instruction->opline->extended_value) {
-				case ZEND_FETCH_CLASS_DEFAULT: RETURN_STRING("default"); break;
-				case ZEND_FETCH_CLASS_SELF: RETURN_STRING("self"); break;
-				case ZEND_FETCH_CLASS_STATIC: RETURN_STRING("static"); break;
-				case ZEND_FETCH_CLASS_PARENT: RETURN_STRING("parent"); break;
-			}
-		break;
+	switch (flags) {
+		case ZEND_VM_EXT_JMP_ADDR: {
+			zend_op_array *function =
+				(zend_op_array*)
+					php_reflection_object_function(&instruction->function);
 
-		case ZEND_ASSIGN_ADD:
-		case ZEND_ASSIGN_SUB:
-		case ZEND_ASSIGN_MUL:
-		case ZEND_ASSIGN_DIV:
-		case ZEND_ASSIGN_MOD:
-		case ZEND_ASSIGN_SL:
-		case ZEND_ASSIGN_SR:
-		case ZEND_ASSIGN_CONCAT:
-		case ZEND_ASSIGN_BW_OR:
-		case ZEND_ASSIGN_BW_AND:
-		case ZEND_ASSIGN_BW_XOR:
-		case ZEND_ASSIGN_POW:
-		case ZEND_INCLUDE_OR_EVAL:
-			if (instruction->opline->extended_value) {
-				RETURN_LONG(instruction->opline->extended_value);
-			}
-		break;
+			RETURN_LONG(ZEND_OFFSET_TO_OPLINE(
+				instruction->opline, 
+				instruction->opline->extended_value) - instruction->opline);
+		} break;
 
-		case ZEND_ASSIGN_REF:
-		case ZEND_RETURN_BY_REF:
-			if (instruction->opline->extended_value == ZEND_RETURNS_FUNCTION) {
-				RETURN_STRING("function");
-			} else RETURN_STRING("value");
-		break;
-
-		case ZEND_FETCH_R:
-		case ZEND_FETCH_W:
-		case ZEND_FETCH_RW:
-		case ZEND_FETCH_FUNC_ARG:
-		case ZEND_FETCH_UNSET:
-		case ZEND_FETCH_IS:
-			switch (instruction->opline->extended_value & ZEND_FETCH_TYPE_MASK) {
-#ifdef ZEND_FETCH_STATIC
-				case ZEND_FETCH_STATIC: RETURN_STRING("static"); break;
-#endif
-				case ZEND_FETCH_GLOBAL_LOCK: RETURN_STRING("global"); break;
-				case ZEND_FETCH_LOCAL: RETURN_STRING("local"); break;
-#ifdef ZEND_FETCH_STATIC_MEMBER
-				case ZEND_FETCH_STATIC_MEMBER: RETURN_STRING("member"); break;
-#endif
-#ifdef ZEND_FETCH_LEXICAL
-				case ZEND_FETCH_LEXICAL: RETURN_STRING("lexical"); break;
-#endif
-				case ZEND_FETCH_GLOBAL: RETURN_STRING("global"); break;
-			}
-		break;
-
-		case ZEND_ROPE_END:
-		case ZEND_ROPE_ADD:
-		case ZEND_INIT_METHOD_CALL:
-		case ZEND_INIT_FCALL_BY_NAME:
-		case ZEND_INIT_DYNAMIC_CALL:
-		case ZEND_INIT_USER_CALL:
-		case ZEND_INIT_NS_FCALL_BY_NAME:
-		case ZEND_INIT_FCALL:
-		case ZEND_CATCH:
-		case ZEND_NEW:
-		case ZEND_TICKS:
-			RETURN_LONG(instruction->opline->extended_value);
-		break;
+		default:
+			RETURN_LONG(instruction->opline->extended_value);					
 	}
 }
 
@@ -347,11 +285,9 @@ static PHP_METHOD(InspectorInstruction, getRelative) {
 
 	if ((instruction->opline + relative) < function->opcodes + function->last &&
 	    (instruction->opline + relative) >= function->opcodes) {
-		if (Z_TYPE(instruction->next) == IS_UNDEF) {
-			php_inspector_instruction_factory(
-				&instruction->function,
-				instruction->opline + relative, return_value);
-		}
+		php_inspector_instruction_factory(
+			&instruction->function,
+			instruction->opline + relative, return_value);
 	}
 }
 
@@ -412,6 +348,31 @@ static PHP_METHOD(InspectorInstruction, getAddress)
 		php_inspector_instruction_this();
 
 	RETURN_LONG((zend_ulong) instruction->opline);
+}
+
+static PHP_METHOD(InspectorInstruction, getFlags)
+{
+	php_inspector_instruction_t *instruction =
+		php_inspector_instruction_this();
+	php_inspector_break_t *brk = 
+		php_inspector_break_find_ptr(instruction);
+	zend_long which = -1;
+	uint32_t flags = zend_get_opcode_flags(
+		brk ? brk->opcode : instruction->opline->opcode);
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "|l", &which) != SUCCESS) {
+		return;
+	}
+
+	switch (which) {
+		case PHP_INSPECTOR_OPERAND_OP1:
+			RETURN_LONG(ZEND_VM_OP1_FLAGS(flags));
+		case PHP_INSPECTOR_OPERAND_OP2:
+			RETURN_LONG(ZEND_VM_OP2_FLAGS(flags));
+
+		default:
+			RETURN_LONG(flags);
+	}
 }
 /* }}} */
 
@@ -487,12 +448,21 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorInstruction_getBreakPoint_argin
 #endif
 ZEND_END_ARG_INFO()
 
+#if PHP_VERSION_ID >= 70200
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorInstruction_getFlags_arginfo, 0, 0, IS_LONG, 0)
+#else
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorInstruction_getFlags_arginfo, 0, 0, IS_LONG, NULL, 0)
+#endif
+	ZEND_ARG_TYPE_INFO(0, which, IS_LONG, 1)
+ZEND_END_ARG_INFO()
+
 /* {{{ */
 static zend_function_entry php_inspector_instruction_methods[] = {
 	PHP_ME(InspectorInstruction, getOpcode, InspectorInstruction_getOpcode_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getOpcodeName, InspectorInstruction_getOpcodeName_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getOperand, InspectorInstruction_getOperand_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getExtendedValue, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorInstruction, getFlags, InspectorInstruction_getFlags_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getLine, InspectorInstruction_getLine_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getFunction, InspectorInstruction_getFunction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorInstruction, getNext, InspectorInstruction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
@@ -541,6 +511,43 @@ PHP_MINIT_FUNCTION(inspector_instruction) {
 
 			opcode++;
 		}
+
+#define php_inspector_instruction_zend_constant(l) do { \
+	zend_declare_class_constant_long( \
+		php_inspector_instruction_ce, \
+			#l, \
+			sizeof(#l) - 1, \
+			l);\
+} while (0)
+
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_SPEC);
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_CONST);
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_TMPVAR);
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_TMPVARCV);
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_MASK);
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_NUM);
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_JMP_ADDR);
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_TRY_CATCH);
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_LIVE_RANGE);
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_THIS);
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_NEXT);
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_CLASS_FETCH);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_VAR_FETCH);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_ISSET);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_ARG_NUM);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_ARRAY_INIT);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_REF);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_MASK);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_NUM);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_JMP_ADDR);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_DIM_OBJ);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_CLASS_FETCH);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_CONST_FETCH);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_TYPE);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_EVAL);
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_SRC);
+		php_inspector_instruction_zend_constant(ZEND_VM_NO_CONST_CONST);
+		php_inspector_instruction_zend_constant(ZEND_VM_COMMUTATIVE);
 	}
 
 	return SUCCESS;
