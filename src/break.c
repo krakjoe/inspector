@@ -432,7 +432,7 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 	BRK(state) = INSPECTOR_BREAK_RUNTIME;
 
 	if (EG(exception)) {
-#if PHP_VERSION_ID >= 70200 && PHP_VERSION_ID < 70300
+#if PHP_VERSION_ID >= 70200
 		const zend_op *throw = EG(opline_before_exception);
 
 		if (throw->result_type & (IS_VAR|IS_TMP_VAR)) {

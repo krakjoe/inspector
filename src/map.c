@@ -109,17 +109,39 @@ static zend_always_inline zend_string** php_inspector_map_dup_strings(zend_strin
 
 static zend_always_inline void php_inspector_map_free(void *ptr, size_t num, size_t size, php_inspector_map_callback_t destructor) {
 	if (destructor) {
-		char *begin = (char*) ptr,
-		     *end   = ((char*) begin) + (num * size);
-
-		while (begin < end) {
-			destructor(
-				(void*) begin);
-			begin += size;
-		}
+		php_inspector_map_apply(ptr, num, size, destructor);
 	}
 
 	efree(ptr);
+}
+static zend_always_inline void php_inspector_map_reindex_const_op(zend_op_array *op_array, zend_op *orig_opcodes, zval *orig_literals) {
+	zend_op *opline = op_array->opcodes, *end = opline + op_array->last;
+
+	for (; opline < end; opline++) {
+#if ZEND_USE_ABS_CONST_ADDR
+		if (opline->op1_type == IS_CONST) {
+			opline->op1.zv = (zval*)((char*)opline->op1.zv + ((char*)op_array->literals - (char*)orig_literals));
+		}
+		if (opline->op2_type == IS_CONST) {
+			opline->op2.zv = (zval*)((char*)opline->op2.zv + ((char*)op_array->literals - (char*)orig_literals));
+		}
+#else
+		if (opline->op1_type == IS_CONST) {
+			opline->op1.constant =
+				(char*)(op_array->literals +
+					((zval*)((char*)(orig_opcodes + (opline - op_array->opcodes)) +
+					(int32_t)opline->op1.constant) - orig_literals)) -
+				(char*)opline;
+		}
+		if (opline->op2_type == IS_CONST) {
+			opline->op2.constant =
+				(char*)(op_array->literals +
+					((zval*)((char*)(orig_opcodes + (opline - op_array->opcodes)) +
+					(int32_t)opline->op2.constant) - orig_literals)) -
+				(char*)opline;
+		}
+#endif
+	}
 }
 
 static zend_always_inline void php_inspector_map_opcode(zend_op *opline) {
@@ -251,13 +273,13 @@ static void php_inspector_map_destruct(zend_op_array *mapped) {
 
 	if (mapped->vars) {
 		php_inspector_map_free(mapped->vars, 
-			mapped->last_var, sizeof(zend_string*), 
+			mapped->last_var, sizeof(zend_string*),
 			(php_inspector_map_callback_t) php_inspector_map_string_delref);
 	}
 
 	if (mapped->literals) {
-		php_inspector_map_free(mapped->literals, 
-			mapped->last_literal, sizeof(zval), 
+		php_inspector_map_free(mapped->literals,
+			mapped->last_literal, sizeof(zval),
 			(php_inspector_map_callback_t) php_inspector_map_zval_delref);
 	}
 	
@@ -291,6 +313,11 @@ static void php_inspector_map_destruct(zend_op_array *mapped) {
 }
 
 static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped) {
+#if PHP_VERSION_ID >= 70300
+	zval *old_literals = mapped->literals;
+	zend_op *old_opcodes = mapped->opcodes;
+#endif
+
 	IMG(map) = mapped;
 
 	mapped->fn_flags &= ~ZEND_ACC_ARENA_ALLOCATED;
@@ -320,9 +347,13 @@ static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped
 		mapped->literals, mapped->last_literal, sizeof(zval),
 		(php_inspector_map_callback_t) php_inspector_map_zval_addref);
 
-	mapped->opcodes = (zend_op*) php_inspector_map_dup(
+	mapped->opcodes = (zend_op *) php_inspector_map_dup(
 		mapped->opcodes, mapped->last, sizeof(zend_op),
 		NULL);
+
+#if PHP_VERSION_ID >= 70300
+	php_inspector_map_reindex_const_op(mapped, old_opcodes, old_literals);
+#endif
 
 	php_inspector_map_apply(
 		mapped->opcodes, mapped->last, sizeof(zend_op), 
