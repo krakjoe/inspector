@@ -21,26 +21,12 @@ $file = new class($include) extends Inspector\InspectorFile {
 $a = 10;
 $b = 20;
 
-try {
-	$file->getEntryInstruction();
-} catch (\ReflectionException $e) {
-	echo "OK\n";
-}
-
 include($include);
 
 Inspector\InspectorFile::purge([__FILE__]);
 
 include($include);
-
-try {
-	$file->getEntryInstruction();
-} catch (\ReflectionException $e) {
-	echo "OK\n";
-}
 ?>
 --EXPECT--
-OK
-OK
 OK
 OK
