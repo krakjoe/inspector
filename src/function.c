@@ -46,7 +46,7 @@ static zend_always_inline zend_bool php_inspector_function_guard(zval *object) {
 		return 0;
 	}
 
-	if (function->type != ZEND_USER_FUNCTION) {
+	if (!ZEND_USER_CODE(function->type)) {
 		zend_throw_exception_ex(reflection_exception_ptr, 0,
 			"InspectorInstructionInterface doesn't work on internal functions");
 		return 0;
@@ -175,7 +175,7 @@ PHP_METHOD(InspectorFunction, getEntryInstruction)
 {
 	zend_function *function =
 		php_reflection_object_function(getThis());
-	zend_op *op = function->op_array.opcodes;
+	zend_op *op;
 
 	if (!php_inspector_function_guard(getThis())) {
 		return;
