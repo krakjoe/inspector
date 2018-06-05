@@ -528,21 +528,42 @@ PHP_MINIT_FUNCTION(inspector_instruction) {
 		php_inspector_instruction_zend_constant(ZEND_VM_OP_NUM);
 		php_inspector_instruction_zend_constant(ZEND_VM_OP_JMP_ADDR);
 		php_inspector_instruction_zend_constant(ZEND_VM_OP_TRY_CATCH);
+#ifdef ZEND_VM_OP_LIVE_RANGE
 		php_inspector_instruction_zend_constant(ZEND_VM_OP_LIVE_RANGE);
+#endif
 		php_inspector_instruction_zend_constant(ZEND_VM_OP_THIS);
 		php_inspector_instruction_zend_constant(ZEND_VM_OP_NEXT);
 		php_inspector_instruction_zend_constant(ZEND_VM_OP_CLASS_FETCH);
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_CONSTRUCTOR);
+#ifdef ZEND_VM_OP_CONST_FETCH
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_CONST_FETCH);
+#endif
+#ifdef ZEND_VM_OP_CACHE_SLOT
+		php_inspector_instruction_zend_constant(ZEND_VM_OP_CACHE_SLOT);
+#endif
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_VAR_FETCH);
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_ISSET);
+#ifdef ZEND_VM_EXT_CACHE_SLOT
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_CACHE_SLOT);
+#endif
+#ifdef ZEND_VM_EXT_ARG_NUM
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_ARG_NUM);
+#endif
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_ARRAY_INIT);
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_REF);
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_MASK);
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_NUM);
+#ifdef ZEND_VM_EXT_LAST_CATCH
+		php_inspector_instruction_zend_constant(ZEND_VM_EXT_LAST_CATCH);
+#endif
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_JMP_ADDR);
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_DIM_OBJ);
+#ifdef ZEND_VM_EXT_CLASS_FETCH
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_CLASS_FETCH);
+#endif
+#ifdef ZEND_VM_EXT_CONST_FETCH
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_CONST_FETCH);
+#endif
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_TYPE);
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_EVAL);
 		php_inspector_instruction_zend_constant(ZEND_VM_EXT_SRC);
