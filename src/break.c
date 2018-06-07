@@ -22,6 +22,7 @@
 #include "php.h"
 
 #include "zend_exceptions.h"
+#include "zend_generators.h"
 #include "zend_interfaces.h"
 #include "zend_vm.h"
 
@@ -431,7 +432,7 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 		}
 #endif
 
-		if (!php_inspector_break_exception_caught(execute_data, EG(exception))) {
+		if (!php_inspector_break_exception_handled(execute_data, EG(exception))) {
 			//php_printf("uncaught\n");
 		}
 
