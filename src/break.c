@@ -37,6 +37,7 @@
 typedef enum _php_inspector_break_state_t {
 	INSPECTOR_BREAK_RUNTIME,
 	INSPECTOR_BREAK_HANDLER,
+	INSPECTOR_BREAK_EXCEPTION,
 	INSPECTOR_BREAK_SHUTDOWN,
 } php_inspector_break_state_t;
 
@@ -59,6 +60,8 @@ static void php_inspector_break_globals_init(zend_inspector_break_globals *BRK) 
 }
 
 zend_class_entry *php_inspector_break_ce;
+zend_class_entry *php_inspector_break_abstract_ce;
+zend_class_entry *php_inspector_break_exception_ce;
 zend_object_handlers php_inspector_break_handlers;
 
 static zend_object* php_inspector_break_create(zend_class_entry *ce) {
@@ -156,7 +159,7 @@ void php_inspector_breaks_purge(zend_function *ops) {
 	}
 }
 
-php_inspector_break_t* php_inspector_break_find_opline(zend_op *op) {
+php_inspector_break_t* php_inspector_break_find_opline(const zend_op *op) {
 	return zend_hash_index_find_ptr(&BRK(breaks), (zend_ulong) op);
 }
 
@@ -270,23 +273,62 @@ ZEND_BEGIN_ARG_INFO_EX(InspectorBreakPoint_hit_arginfo, 0, 0, 1)
 	ZEND_ARG_OBJ_INFO(0, frame, Inspector\\InspectorFrame, 0)
 ZEND_END_ARG_INFO()
 
+static zend_function_entry php_inspector_break_abstract_methods[] = {
+	PHP_ABSTRACT_ME(InspectorBreakPoint, hit, InspectorBreakPoint_hit_arginfo)
+	PHP_FE_END
+};
+
 static zend_function_entry php_inspector_break_methods[] = {
 	PHP_ME(InspectorBreakPoint, __construct, InspectorBreakPoint_construct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, getInstruction, InspectorBreakPoint_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, disable, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, enable, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, isEnabled, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
-	PHP_ABSTRACT_ME(InspectorBreakPoint, hit, InspectorBreakPoint_hit_arginfo)
+	PHP_FE_END
+};
+
+static PHP_METHOD(InspectorExceptionBreakPoint, onException)
+{
+	zend_class_entry *type = NULL;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "C", &type) != SUCCESS) {
+		return;
+	}
+
+	if (!instanceof_function(type, php_inspector_break_exception_ce)) {
+		zend_type_error(
+			"type must be an InspectorBreakPoint");
+		return;
+	}
+
+	BRK(ex) = type;
+}
+
+ZEND_BEGIN_ARG_INFO_EX(InspectorExceptionBreakPoint_construct_arginfo, 0, 0, 1)
+	ZEND_ARG_OBJ_INFO(0, thrown, Throwable, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(InspectorExceptionBreakPoint_onException_arginfo, 0, 0, 1)
+#if PHP_VERSION_ID >= 70200
+	ZEND_ARG_TYPE_INFO(0, type, IS_STRING, 0)
+#else
+	ZEND_ARG_TYPE_INFO(0, type, IS_STRING, NULL, 0)
+#endif
+ZEND_END_ARG_INFO()
+
+static zend_function_entry php_inspector_break_exception_methods[] = {
+	PHP_ABSTRACT_ME(InspectorExceptionBreakPoint, __construct, InspectorExceptionBreakPoint_construct_arginfo)
+	PHP_ME(InspectorExceptionBreakPoint, onException, InspectorExceptionBreakPoint_onException_arginfo, ZEND_ACC_STATIC|ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
 static zend_always_inline zend_bool php_inspector_break_exception_caught(zend_execute_data *execute_data, zend_object *exception) {
 	zend_op_array *ops = (zend_op_array*) EX(func);
-	zend_op       *op  = EX(opline) >= EG(exception_op) && EX(opline) < (EG(exception_op) + 3) ?
+	const zend_op *op  = EX(opline) >= EG(exception_op) && EX(opline) < (EG(exception_op) + 3) ?
 		EG(opline_before_exception) : EX(opline);
 	uint32_t       num = op - ops->opcodes;
 	zend_try_catch_element *it = ops->try_catch_array,
-			     *end = ops->try_catch_array + ops->last_try_catch;
+			       *end = ops->try_catch_array + ops->last_try_catch;
 
 	while (it < end) {
 		zend_op *check;
@@ -416,6 +458,71 @@ static zend_always_inline void php_inspector_break_call(php_inspector_break_t *b
 	zval_ptr_dtor(&ip);
 }
 
+php_inspector_break_t* php_inspector_break_exception_factory(zval *return_value, zend_class_entry *ce, zend_object *exception) {
+	zval ex;
+	zval rv;
+
+	ZVAL_NULL(&rv);
+	ZVAL_OBJ(&ex, exception);
+
+	object_init_ex(return_value, ce);
+
+	zend_call_method_with_1_params(
+		return_value, 
+		Z_OBJCE_P(return_value),
+		&Z_OBJCE_P(return_value)->constructor, 
+		ZEND_CONSTRUCTOR_FUNC_NAME, 
+		&rv, &ex);
+
+	if (Z_REFCOUNTED(rv)) {
+		zval_ptr_dtor(&rv);
+	}
+
+	if (EG(exception)) {
+		zend_exception_set_previous(
+			EG(exception), exception);		
+		EG(exception) = exception;
+	}
+
+	return php_inspector_break_fetch(return_value);
+}
+
+zend_bool php_inspector_break_handle_exception(zend_execute_data *execute_data) {
+	if (BRK(state) != INSPECTOR_BREAK_EXCEPTION &&
+	   !php_inspector_break_exception_handled(execute_data, EG(exception)) && BRK(ex)) {
+		BRK(state) = INSPECTOR_BREAK_EXCEPTION;
+		{
+			zval handler;
+			zend_object *exception = EG(exception);
+			php_inspector_break_t *brk;
+
+			EG(exception) = NULL;
+
+			brk = php_inspector_break_exception_factory(&handler, BRK(ex), exception);
+
+			php_inspector_break_call(brk, 
+				&brk->cache.fci, 
+				&brk->cache.fcc, 
+				execute_data);
+
+			if (EG(exception)) {
+				zend_exception_set_previous(
+					EG(exception), exception);		
+				EG(exception) = exception;
+			} else {
+				OBJ_RELEASE(exception);
+			}
+
+			zval_ptr_dtor(&handler);
+		}
+		BRK(state) = INSPECTOR_BREAK_RUNTIME;
+
+		return 1;
+	}
+
+	return 0;
+}
+
 static int php_inspector_break_handler(zend_execute_data *execute_data) {
 	zend_op *instruction = (zend_op *) EX(opline);
 	php_inspector_break_t *brk = 
@@ -440,11 +547,9 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 		}
 #endif
 
-		if (!php_inspector_break_exception_handled(execute_data, EG(exception))) {
-			
+		if (!php_inspector_break_handle_exception(execute_data)) {
+			return ZEND_USER_OPCODE_DISPATCH_TO | ZEND_HANDLE_EXCEPTION;	
 		}
-
-		return ZEND_USER_OPCODE_DISPATCH_TO | ZEND_HANDLE_EXCEPTION;
 	}
 
 	if (EX(opline) != instruction) {
@@ -459,10 +564,19 @@ PHP_MINIT_FUNCTION(inspector_break) {
 
 	ZEND_INIT_MODULE_GLOBALS(inspector_break, php_inspector_break_globals_init, NULL);	
 
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorBreakPointAbstract", php_inspector_break_abstract_methods);
+	php_inspector_break_abstract_ce = 
+		zend_register_internal_class(&ce);
+
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorBreakPoint", php_inspector_break_methods);
 	php_inspector_break_ce = 
-		zend_register_internal_class(&ce);
+		zend_register_internal_class_ex(&ce, php_inspector_break_abstract_ce);
 	php_inspector_break_ce->create_object = php_inspector_break_create;
+
+	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorExceptionBreakPoint", php_inspector_break_exception_methods);
+	php_inspector_break_exception_ce = 
+		zend_register_internal_class_ex(&ce, php_inspector_break_abstract_ce);
+	php_inspector_break_exception_ce->create_object = php_inspector_break_create;
 
 	memcpy(&php_inspector_break_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
 

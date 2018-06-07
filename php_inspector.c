@@ -236,6 +236,10 @@ static void php_inspector_execute(zend_execute_data *execute_data) {
 
 	zend_execute_function(execute_data);
 
+	if (UNEXPECTED(EG(exception))) {
+		php_inspector_break_handle_exception(execute_data);
+	}
+
 	if (UNEXPECTED(map)) {
 		EX(func) = function;
 		EX(opline) = EX(func)->op_array.opcodes + 
