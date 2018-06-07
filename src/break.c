@@ -42,6 +42,7 @@ typedef enum _php_inspector_break_state_t {
 
 ZEND_BEGIN_MODULE_GLOBALS(inspector_break)
 	php_inspector_break_state_t state;
+	zend_class_entry *ex;
 	HashTable breaks;
 ZEND_END_MODULE_GLOBALS(inspector_break)
 
@@ -380,6 +381,41 @@ static zend_always_inline zend_bool php_inspector_break_exception_handled(zend_e
 	return 0;
 }
 
+static zend_always_inline void php_inspector_break_call(php_inspector_break_t *brk, zend_fcall_info *fci, zend_fcall_info_cache *fcc, zend_execute_data *execute_data) {
+	zval rv;
+	zval ip;
+
+	if (fci->size == 0) {
+		fci->size = sizeof(zend_fcall_info);
+		fci->object = &brk->std;
+#if PHP_VERSION_ID < 70300
+		fcc->initialized = 1;
+#endif
+		fcc->object = brk->cache.fci.object;
+		fcc->function_handler = (zend_function*)
+			zend_hash_find_ptr(
+				&brk->std.ce->function_table, PHP_INSPECTOR_STRING_HIT);
+	}
+
+	ZVAL_NULL(&rv);
+
+	php_inspector_frame_factory(execute_data, &ip);
+
+	fci->param_count = 1;
+	fci->params = &ip;
+	fci->retval = &rv;
+
+	if (zend_call_function(fci, fcc) != SUCCESS) {
+		/* do something */
+	}
+
+	if (Z_REFCOUNTED(rv)) {
+		zval_ptr_dtor(&rv);
+	}
+
+	zval_ptr_dtor(&ip);
+}
+
 static int php_inspector_break_handler(zend_execute_data *execute_data) {
 	zend_op *instruction = (zend_op *) EX(opline);
 	php_inspector_break_t *brk = 
@@ -387,39 +423,11 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 
 	BRK(state) = INSPECTOR_BREAK_HANDLER;
 	{
-		zval rv;
-		zval ip;
-
-		if (brk->cache.fci.size == 0) {
-			brk->cache.fci.size = sizeof(zend_fcall_info);
-			brk->cache.fci.object = &brk->std;
-#if PHP_VERSION_ID < 70300
-			brk->cache.fcc.initialized = 1;
-#endif
-			brk->cache.fcc.object = brk->cache.fci.object;
-			brk->cache.fcc.function_handler = (zend_function*)
-				zend_hash_find_ptr(
-					&brk->std.ce->function_table, PHP_INSPECTOR_STRING_HIT);
-		}
-
-		ZVAL_NULL(&rv);
-
-		php_inspector_frame_factory(execute_data, &ip);
-
-		brk->cache.fci.param_count = 1;
-		brk->cache.fci.params = &ip;
-		brk->cache.fci.retval = &rv;
-
-		if (zend_call_function(&brk->cache.fci, &brk->cache.fcc) != SUCCESS) {
-			/* do something */
-			
-		}
-
-		if (Z_REFCOUNTED(rv)) {
-			zval_ptr_dtor(&rv);
-		}
-
-		zval_ptr_dtor(&ip);
+		php_inspector_break_call(
+			brk, 
+			&brk->cache.fci, 
+			&brk->cache.fcc, 
+			execute_data);
 	}
 	BRK(state) = INSPECTOR_BREAK_RUNTIME;
 
@@ -427,13 +435,13 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 #if PHP_VERSION_ID >= 70200 && PHP_VERSION_ID < 70300
 		const zend_op *throw = EG(opline_before_exception);
 
-		if (throw->result_type & IS_VAR|IS_TMP_VAR) {
+		if (throw->result_type & (IS_VAR|IS_TMP_VAR)) {
 			ZVAL_NULL(EX_VAR(throw->result.var));
 		}
 #endif
 
 		if (!php_inspector_break_exception_handled(execute_data, EG(exception))) {
-			//php_printf("uncaught\n");
+			
 		}
 
 		return ZEND_USER_OPCODE_DISPATCH_TO | ZEND_HANDLE_EXCEPTION;
