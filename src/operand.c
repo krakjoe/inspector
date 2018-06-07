@@ -291,7 +291,11 @@ static PHP_METHOD(InspectorOperand, getNumber) {
 
 	switch (zend_op_type(operand->type)) {
 		case IS_CONST:
+#if PHP_VERSION_ID >= 70300
+			RETURN_LONG(function->literals - RT_CONSTANT(instruction->opline, *operand->op));
+#else
 			RETURN_LONG(function->literals - RT_CONSTANT(function, *operand->op));
+#endif
 		case IS_VAR:
 		case IS_TMP_VAR:
 			RETURN_LONG(EX_VAR_TO_NUM(operand->op->num - function->last_var));
