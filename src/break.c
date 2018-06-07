@@ -278,6 +278,107 @@ static zend_function_entry php_inspector_break_methods[] = {
 	PHP_FE_END
 };
 
+static zend_always_inline zend_bool php_inspector_break_exception_caught(zend_execute_data *execute_data, zend_object *exception) {
+	zend_op_array *ops = (zend_op_array*) EX(func);
+	zend_op       *op  = EX(opline) >= EG(exception_op) && EX(opline) < (EG(exception_op) + 3) ?
+		EG(opline_before_exception) : EX(opline);
+	uint32_t       num = op - ops->opcodes;
+	zend_try_catch_element *it = ops->try_catch_array,
+			     *end = ops->try_catch_array + ops->last_try_catch;
+
+	while (it < end) {
+		zend_op *check;
+		uint32_t catch = it->catch_op,
+			 finally = it->finally_op;
+
+		if (it->try_op <= num) {
+			break;
+		}
+
+		if (num <= catch || num <= finally) {
+			if (finally) {
+				return 1;
+			}
+			
+			check = ops->opcodes + it->catch_op;
+
+			do {
+#if PHP_VERSION_ID >= 70300
+				zend_class_entry *ce = CACHED_PTR(check->extended_value & ~ZEND_LAST_CATCH);
+
+				if (!ce) {
+					ce = zend_fetch_class_by_name(
+						Z_STR_P(RT_CONSTANT(ops, check->op1)), 
+						RT_CONSTANT(check, check->op1) + 1, ZEND_FETCH_CLASS_NO_AUTOLOAD);
+
+					CACHE_PTR(check->extended_value &~ ZEND_LAST_CATCH, ce);
+				}
+#else
+				zend_class_entry *ce = CACHED_PTR(Z_CACHE_SLOT_P(EX_CONSTANT(check->op1)));
+
+				if (!ce) {
+					ce = zend_fetch_class_by_name(
+						Z_STR_P(RT_CONSTANT(ops, check->op1)), 
+						RT_CONSTANT(ops, check->op1) + 1, ZEND_FETCH_CLASS_NO_AUTOLOAD);
+
+					CACHE_PTR(Z_CACHE_SLOT_P(EX_CONSTANT(check->op1)), ce);
+				}
+#endif
+
+				if (ce == exception->ce ||
+				    ce && instanceof_function(exception->ce, ce)) {
+					return 1;
+				}
+
+
+#if PHP_VERSION_ID >= 70300
+				if (check->extended_value & ZEND_LAST_CATCH) {
+					return 0;
+				}
+
+				check = OP_JMP_ADDR(check, check->op2);
+#else
+				catch += check->extended_value / sizeof(zend_op);
+#endif
+
+#if PHP_VERSION_ID >= 70300
+			} while (1);
+#else
+			} while (!check->result.num);
+#endif
+
+			return 0;
+		}
+
+		it++;
+	}
+
+	if (op->opcode == INSPECTOR_DEBUG_BREAK) {
+		php_inspector_break_t *brk = 
+			php_inspector_break_find_opline(op);
+
+		return brk->opcode == ZEND_CATCH;
+	}
+
+	return op->opcode == ZEND_CATCH;
+}
+
+static zend_always_inline zend_bool php_inspector_break_exception_handled(zend_execute_data *execute_data, zend_object *exception) {
+	do {
+		execute_data = zend_generator_check_placeholder_frame(execute_data);
+
+		if (!EX(func) || !ZEND_USER_CODE(EX(func)->type)) {
+			continue;
+		}
+
+		if (php_inspector_break_exception_caught(execute_data, exception)) {
+			return 1;
+		}
+	} while (execute_data = EX(prev_execute_data));
+
+	return 0;
+}
+
 static int php_inspector_break_handler(zend_execute_data *execute_data) {
 	zend_op *instruction = (zend_op *) EX(opline);
 	php_inspector_break_t *brk = 
@@ -329,6 +430,10 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 			ZVAL_NULL(EX_VAR(throw->result.var));
 		}
 #endif
+
+		if (!php_inspector_break_exception_caught(execute_data, EG(exception))) {
+			//php_printf("uncaught\n");
+		}
 
 		return ZEND_USER_OPCODE_DISPATCH_TO | ZEND_HANDLE_EXCEPTION;
 	}
