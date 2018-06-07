@@ -115,7 +115,8 @@ namespace Inspector
 	abstract class InspectorExceptionBreakPoint extends InspectorBreakPointAbstract {
 		public function __construct(\Throwable $t);
 
-		public static function onException(InspectorExceptionBreakPoint $handler);
+		public static function onException(
+			string instanceof InspectorExceptionBreakPoint $handler);
 	}
 
 	final class InspectorFrame {
