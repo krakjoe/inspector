@@ -21,6 +21,7 @@
 
 #include "php.h"
 
+#include "zend_closures.h"
 #include "zend_exceptions.h"
 #include "zend_generators.h"
 #include "zend_interfaces.h"
@@ -44,11 +45,10 @@ typedef enum _php_inspector_break_state_t {
 ZEND_BEGIN_MODULE_GLOBALS(inspector_break)
 	php_inspector_break_state_t state;
 	struct {
-		zend_class_entry *type;
-		int               argc;
-		zval             *argv;
-	} ex;
-	HashTable breaks;
+		zval                handler;
+		zend_object         *object;
+	} exception;
+	HashTable                   breaks;
 ZEND_END_MODULE_GLOBALS(inspector_break)
 
 ZEND_DECLARE_MODULE_GLOBALS(inspector_break);
@@ -64,8 +64,6 @@ static void php_inspector_break_globals_init(zend_inspector_break_globals *BRK) 
 }
 
 zend_class_entry *php_inspector_break_ce;
-zend_class_entry *php_inspector_break_abstract_ce;
-zend_class_entry *php_inspector_break_exception_ce;
 zend_object_handlers php_inspector_break_handlers;
 
 static zend_object* php_inspector_break_create(zend_class_entry *ce) {
@@ -241,6 +239,21 @@ static PHP_METHOD(InspectorBreakPoint, isEnabled)
 	RETURN_BOOL(php_inspector_break_enabled(brk));
 }
 
+static PHP_METHOD(InspectorBreakPoint, onException)
+{
+	zval *handler = NULL;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "O", &handler, zend_ce_closure) != SUCCESS) {
+		return;
+	}
+
+	if (Z_REFCOUNTED(BRK(exception).handler)) {
+		zval_ptr_dtor(&BRK(exception).handler);
+	}
+
+	ZVAL_COPY(&BRK(exception).handler, handler);
+}
+
 #if PHP_VERSION_ID >= 70200
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(InspectorBreakPoint_getOpcode_arginfo, 0, 0, IS_LONG, 0)
 #else
@@ -278,10 +291,9 @@ ZEND_BEGIN_ARG_INFO_EX(InspectorBreakPoint_hit_arginfo, 0, 0, 1)
 	ZEND_ARG_OBJ_INFO(0, frame, Inspector\\InspectorFrame, 0)
 ZEND_END_ARG_INFO()
 
-static zend_function_entry php_inspector_break_abstract_methods[] = {
-	PHP_ABSTRACT_ME(InspectorBreakPoint, hit, InspectorBreakPoint_hit_arginfo)
-	PHP_FE_END
-};
+ZEND_BEGIN_ARG_INFO_EX(InspectorBreakPoint_onException_arginfo, 0, 0, 1)
+	ZEND_ARG_OBJ_INFO(0, handler, Closure, 0)
+ZEND_END_ARG_INFO()
 
 static zend_function_entry php_inspector_break_methods[] = {
 	PHP_ME(InspectorBreakPoint, __construct, InspectorBreakPoint_construct_arginfo, ZEND_ACC_PUBLIC)
@@ -289,77 +301,8 @@ static zend_function_entry php_inspector_break_methods[] = {
 	PHP_ME(InspectorBreakPoint, disable, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, enable, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorBreakPoint, isEnabled, InspectorBreakPoint_switch_arginfo, ZEND_ACC_PUBLIC)
-	PHP_FE_END
-};
-
-static zend_always_inline void php_inspector_break_exception_setup(zend_class_entry *type, int argc, zval *argv) {
-	BRK(ex).type = type;
-
-	if (argc) {
-		zval *it, *end;
-
-		if (BRK(ex).argv) {
-			for (it = BRK(ex).argv,
-			     end = it + BRK(ex).argc;
-			     it < end;
-			     it++) {
-				if (Z_REFCOUNTED_P(it)) {
-					zval_ptr_dtor(it);
-				}
-			}
-
-			efree(BRK(ex).argv);
-		}
-
-		BRK(ex).argc = argc;
-		BRK(ex).argv = ecalloc(BRK(ex).argc, sizeof(zval));
-
-		memcpy(BRK(ex).argv, argv, sizeof(zval) * argc);
-
-		for (it = BRK(ex).argv,
-		     end = it + BRK(ex).argc;
-		     it < end;
-		     it++) {
-			Z_TRY_ADDREF_P(it);
-		}
-	}
-}
-
-static PHP_METHOD(InspectorExceptionBreakPoint, onException)
-{
-	zend_class_entry *type = NULL;
-	zval *argv = NULL;
-	int argc = 0;
-
-	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "C|*", &type, &argv, &argc) != SUCCESS) {
-		return;
-	}
-	
-	if (!instanceof_function(type, php_inspector_break_exception_ce)) {
-		zend_type_error(
-			"type must be an InspectorBreakPoint");
-		return;
-	}
-
-	php_inspector_break_exception_setup(type, argc, argv);
-}
-
-ZEND_BEGIN_ARG_INFO_EX(InspectorExceptionBreakPoint_construct_arginfo, 0, 0, 1)
-	ZEND_ARG_OBJ_INFO(0, thrown, Throwable, 0)
-ZEND_END_ARG_INFO()
-
-ZEND_BEGIN_ARG_INFO_EX(InspectorExceptionBreakPoint_onException_arginfo, 0, 0, 1)
-#if PHP_VERSION_ID >= 70200
-	ZEND_ARG_TYPE_INFO(0, type, IS_STRING, 0)
-#else
-	ZEND_ARG_TYPE_INFO(0, type, IS_STRING, NULL, 0)
-#endif
-	ZEND_ARG_VARIADIC_INFO(0, args)
-ZEND_END_ARG_INFO()
-
-static zend_function_entry php_inspector_break_exception_methods[] = {
-	PHP_ABSTRACT_ME(InspectorExceptionBreakPoint, __construct, InspectorExceptionBreakPoint_construct_arginfo)
-	PHP_ME(InspectorExceptionBreakPoint, onException, InspectorExceptionBreakPoint_onException_arginfo, ZEND_ACC_STATIC|ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorBreakPoint, onException, InspectorBreakPoint_onException_arginfo, ZEND_ACC_STATIC|ZEND_ACC_PUBLIC)
+	PHP_ABSTRACT_ME(InspectorBreakPoint, hit, InspectorBreakPoint_hit_arginfo)
 	PHP_FE_END
 };
 
@@ -464,9 +407,9 @@ static zend_always_inline zend_bool php_inspector_break_exception_handled(zend_e
 	return 0;
 }
 
-static zend_always_inline void php_inspector_break_call(php_inspector_break_t *brk, zend_fcall_info *fci, zend_fcall_info_cache *fcc, zend_execute_data *execute_data) {
+static zend_always_inline void php_inspector_break_hit(php_inspector_break_t *brk, zend_fcall_info *fci, zend_fcall_info_cache *fcc, zend_execute_data *execute_data) {
 	zval rv;
-	zval ip;
+	zval fp;
 
 	if (fci->size == 0) {
 		fci->size = sizeof(zend_fcall_info);
@@ -482,10 +425,10 @@ static zend_always_inline void php_inspector_break_call(php_inspector_break_t *b
 
 	ZVAL_NULL(&rv);
 
-	php_inspector_frame_factory(execute_data, &ip);
+	php_inspector_frame_factory(execute_data, &fp);
 
 	fci->param_count = 1;
-	fci->params = &ip;
+	fci->params = &fp;
 	fci->retval = &rv;
 
 	if (zend_call_function(fci, fcc) != SUCCESS) {
@@ -496,82 +439,56 @@ static zend_always_inline void php_inspector_break_call(php_inspector_break_t *b
 		zval_ptr_dtor(&rv);
 	}
 
-	zval_ptr_dtor(&ip);
-}
-
-php_inspector_break_t* php_inspector_break_exception_factory(zval *return_value, zend_object *exception) {
-	zval ex;
-	zval rv;
-	zend_fcall_info fci = empty_fcall_info;
-	zend_fcall_info_cache fcc = empty_fcall_info_cache;
-
-	ZVAL_NULL(&rv);
-	ZVAL_OBJ(&ex, exception);
-
-	object_init_ex(return_value, BRK(ex).type);
-
-	fci.size = sizeof(zend_fcall_info);
-	fci.object = Z_OBJ_P(return_value);
-#if PHP_VERSION_ID < 70300
-	fcc.initialized = 1;
-#endif
-	fcc.object = fci.object;
-	fcc.function_handler = 
-		Z_OBJCE_P(return_value)->constructor;
-
-	fci.param_count = BRK(ex).argc + 1;
-	fci.params = (zval*) ecalloc(fci.param_count, sizeof(zval));
-	fci.retval = &rv;
-
-	ZVAL_COPY_VALUE(&fci.params[0], &ex);
-	if (BRK(ex).argc) {
-		memcpy(&fci.params[1], BRK(ex).argv, BRK(ex).argc * sizeof(zval));
-	}
-	
-	zend_call_function(&fci, &fcc);
-
-	efree(fci.params);
-
-	if (Z_REFCOUNTED(rv)) {
-		zval_ptr_dtor(&rv);
-	}
-
-	if (EG(exception)) {
-		zend_exception_set_previous(
-			EG(exception), exception);		
-		EG(exception) = exception;
-	}
-
-	return php_inspector_break_fetch(return_value);
+	zval_ptr_dtor(&fp);
 }
 
 zend_bool php_inspector_break_handle_exception(zend_execute_data *execute_data) {
 	if (BRK(state) != INSPECTOR_BREAK_EXCEPTION &&
-	   !php_inspector_break_exception_handled(execute_data, EG(exception)) && BRK(ex).type) {
+	   !php_inspector_break_exception_handled(execute_data, EG(exception)) && !Z_ISUNDEF(BRK(exception).handler)) {
 		BRK(state) = INSPECTOR_BREAK_EXCEPTION;
 		{
-			zval handler;
-			zend_object *exception = EG(exception);
-			php_inspector_break_t *brk;
+			zval fp, ex, rv;
+			zend_fcall_info fci = empty_fcall_info;
+			zend_fcall_info_cache fcc = empty_fcall_info_cache;
+			const zend_op *opline = EX(opline);
 
+			if (zend_fcall_info_init(&BRK(exception).handler, 0, &fci, &fcc, NULL, NULL) != SUCCESS) {
+				BRK(state) = INSPECTOR_BREAK_RUNTIME;
+				return 0;
+			}
+
+			EX(opline) = EG(opline_before_exception);
+
+			BRK(exception).object = EG(exception);
 			EG(exception) = NULL;
 
-			brk = php_inspector_break_exception_factory(&handler, exception);
+			ZVAL_OBJ(&ex, BRK(exception).object);
 
-			php_inspector_break_call(brk, 
-				&brk->cache.fci, 
-				&brk->cache.fcc, 
-				execute_data);
+			php_inspector_frame_factory(execute_data, &fp);
+
+			zend_fcall_info_argn(&fci, 2, &fp, &ex);
+
+			if (zend_fcall_info_call(&fci, &fcc, &rv, NULL) != SUCCESS) {
+				/* do something */
+			}
+
+			zend_fcall_info_args_clear(&fci, 1);
 
 			if (EG(exception)) {
 				zend_exception_set_previous(
-					EG(exception), exception);		
-				EG(exception) = exception;
+					EG(exception), BRK(exception).object);		
+				EG(exception) = BRK(exception).object;
 			} else {
-				OBJ_RELEASE(exception);
+				OBJ_RELEASE(BRK(exception).object);
 			}
 
-			zval_ptr_dtor(&handler);
+			zval_ptr_dtor(&fp);
+
+			if (Z_REFCOUNTED(rv)) {
+				zval_ptr_dtor(&rv);
+			}
+
+			EX(opline) = opline;
 		}
 		BRK(state) = INSPECTOR_BREAK_RUNTIME;
 
@@ -588,7 +505,7 @@ static int php_inspector_break_handler(zend_execute_data *execute_data) {
 
 	BRK(state) = INSPECTOR_BREAK_HANDLER;
 	{
-		php_inspector_break_call(
+		php_inspector_break_hit(
 			brk, 
 			&brk->cache.fci, 
 			&brk->cache.fcc, 
@@ -622,19 +539,10 @@ PHP_MINIT_FUNCTION(inspector_break) {
 
 	ZEND_INIT_MODULE_GLOBALS(inspector_break, php_inspector_break_globals_init, NULL);	
 
-	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorBreakPointAbstract", php_inspector_break_abstract_methods);
-	php_inspector_break_abstract_ce = 
-		zend_register_internal_class(&ce);
-
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorBreakPoint", php_inspector_break_methods);
 	php_inspector_break_ce = 
-		zend_register_internal_class_ex(&ce, php_inspector_break_abstract_ce);
+		zend_register_internal_class(&ce);
 	php_inspector_break_ce->create_object = php_inspector_break_create;
-
-	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorExceptionBreakPoint", php_inspector_break_exception_methods);
-	php_inspector_break_exception_ce = 
-		zend_register_internal_class_ex(&ce, php_inspector_break_abstract_ce);
-	php_inspector_break_exception_ce->create_object = php_inspector_break_create;
 
 	memcpy(&php_inspector_break_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
 
@@ -690,18 +598,8 @@ PHP_RSHUTDOWN_FUNCTION(inspector_break)
 
 	zend_hash_destroy(&BRK(breaks));
 
-	if (BRK(ex).argc) {
-		zval *it = BRK(ex).argv,
-		     *end = it + BRK(ex).argc;
-
-		while (it < end) {
-			if (Z_REFCOUNTED_P(it)) {
-				zval_ptr_dtor(it);
-			}
-			it++;
-		}
-
-		efree(BRK(ex).argv);
+	if (Z_REFCOUNTED(BRK(exception).handler)) {
+		zval_ptr_dtor(&BRK(exception).handler);
 	}
 
 	return SUCCESS;

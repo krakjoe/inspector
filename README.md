@@ -98,25 +98,18 @@ namespace Inspector
 		public function getInstruction() : InspectorInstruction;
 	}
 
-	abstract class InspectorBreakPointAbstract {
-		public function hit(InspectorFrame $frame);
-	}
-
 	abstract class InspectorBreakPoint extends InspectorBreakPointAbstract {
-		public function __construct(InspectorInstruction $opline);
+		public function __construct(InspectorInstruction opline);
 
 		public function enable() : bool;
 		public function disable() : bool;
 		public function isEnabled() : bool;
 
 		public function getInstruction() : InspectorInstruction;
-	}
 
-	abstract class InspectorExceptionBreakPoint extends InspectorBreakPointAbstract {
-		public function __construct(\Throwable $t, ... $argv);
+		abstract public function hit(InspectorFrame frame);
 
-		public static function onException(
-			string instanceof InspectorExceptionBreakPoint $type, ... $argv);
+		public static function onException(\Closure(InspectorFrame frame, \Throwable ex) handler);
 	}
 
 	final class InspectorFrame {
