@@ -448,6 +448,38 @@ static const zend_module_dep inspector_deps[] = {
         ZEND_MOD_END
 };
 
+ZEND_FUNCTION(Inspector_addressof)
+{
+	zval *variable;
+
+	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "z", &variable) != SUCCESS) {
+		return;
+	}
+
+	switch (Z_TYPE_P(variable)) {
+		case IS_OBJECT:
+			RETURN_LONG((zend_long) Z_OBJ_P(variable));
+		case IS_ARRAY:
+			RETURN_LONG((zend_long) Z_ARR_P(variable));
+		case IS_STRING:
+			RETURN_LONG((zend_long) Z_STR_P(variable));
+		case IS_RESOURCE:
+			RETURN_LONG((zend_long) Z_RES_P(variable));
+		
+		default:
+			RETURN_LONG((zend_long) variable);
+	}
+}
+
+ZEND_BEGIN_ARG_INFO_EX(php_inspector_addressof_arginfo, 0, 0, 1)
+	ZEND_ARG_INFO(0, variable)
+ZEND_END_ARG_INFO()
+
+zend_function_entry php_inspector_functions[] = {
+	ZEND_NS_FENTRY("Inspector", addressof, zif_Inspector_addressof, php_inspector_addressof_arginfo, 0)
+	PHP_FE_END
+};
+
 /* {{{ inspector_module_entry
  */
 zend_module_entry inspector_module_entry = {
@@ -455,7 +487,7 @@ zend_module_entry inspector_module_entry = {
 	NULL,
 	inspector_deps,
 	"inspector",
-	NULL,
+	php_inspector_functions,
 	PHP_MINIT(inspector),
 	PHP_MSHUTDOWN(inspector),
 	PHP_RINIT(inspector),
