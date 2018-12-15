@@ -44,7 +44,7 @@ static zend_always_inline zend_bool php_inspector_class_guard(zval *object) {
 void php_inspector_class_factory(zend_class_entry *ce, zval *return_value) {
 	php_reflection_object_t *reflection;
 
-	object_init_ex(return_value, reflection_class_ptr);
+	object_init_ex(return_value, php_inspector_class_ce);
 
 	reflection = php_reflection_object_fetch(return_value);
 	reflection->ptr = ce;
@@ -57,6 +57,26 @@ void php_inspector_class_factory(zend_class_entry *ce, zval *return_value) {
 		ZVAL_STR(&v, ce->name);
 
 		zend_std_write_property(return_value, &k, &v, NULL);
+
+		{
+			zend_string *name = zend_string_tolower(ce->name);
+
+			if (!(ce = zend_hash_find_ptr(EG(class_table), name))) {
+				reflection->ref_type = PHP_REF_TYPE_PENDING;
+
+				php_inspector_table_insert(
+					PHP_INSPECTOR_ROOT_PENDING, 
+					PHP_INSPECTOR_TABLE_CLASS,
+					ce->name, return_value);
+
+				zend_string_release(name);
+				return;
+			}
+
+			ce->refcount++;
+
+			zend_string_release(name);
+		}
 	}
 } /* }}} */
 

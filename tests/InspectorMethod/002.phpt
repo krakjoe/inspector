@@ -14,7 +14,7 @@ $inspector =
 
 $inspector = $inspector->getDeclaringClass();
 
-if ($inspector instanceof \ReflectionClass) {
+if ($inspector instanceof InspectorClass) {
 	echo "OK";
 }
 ?>
