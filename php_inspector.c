@@ -219,12 +219,12 @@ static void php_inspector_trace(zend_object *tracer, zend_execute_data *execute_
 		php_inspector_frame_factory(execute_data, &frame);
 
 		if (zend_call_function(&fci, &fcc) == SUCCESS) {
-			zval_ptr_dtor(&frame);
-
 			if (Z_REFCOUNTED(trv)) {
 				zval_ptr_dtor(&trv);
 			}
 		}
+
+		zval_ptr_dtor(&frame);
 
 		zrc = zend_vm_call_opcode_handler(execute_data);
 
