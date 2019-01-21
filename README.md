@@ -34,6 +34,7 @@ namespace Inspector
 	class InspectorFunction extends \ReflectionFunction implements InspectorInstructionInterface {
 		public function isPending() : bool;
 		public function onResolve();
+		public function onTrace(InspectorFrame $frame);
 
 		public static function purge(array filters = []);
 
@@ -45,6 +46,7 @@ namespace Inspector
 
 		public function isPending() : bool;
 		public function onResolve();
+		public function onTrace(InspectorFrame $frame);
 
 		public static function purge(array filters = []);
 
