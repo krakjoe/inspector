@@ -209,8 +209,9 @@ static void php_inspector_trace(zend_object *tracer, zend_execute_data *execute_
 		fci.params = &frame;
 		fcc.object = tracer;
 		fci.retval = &trv;
-
+#if PHP_VERSION_ID < 70300
 		fcc.initialized = 1;
+#endif
 		fcc.object      = tracer;
 		fcc.function_handler = zend_hash_find_ptr(
 			&tracer->ce->function_table, PHP_INSPECTOR_STRING_ONTRACE);;
