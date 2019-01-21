@@ -34,6 +34,14 @@ matrix:
       env: OPCACHE=0 TEST_PHP_ARGS="$DEF $MEMCHECK"
     - php: nightly
       env: OPCACHE=0 TEST_PHP_ARGS="$DEF" CONF="enable-inspector-coverage" RULE="inspector-test-coverage-travis"
+    - php: 7.3
+      env: OPCACHE=0 TEST_PHP_ARGS="$DEF"
+    - php: 7.3
+      env: OPCACHE=1 TEST_PHP_ARGS="$DEF"
+    - php: 7.3
+      env: OPCACHE=0 TEST_PHP_ARGS="$DEF $MEMCHECK"
+    - php: 7.3
+      env: OPCACHE=0 TEST_PHP_ARGS="$DEF" CONF="enable-inspector-coverage" RULE="inspector-test-coverage-travis"
 
 before_install:
   - test $CONF != "enable-inspector-coverage" || pip install --user cpp-coveralls
