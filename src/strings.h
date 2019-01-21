@@ -24,7 +24,8 @@ typedef enum _php_inspector_string_t {
 	PHP_INSPECTOR_STR_NAME = -2,
 	PHP_INSPECTOR_STR_CLASS = -3,
 	PHP_INSPECTOR_STR_ONRESOLVE = -4,
-	PHP_INSPECTOR_STR_INSTRUCTION_CACHE = -5,
+	PHP_INSPECTOR_STR_ONTRACE = -5,
+	PHP_INSPECTOR_STR_INSTRUCTION_CACHE = -6,
 } php_inspector_string_t;
 
 PHP_MINIT_FUNCTION(inspector_strings);
@@ -38,6 +39,7 @@ void php_inspector_strings_register_long(zend_long, const char *name);
 #define PHP_INSPECTOR_STRING_NAME        	php_inspector_strings_fetch(PHP_INSPECTOR_STR_NAME)
 #define PHP_INSPECTOR_STRING_CLASS       	php_inspector_strings_fetch(PHP_INSPECTOR_STR_CLASS)
 #define PHP_INSPECTOR_STRING_ONRESOLVE  	 php_inspector_strings_fetch(PHP_INSPECTOR_STR_ONRESOLVE)
+#define PHP_INSPECTOR_STRING_ONTRACE  	 	php_inspector_strings_fetch(PHP_INSPECTOR_STR_ONTRACE)
 #define PHP_INSPECTOR_STRING_INSTRUCTION_CACHE   php_inspector_strings_fetch(PHP_INSPECTOR_STR_INSTRUCTION_CACHE)
 
 #endif

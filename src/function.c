@@ -21,6 +21,7 @@
 
 #include "php.h"
 #include "zend_exceptions.h"
+#include "zend_extensions.h"
 #include "zend_interfaces.h"
 #include "zend_vm.h"
 
@@ -36,6 +37,12 @@
 
 zend_class_entry *php_inspector_function_ce;
 extern zend_class_entry *php_inspector_file_ce;
+
+static int php_inspector_function_trace_id;
+
+zend_object* php_inspector_trace_fetch(zend_function *function) {
+	return function->op_array.reserved[php_inspector_function_trace_id];
+}
 
 static zend_always_inline zend_bool php_inspector_function_guard(zval *object) {
 	php_reflection_object_t *reflection =
@@ -66,8 +73,8 @@ void php_inspector_function_factory(zend_function *function, zval *return_value,
 
 	reflection = php_reflection_object_fetch(return_value);
 	if (!map) {
-		if (php_inspector_map_fetch(function)) {
-			reflection->ptr = php_inspector_map_fetch(function);
+		if (php_inspector_map_fetch((zend_op_array*)function)) {
+			reflection->ptr = php_inspector_map_fetch((zend_op_array*)function);
 		} else  reflection->ptr = function;
 	} else {
 		reflection->ptr =  php_inspector_map_create((zend_op_array*) function);
@@ -125,12 +132,22 @@ PHP_METHOD(InspectorFunction, __construct)
 	}
 
 	zend_call_method_with_1_params(getThis(), Z_OBJCE_P(getThis()), &EX(func)->common.scope->parent->constructor, "__construct", return_value, function);
+
+	if (reflection->ref_type != PHP_REF_TYPE_PENDING) {
+		php_inspector_function_resolve(getThis(), php_reflection_object_function(getThis()));
+	}
 }
 
 PHP_METHOD(InspectorFunction, onResolve)
 {
 	
 }
+
+PHP_METHOD(InspectorFunction, onTrace)
+{
+	
+}
+
 
 PHP_METHOD(InspectorFunction, getInstruction)
 {
@@ -281,6 +298,9 @@ int php_inspector_function_resolve(zval *zv, zend_function *ops) {
 		php_reflection_object_fetch(zv);
 	zend_function *onResolve = zend_hash_find_ptr(
 		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONRESOLVE);
+	zend_function *onTrace = zend_hash_find_ptr(
+		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONTRACE);
+	zend_function *mapped;
 
 	if (php_reflection_object_function(zv)) {
 		php_inspector_breaks_purge(
@@ -288,7 +308,9 @@ int php_inspector_function_resolve(zval *zv, zend_function *ops) {
 		php_inspector_instruction_cache_flush(zv);
 	}
 
-	reflector->ptr = php_inspector_map_create((zend_op_array*) ops);
+	mapped = (zend_function*) php_inspector_map_create((zend_op_array*) ops);
+
+	reflector->ptr = mapped;
 	reflector->ref_type = PHP_REF_TYPE_OTHER;
 
 	if (ZEND_USER_CODE(onResolve->type)) {
@@ -313,6 +335,11 @@ int php_inspector_function_resolve(zval *zv, zend_function *ops) {
 				PHP_INSPECTOR_TABLE_FILE,
 				ops->op_array.filename, zv);
 		}
+	}
+
+	if (ZEND_USER_CODE(onTrace->type)) {
+		/* cannot addref, maintain your own ref ... dark wizard ... */
+		mapped->op_array.reserved[php_inspector_function_trace_id] = Z_OBJ_P(zv);
 	}
 
 	return ZEND_HASH_APPLY_REMOVE;
@@ -408,6 +435,7 @@ ZEND_END_ARG_INFO()
 static zend_function_entry php_inspector_function_methods[] = {
 	PHP_ME(InspectorFunction, __construct, InspectorFunction_construct_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, onResolve, InspectorFunction_onResolve_arginfo, ZEND_ACC_PUBLIC)
+	PHP_ME(InspectorFunction, onTrace, InspectorFunction_onTrace_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getInstruction, InspectorFunction_getInstruction_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getInstructionCount, InspectorFunction_getInstructionCount_arginfo, ZEND_ACC_PUBLIC)
 	PHP_ME(InspectorFunction, getEntryInstruction, InspectorFunction_getEntryInstruction_arginfo, ZEND_ACC_PUBLIC)
@@ -420,6 +448,7 @@ static zend_function_entry php_inspector_function_methods[] = {
 
 PHP_MINIT_FUNCTION(inspector_function) {
 	zend_class_entry ce;
+	zend_extension dummy;
 
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorFunction", php_inspector_function_methods);
 
@@ -431,6 +460,12 @@ PHP_MINIT_FUNCTION(inspector_function) {
 	zend_declare_property_null(
 		php_inspector_function_ce, 
 		ZEND_STRL("instructionCache"), ZEND_ACC_PROTECTED);
+
+	php_inspector_function_trace_id = zend_get_resource_handle(&dummy);	
+
+	if (php_inspector_function_trace_id < 0) {
+		return FAILURE;
+	}
 
 	return SUCCESS;
 }  /* }}} */

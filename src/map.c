@@ -46,7 +46,7 @@ ZEND_DECLARE_MODULE_GLOBALS(inspector_map);
 
 static int php_inspector_map_function_id;
 
-#define php_inspector_map_function(function) (function)->reserved[php_inspector_map_function_id]
+#define php_inspector_map_function(function) 	(function)->reserved[php_inspector_map_function_id]
 
 typedef void (*php_inspector_map_callback_t)(void *);
 

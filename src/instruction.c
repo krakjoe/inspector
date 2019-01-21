@@ -246,14 +246,13 @@ static PHP_METHOD(InspectorInstruction, getExtendedValue) {
 			zend_op_array *function =
 				(zend_op_array*)
 					php_reflection_object_function(&instruction->function);
-
 			RETURN_LONG(ZEND_OFFSET_TO_OPLINE(
 				instruction->opline, 
 				instruction->opline->extended_value) - instruction->opline);
 		} break;
 
 		default:
-			RETURN_LONG(instruction->opline->extended_value);					
+			RETURN_LONG(instruction->opline->extended_value);			
 	}
 }
 

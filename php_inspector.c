@@ -23,6 +23,7 @@
 #include "php.h"
 #include "php_ini.h"
 #include "zend_closures.h"
+#include "zend_vm.h"
 
 #include "ext/standard/info.h"
 
@@ -193,6 +194,49 @@ static zend_always_inline void php_inspector_table_apply(php_inspector_root_t ro
 	} ZEND_HASH_FOREACH_END();
 }
 
+static void php_inspector_trace(zend_object *tracer, zend_execute_data *execute_data) {
+	int zrc = 0;
+
+	while (1) {
+		zval frame, trv;
+		zend_fcall_info fci = empty_fcall_info;
+		zend_fcall_info_cache fcc = empty_fcall_info_cache;
+
+		ZVAL_UNDEF(&trv);
+
+		fci.size = sizeof(zend_fcall_info);
+		fci.param_count = 1;
+		fci.params = &frame;
+		fcc.object = tracer;
+		fci.retval = &trv;
+
+		fcc.initialized = 1;
+		fcc.object      = tracer;
+		fcc.function_handler = zend_hash_find_ptr(
+			&tracer->ce->function_table, PHP_INSPECTOR_STRING_ONTRACE);;
+
+		php_inspector_frame_factory(execute_data, &frame);
+
+		if (zend_call_function(&fci, &fcc) == SUCCESS) {
+			zval_ptr_dtor(&frame);
+
+			if (Z_REFCOUNTED(trv)) {
+				zval_ptr_dtor(&trv);
+			}
+		}
+
+		zrc = zend_vm_call_opcode_handler(execute_data);
+
+		if (zrc != SUCCESS) {
+			if (zrc < SUCCESS) {
+				return;
+			}
+
+			execute_data = EG(current_execute_data);
+		}
+	}
+}
+
 static void php_inspector_execute(zend_execute_data *execute_data) {
 	zend_op_array *function = (zend_op_array*) EX(func);
 	zend_op_array *map;
@@ -234,14 +278,18 @@ static void php_inspector_execute(zend_execute_data *execute_data) {
 #endif
 	}
 
-	zend_execute_function(execute_data);
+	if (php_inspector_trace_fetch(EX(func))) {
+		php_inspector_trace(
+			php_inspector_trace_fetch(EX(func)), 
+			execute_data);
+	} else zend_execute_function(execute_data);
 
 	if (UNEXPECTED(EG(exception))) {
 		php_inspector_break_handle_exception(execute_data);
 	}
 
 	if (UNEXPECTED(map)) {
-		EX(func) = function;
+		EX(func) = (zend_function*) function;
 		EX(opline) = EX(func)->op_array.opcodes + 
 				(EX(opline) - map->opcodes);
 

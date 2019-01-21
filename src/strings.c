@@ -46,6 +46,7 @@ static const php_inspector_string php_inspector_strings[] = {
 	php_inspector_string_init(PHP_INSPECTOR_STR_NAME, "name"),
 	php_inspector_string_init(PHP_INSPECTOR_STR_CLASS, "class"),
 	php_inspector_string_init(PHP_INSPECTOR_STR_ONRESOLVE, "onresolve"),
+	php_inspector_string_init(PHP_INSPECTOR_STR_ONTRACE, "ontrace"),
 	php_inspector_string_init(PHP_INSPECTOR_STR_INSTRUCTION_CACHE, "instructionCache"),
 };
 
