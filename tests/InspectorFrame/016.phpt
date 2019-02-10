@@ -8,14 +8,14 @@ use Inspector\InspectorFrame as Frame;
 use Inspector\InspectorInstruction as Instruction;
 use Inspector\InspectorBreakPoint as BreakPoint;
 
-$function = function() {
+function foo() {
 	echo "O";
 	echo "FAIL";
 	echo "K";
 	echo "\n";
 };
 
-$inspector = new InspectorFunction($function);
+$inspector = new InspectorFunction("foo");
 
 $first = $inspector->findFirstInstruction(Instruction::ZEND_ECHO);
 
@@ -33,7 +33,7 @@ $darkness = new class($second) extends Inspector\InspectorBreakPoint {
 	}
 };
 
-$function();
+foo();
 ?>
 --EXPECT--
 OK

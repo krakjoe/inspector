@@ -5,8 +5,10 @@ InspectorInstruction getFunction
 use Inspector\InspectorFunction;
 use Inspector\InspectorInstruction;
 
+function foo($a, $b) {}
+
 $inspector = 
-	new InspectorFunction(function($a, $b) {});
+	new InspectorFunction("foo");
 
 $opline = 
 	$inspector->getInstruction();

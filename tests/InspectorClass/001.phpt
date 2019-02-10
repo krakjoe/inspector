@@ -7,7 +7,7 @@ use Inspector\InspectorClass;
 $inspector = 
 	new InspectorClass(InspectorClass::class);
 
-if ($inspector instanceof \ReflectionClass) {
+if ($inspector->getName() == "Inspector\\InspectorClass") {
 	echo "OK";
 }
 ?>

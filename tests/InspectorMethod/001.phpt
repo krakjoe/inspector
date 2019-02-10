@@ -8,7 +8,7 @@ use Inspector\InspectorMethod;
 $inspector = 
 	new InspectorMethod(InspectorClass::class, "getMethod");
 
-if ($inspector instanceof \ReflectionMethod) {
+if ($inspector->getName() == "getMethod") {
 	echo "OK";
 }
 ?>

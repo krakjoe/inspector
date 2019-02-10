@@ -7,11 +7,11 @@ use Inspector\InspectorInstruction;
 use Inspector\InspectorFrame;
 use Inspector\InspectorBreakPoint;
 
-$func = function($a, $b) {
+function foo($a, $b) {
 	$a + $b;
-};
+}
 
-$inspector = new InspectorFunction($func);
+$inspector = new InspectorFunction("foo");
 
 $opline = $inspector->findLastInstruction(InspectorInstruction::ZEND_RETURN);
 
@@ -19,7 +19,7 @@ if ($opline->getRelative(-1) instanceof InspectorInstruction) {
 	echo "OK";
 }
 
-$func(1, 2);
+foo(1, 2);
 ?>
 --EXPECT--
 OK

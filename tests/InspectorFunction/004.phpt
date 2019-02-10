@@ -5,8 +5,10 @@ InspectorFunction::getInstruction returns InspectorInstruction
 use Inspector\InspectorFunction;
 use Inspector\InspectorInstruction;
 
+function foo(){};
+
 $inspector = 
-	new InspectorFunction(function(){});
+	new InspectorFunction("foo");
 
 if ($inspector->getInstruction() instanceof InspectorInstruction) {
 	echo "OK";

@@ -7,12 +7,12 @@ use Inspector\InspectorInstruction;
 use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
 
-$function = function($a, $b) {
+function foo($a, $b) {
 	$a + $b;
 };
 
 $inspector = 
-	new InspectorFunction($function);
+	new InspectorFunction("foo");
 
 $opline = $inspector->getInstruction(2);
 
@@ -25,7 +25,7 @@ class BreakPoint extends InspectorBreakPoint {
 $break = new BreakPoint($opline);
 
 try {
-	$function(1, 2);
+	foo(1, 2);
 } catch (RuntimeException $ex) {
 	echo "OK";
 }

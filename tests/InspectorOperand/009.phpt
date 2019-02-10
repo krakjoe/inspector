@@ -7,12 +7,11 @@ use Inspector\InspectorFunction;
 use Inspector\InspectorOperand as Operand;
 use Inspector\InspectorInstruction as Instruction;
 
-$function = function($thing) {
+function foo($thing) {
 	foreach ($thing as $k => $v) {}
-};
+}
 
-$inspector = 
-	new InspectorFunction($function);
+$inspector = new InspectorFunction("foo");
 
 $opline = $inspector->findFirstInstruction(Instruction::ZEND_FE_RESET_R);
 

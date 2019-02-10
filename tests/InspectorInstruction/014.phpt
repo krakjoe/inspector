@@ -6,13 +6,13 @@ use Inspector\InspectorFunction;
 use Inspector\InspectorInstruction as Instruction;
 use Inspector\InspectorOperand as Operand;
 
-$func = function &($thing) {
+function & foo($thing) {
 	if ($thing instanceof Type) {
 		return $thing;
 	}
-};
+}
 
-$inspector = new InspectorFunction($func);
+$inspector = new InspectorFunction("foo");
 
 $opline = $inspector->findFirstInstruction(Instruction::ZEND_RETURN_BY_REF);
 

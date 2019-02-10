@@ -7,7 +7,7 @@ use Inspector\InspectorFunction;
 use Inspector\InspectorOperand as Operand;
 use Inspector\InspectorInstruction as Instruction;
 
-$function = function($a, $b, $c) {
+function foo($a, $b, $c) {
 	$d = $a + 10;
 
 	foreach ($c as $k => $v) {
@@ -17,8 +17,7 @@ $function = function($a, $b, $c) {
 	return $d;
 };
 
-$inspector = 
-	new InspectorFunction($function);
+$inspector = new InspectorFunction("foo");
 
 $opline = $inspector->findFirstInstruction(Instruction::ZEND_ADD);
 

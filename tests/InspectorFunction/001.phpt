@@ -7,7 +7,7 @@ use Inspector\InspectorFunction;
 $inspector = 
 	new InspectorFunction("var_dump");
 
-if ($inspector instanceof \ReflectionFunction) {
+if ($inspector->getName() == "var_dump") {
 	echo "OK";
 }
 ?>

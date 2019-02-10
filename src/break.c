@@ -104,10 +104,10 @@ static void php_inspector_break_destroy(zend_object *zo) {
 static inline zend_bool php_inspector_break_enable(php_inspector_break_t *brk) {
 	php_inspector_instruction_t *instruction =
 		php_inspector_instruction_fetch(&brk->instruction);
-	php_reflection_object_t *reflection =
-		php_reflection_object_fetch(&instruction->function);
+	php_inspector_function_t *function =
+		php_inspector_function_from(&instruction->function);
 
-	if (reflection->ref_type == PHP_REF_TYPE_EXPIRED) {
+	if (!function->function) {
 		return 0;
 	}
 
@@ -565,14 +565,14 @@ static void php_inspector_break_unset(zval *zv) {
 	php_inspector_break_t *brk = Z_PTR_P(zv);
 	php_inspector_instruction_t *instruction = 
 		php_inspector_instruction_fetch(&brk->instruction);
-	php_reflection_object_t *reflection =
-		php_reflection_object_fetch(&instruction->function);
+	php_inspector_function_t *function =
+		php_inspector_function_from(&instruction->function);
 
 	if (BRK(state) != INSPECTOR_BREAK_RUNTIME) {
 		return;
 	}
 
-	if (reflection->ref_type != PHP_REF_TYPE_EXPIRED) {
+	if (!function->expired) {
 		ZEND_ASSERT(brk->opcode != 255);
 
 		instruction->opline->opcode = brk->opcode;

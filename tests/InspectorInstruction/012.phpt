@@ -5,11 +5,11 @@ InspectorInstruction getRelative
 use Inspector\InspectorFunction;
 use Inspector\InspectorInstruction;
 
-$func = function($a, $b) {
+function foo($a, $b) {
 	$a + $b;
-};
+}
 
-$inspector = new InspectorFunction($func);
+$inspector = new InspectorFunction("foo");
 
 $opline = $inspector->getEntryInstruction();
 

@@ -5,9 +5,11 @@ InspectorFunction::findLastInstruction seek
 use Inspector\InspectorFunction;
 use Inspector\InspectorInstruction;
 
-$inspector = new InspectorFunction(function($a, $b){
+function foo($a, $b){
 	return $a + $b;
-});
+}
+
+$inspector = new InspectorFunction("foo");
 
 $add = $inspector->findLastInstruction(
 	InspectorInstruction::ZEND_ADD, $inspector->getInstructionCount());

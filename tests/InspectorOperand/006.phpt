@@ -7,12 +7,11 @@ use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
 use Inspector\InspectorOperand;
 
-$function = function($b) {
+function foo($b) {
 	1 + $b;
 };
 
-$inspector = 
-	new InspectorFunction($function);
+$inspector = new InspectorFunction("foo");
 
 $opline = $inspector->getInstruction(1);
 

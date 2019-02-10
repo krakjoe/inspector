@@ -277,6 +277,10 @@ static void php_inspector_execute(zend_execute_data *execute_data) {
 #if ZEND_EX_USE_LITERALS
 		EX(literals) = map->literals;
 #endif
+
+#ifdef ZEND_DEL_CALL_FLAG
+		ZEND_DEL_CALL_FLAG(execute_data, ZEND_CALL_CLOSURE);
+#endif
 	}
 
 	if (php_inspector_trace_fetch(EX(func))) {
@@ -315,8 +319,8 @@ PHP_MINIT_FUNCTION(inspector)
 	PHP_MINIT(inspector_strings)(INIT_FUNC_ARGS_PASSTHRU);
 
 	PHP_MINIT(inspector_class)(INIT_FUNC_ARGS_PASSTHRU);
-	PHP_MINIT(inspector_method)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_function)(INIT_FUNC_ARGS_PASSTHRU);
+	PHP_MINIT(inspector_method)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_file)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_instruction)(INIT_FUNC_ARGS_PASSTHRU);
 	PHP_MINIT(inspector_operand)(INIT_FUNC_ARGS_PASSTHRU);

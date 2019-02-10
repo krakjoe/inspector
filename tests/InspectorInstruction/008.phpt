@@ -5,10 +5,11 @@ InspectorInstruction getOffset
 use Inspector\InspectorFunction;
 use Inspector\InspectorInstruction;
 
-$inspector = 
-	new InspectorFunction(function($a, $b) {
+function foo($a, $b) {
 	$a + $b;
-});
+}
+
+$inspector = new InspectorFunction("foo");
 
 $opline = 
 	$inspector->getInstruction();

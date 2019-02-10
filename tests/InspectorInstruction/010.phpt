@@ -7,12 +7,12 @@ use Inspector\InspectorInstruction;
 use Inspector\InspectorFrame;
 use Inspector\InspectorBreakPoint;
 
-$func = function($a, $b) {
+function foo($a, $b) {
 	$a + $b;
-};
+}
 
 $inspector = 
-	new InspectorFunction($func);
+	new InspectorFunction("foo");
 
 $opline = 
 	$inspector->findFirstInstruction(InspectorInstruction::ZEND_ADD);
@@ -25,7 +25,7 @@ $break = new class($opline) extends InspectorBreakPoint {
 	}
 };
 
-$func(1, 2);
+foo(1, 2);
 ?>
 --EXPECT--
 OK

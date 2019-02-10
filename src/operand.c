@@ -227,7 +227,7 @@ static PHP_METHOD(InspectorOperand, getValue) {
 		php_inspector_instruction_fetch(&operand->instruction);
 	zend_op_array *function =
 		(zend_op_array*) 
-			php_reflection_object_function(&instruction->function);
+			php_inspector_function_from(&instruction->function)->function;
 	zval *rt = NULL;
 
 	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "|O", &rt, php_inspector_frame_ce) != SUCCESS) {
@@ -272,7 +272,7 @@ static PHP_METHOD(InspectorOperand, getName) {
 			php_inspector_instruction_fetch(&operand->instruction);
 		zend_op_array *function = 
 			(zend_op_array*)
-				php_reflection_object_function(&instruction->function);
+				php_inspector_function_from(&instruction->function)->function;
 
 		RETURN_STR(zend_string_copy(function->vars[EX_VAR_TO_NUM(operand->op->var)]));
 	}
@@ -285,7 +285,7 @@ static PHP_METHOD(InspectorOperand, getNumber) {
 		php_inspector_instruction_fetch_from(Z_OBJ(operand->instruction));
 	zend_op_array *function = 
 		(zend_op_array*)
-			php_reflection_object_function(&instruction->function);
+			php_inspector_function_from(&instruction->function)->function;
 	php_inspector_break_t *brk;
 	uint32_t flags;
 

@@ -4,7 +4,9 @@ InspectorFunction::getEntryInstruction no entry
 <?php
 use Inspector\InspectorFunction;
 
-$inspector = new InspectorFunction(function(){});
+function foo(){}
+
+$inspector = new InspectorFunction("foo");
 
 try {
 	$inspector->getEntryInstruction();

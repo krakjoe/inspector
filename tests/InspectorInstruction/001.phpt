@@ -5,8 +5,9 @@ InspectorInstruction getNext
 use Inspector\InspectorFunction;
 use Inspector\InspectorInstruction;
 
-$inspector = 
-	new InspectorFunction(function($a) {});
+function foo($a) {}
+
+$inspector = new InspectorFunction("foo");
 
 if ($inspector->getInstruction()->getNext() instanceof InspectorInstruction) {
 	echo "OK";

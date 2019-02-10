@@ -21,54 +21,24 @@
 
 #include "zend_exceptions.h"
 
+#include "function.h"
+
 extern zend_class_entry *reflector_ptr;
 extern zend_class_entry *reflection_function_ptr;
 extern zend_class_entry *reflection_method_ptr;
 extern zend_class_entry *reflection_class_ptr;
 extern zend_class_entry *reflection_exception_ptr;
 
-typedef enum {
-	PHP_REF_TYPE_OTHER,
-	PHP_REF_TYPE_FUNCTION,
-	PHP_REF_TYPE_GENERATOR,
-	PHP_REF_TYPE_PARAMETER,
-	PHP_REF_TYPE_TYPE,
-	PHP_REF_TYPE_PROPERTY,
-	PHP_REF_TYPE_DYNAMIC_PROPERTY,
-	PHP_REF_TYPE_CLASS_CONSTANT,
-	PHP_REF_TYPE_PENDING,
-	PHP_REF_TYPE_EXPIRED,
-} php_reflection_type_t;
-
-typedef struct {
-	zval dummy;
-	zval obj;
-	void *ptr;
-	zend_class_entry *ce;
-	php_reflection_type_t ref_type;
-	unsigned int ignore_visibility:1;
-	zend_object zo;
-} php_reflection_object_t;
-
-#define php_reflection_object_from(o) \
-	((php_reflection_object_t*) \
-		(((char*) o) - XtOffsetOf(php_reflection_object_t, zo)))
-#define php_reflection_object_fetch(z) php_reflection_object_from(Z_OBJ_P(z))
-
-#define php_reflection_object_function(z) ((zend_function*) (php_reflection_object_fetch(z)->ptr))
-#define php_reflection_object_class(z) ((zend_class_entry*) (php_reflection_object_fetch(z)->ptr))
-
 static zend_always_inline zend_bool php_inspector_reflection_guard(zval *object) {
-	php_reflection_object_t *reflection =
-		php_reflection_object_fetch(object);
+	php_inspector_function_t *function = php_inspector_function_from(object);
 
-	if (reflection->ref_type == PHP_REF_TYPE_PENDING) {
+	if (!function->function) {
 		zend_throw_exception_ex(reflection_exception_ptr, 0, 
 			"Reflector is pending");
 		return 0;
 	}
 
-	if (reflection->ref_type == PHP_REF_TYPE_EXPIRED) {
+	if (function->expired) {
 		zend_throw_exception_ex(reflection_exception_ptr, 0, 
 			"Reflector is expired");
 		return 0;
@@ -76,4 +46,32 @@ static zend_always_inline zend_bool php_inspector_reflection_guard(zval *object)
 
 	return 1;
 }
+
+static zend_always_inline void php_inspector_reflector_call(zval *reflector, zend_string *method, zval *args, zval *return_value) {
+	zend_fcall_info            fci = empty_fcall_info;
+	zend_fcall_info_cache      fcc = empty_fcall_info_cache;
+	zend_string               *key = zend_string_tolower(method);
+
+	fci.size            = sizeof(zend_fcall_info);
+	fci.object          = Z_OBJ_P(reflector);
+
+#if PHP_VERSION_ID < 70300
+	fcc.initialized     = 1;
+#endif
+	fcc.object          = fci.object;
+	
+	if ((fcc.function_handler = zend_hash_find_ptr(&Z_OBJCE_P(reflector)->function_table, key))) {
+		zend_fcall_info_call(&fci, &fcc, return_value, args);
+	} else {
+		
+	}
+
+	zend_string_release(key);
+}
+
+/* {{{ */
+ZEND_BEGIN_ARG_INFO_EX(InspectorReflector_call_arginfo, 0, 0, 2)
+	ZEND_ARG_TYPE_INFO(0, method, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, args,   IS_ARRAY, 0)
+ZEND_END_ARG_INFO() /* }}} */
 #endif

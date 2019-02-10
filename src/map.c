@@ -23,6 +23,7 @@
 #include "php_inspector.h"
 
 #include "zend_extensions.h"
+#include "zend_closures.h"
 
 ZEND_BEGIN_MODULE_GLOBALS(inspector_map)
 	HashTable table;
@@ -384,6 +385,10 @@ static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped
 		if (mapped->fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
 			mapped->arg_info++;
 		}
+	}
+
+	if (mapped->fn_flags & ZEND_ACC_CLOSURE) {
+		mapped->fn_flags &= ~ ZEND_ACC_CLOSURE;
 	}
 
 	mapped->run_time_cache = emalloc(mapped->cache_size);

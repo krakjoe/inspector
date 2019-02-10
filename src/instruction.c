@@ -84,40 +84,24 @@ static void php_inspector_instruction_destroy(zend_object *object) {
 	zend_object_std_dtor(object);
 }
 
-zval *php_inspector_instruction_cache_fetch(zval *function) {
-	php_reflection_object_t *reflection =
-		php_reflection_object_fetch(function);
-	zval k;
-	zend_class_entry *scope;
-	zval *cache;
+zval *php_inspector_instruction_cache_fetch(zval *zv) {
+	php_inspector_function_t *function = php_inspector_function_from(zv);
 
-	if (EXPECTED(Z_TYPE(reflection->dummy) == IS_ARRAY)) {
-		return &reflection->dummy;
+	if (Z_ISUNDEF(function->cache)) {
+		array_init(&function->cache);
 	}
 
-	ZVAL_STR(&k, 
-		PHP_INSPECTOR_STRING_INSTRUCTION_CACHE);
-
-	scope = EG(fake_scope);
-
-	EG(fake_scope) = Z_OBJCE_P(function);
-
-	cache = Z_OBJ_HT_P(function)
-		->read_property(
-			function, &k, BP_VAR_RW, NULL, &reflection->dummy);
-
-	EG(fake_scope) = scope;
-
-	return cache;
+	return &function->cache;
 }
 
-void php_inspector_instruction_cache_flush(zval *function) {
-	php_reflection_object_t *reflection =
-		php_reflection_object_fetch(function);
-	zval *cache = 
-		php_inspector_instruction_cache_fetch(function);
+void php_inspector_instruction_cache_flush(zval *zv, zval *return_value) {
+	zval *cache = php_inspector_instruction_cache_fetch(zv);
 
 	if (EXPECTED(cache && Z_TYPE_P(cache) == IS_ARRAY)) {
+		if (return_value) {
+			ZVAL_LONG(return_value, zend_hash_num_elements(Z_ARRVAL_P(cache)));
+		}
+
 		zend_hash_clean(Z_ARRVAL_P(cache));
 	}
 }
@@ -125,11 +109,7 @@ void php_inspector_instruction_cache_flush(zval *function) {
 void php_inspector_instruction_factory(zval *function, zend_op *op, zval *return_value) {
 	zval *cache = php_inspector_instruction_cache_fetch(function);
 	zval *cached = NULL;
-	zend_ulong offset = op - php_reflection_object_function(function)->op_array.opcodes;
-
-	if (Z_TYPE_P(cache) != IS_ARRAY) {
-		array_init(cache);
-	}
+	zend_ulong offset = op - php_inspector_function_from(function)->function->op_array.opcodes;
 
 	if (!(cached = zend_hash_index_find(Z_ARRVAL_P(cache), offset))) {
 		php_inspector_instruction_t *instruction = NULL;
@@ -245,7 +225,7 @@ static PHP_METHOD(InspectorInstruction, getExtendedValue) {
 		case ZEND_VM_EXT_JMP_ADDR: {
 			zend_op_array *function =
 				(zend_op_array*)
-					php_reflection_object_function(&instruction->function);
+					php_inspector_function_from(&instruction->function)->function;
 			RETURN_LONG(ZEND_OFFSET_TO_OPLINE(
 				instruction->opline, 
 				instruction->opline->extended_value) - instruction->opline);
@@ -275,7 +255,7 @@ static PHP_METHOD(InspectorInstruction, getRelative) {
 		php_inspector_instruction_this();
 	zend_op_array *function =
 		(zend_op_array*)
-			php_reflection_object_function(&instruction->function);
+			php_inspector_function_from(&instruction->function)->function;
 	zend_long relative = 0;
 
 	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "l", &relative) != SUCCESS) {
@@ -295,7 +275,7 @@ static PHP_METHOD(InspectorInstruction, getNext) {
 		php_inspector_instruction_this();
 	zend_op_array *function =
 		(zend_op_array*)
-			php_reflection_object_function(&instruction->function);
+			php_inspector_function_from(&instruction->function)->function;
 
 	if ((instruction->opline + 1) < function->opcodes + function->last) {
 		if (Z_TYPE(instruction->next) == IS_UNDEF) {
@@ -311,7 +291,7 @@ static PHP_METHOD(InspectorInstruction, getPrevious) {
 		php_inspector_instruction_this();
 	zend_op_array *function =
 		(zend_op_array*)
-			php_reflection_object_function(&instruction->function);
+			php_inspector_function_from(&instruction->function)->function;
 
 	if ((instruction->opline - 1) >= function->opcodes) {
 		if (Z_TYPE(instruction->previous) == IS_UNDEF) {
@@ -328,7 +308,7 @@ static PHP_METHOD(InspectorInstruction, getOffset)
 		php_inspector_instruction_this();
 	zend_op_array *function =
 		(zend_op_array*)
-			php_reflection_object_function(&instruction->function);
+			php_inspector_function_from(&instruction->function)->function;
 	
 	RETURN_LONG(instruction->opline - function->opcodes);
 }

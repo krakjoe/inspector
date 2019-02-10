@@ -5,8 +5,10 @@ InspectorInstruction getOpcode/getOpcodeName
 use Inspector\InspectorFunction;
 use Inspector\InspectorInstruction;
 
+function foo($a) {}
+
 $inspector = 
-	new InspectorFunction(function($a) {});
+	new InspectorFunction("foo");
 
 $opline = $inspector->getInstruction();
 

@@ -50,10 +50,10 @@ static void php_inspector_frame_free(zend_object *zo) {
 	php_inspector_frame_t *frame =
 		php_inspector_frame_fetch_from(zo);
 
-	if (Z_TYPE(frame->function) != IS_UNDEF)
+	if (!Z_ISUNDEF(frame->function))
 		zval_ptr_dtor(&frame->function);
 
-	if (Z_TYPE(frame->instruction) != IS_UNDEF)
+	if (!Z_ISUNDEF(frame->instruction))
 		zval_ptr_dtor(&frame->instruction);
 
 	zend_object_std_dtor(&frame->std);
@@ -67,7 +67,7 @@ void php_inspector_frame_factory(zend_execute_data *execute_data, zval *return_v
 	frame = php_inspector_frame_fetch(return_value);
 	frame->frame = execute_data;
 
-	php_inspector_function_factory(frame->frame->func, &frame->function, 0);
+	php_inspector_function_factory(frame->frame->func, &frame->function, 1, 0);
 
 	if (frame->frame->func->type == ZEND_USER_FUNCTION && frame->frame->opline) {
 		php_inspector_instruction_factory(
@@ -89,8 +89,8 @@ PHP_METHOD(InspectorFrame, setInstruction)
 {
 	php_inspector_frame_t *frame =
 		php_inspector_frame_this();
-	zend_function *function =
-		php_reflection_object_function(&frame->function);
+	php_inspector_function_t *function =
+		php_inspector_function_from(&frame->function);
 	php_inspector_instruction_t *instruction;
 	zval *in = NULL;
 
@@ -100,12 +100,12 @@ PHP_METHOD(InspectorFrame, setInstruction)
 
 	instruction = php_inspector_instruction_fetch(in);
 
-	if (!ZEND_USER_CODE(function->type)) {
+	if (!ZEND_USER_CODE(function->function->type)) {
 		RETURN_FALSE;
 	}
 
-	if (instruction->opline < function->op_array.opcodes ||
-	    instruction->opline > function->op_array.opcodes + function->op_array.last) {
+	if (instruction->opline < function->function->op_array.opcodes ||
+	    instruction->opline > function->function->op_array.opcodes + function->function->op_array.last) {
 		RETURN_FALSE;
 	}
 
@@ -127,13 +127,13 @@ PHP_METHOD(InspectorFrame, getStack)
 {
 	php_inspector_frame_t *frame =
 		php_inspector_frame_this();
-	zend_function *function =
-		php_reflection_object_function(&frame->function);
+	php_inspector_function_t *function =
+		php_inspector_function_from(&frame->function);
 
 	zval *var = ZEND_CALL_VAR_NUM(frame->frame, 0),
-	     *end = var + function->op_array.last_var;
+	     *end = var + function->function->op_array.last_var;
 
-	array_init_size(return_value, function->op_array.last_var);
+	array_init_size(return_value, function->function->op_array.last_var);
 
 	while (var < end) {
 		zval *val = var;
@@ -148,7 +148,7 @@ PHP_METHOD(InspectorFrame, getStack)
 		}
 
 		zend_hash_add(Z_ARRVAL_P(return_value), 
-			function->op_array.vars[function->op_array.last_var - (end - var)],
+			function->function->op_array.vars[function->function->op_array.last_var - (end - var)],
 			val);
 		Z_TRY_ADDREF_P(val);
 
@@ -224,8 +224,8 @@ PHP_METHOD(InspectorFrame, getVariable)
 {
 	php_inspector_frame_t *frame =
 		php_inspector_frame_this();
-	zend_function *function =
-		php_reflection_object_function(&frame->function);
+	php_inspector_function_t *function =
+		php_inspector_function_from(&frame->function);
 	zend_long num = 0;
 	zval *variable = NULL;
 
@@ -233,11 +233,11 @@ PHP_METHOD(InspectorFrame, getVariable)
 		return;
 	}
 
-	if (function->type != ZEND_USER_FUNCTION) {
+	if (!ZEND_USER_CODE(function->function->type)) {
 		return;
 	}
 
-	if (num < 0 || function->op_array.last_var < num) {
+	if (num < 0 || function->function->op_array.last_var < num) {
 		return;
 	}
 
@@ -373,3 +373,4 @@ PHP_MINIT_FUNCTION(inspector_frame) {
 	return SUCCESS;
 } /* }}} */
 #endif
+

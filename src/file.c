@@ -51,7 +51,7 @@ static zend_always_inline zend_bool php_inspector_file_executing(zend_string *fi
 
 static PHP_METHOD(InspectorFile, __construct)
 {
-	php_reflection_object_t *reflection = php_reflection_object_fetch(getThis());
+	php_inspector_function_t *function = php_inspector_function_from(getThis());
 	zend_string *file = NULL;
 
 	if (zend_parse_parameters_throw(ZEND_NUM_ARGS(), "S", &file) != SUCCESS) {
@@ -64,8 +64,6 @@ static PHP_METHOD(InspectorFile, __construct)
 		return;
 	}
 
-	reflection->ref_type = PHP_REF_TYPE_PENDING;
-
 	php_inspector_table_insert(
 		PHP_INSPECTOR_ROOT_PENDING, 
 		PHP_INSPECTOR_TABLE_FILE, 
@@ -74,18 +72,18 @@ static PHP_METHOD(InspectorFile, __construct)
 
 static PHP_METHOD(InspectorFile, isPending)
 {
-	php_reflection_object_t *reflector =
-		php_reflection_object_fetch(getThis());
+	php_inspector_function_t *function =
+		php_inspector_function_from(getThis());
 
-	RETURN_BOOL(reflector->ref_type == PHP_REF_TYPE_PENDING);
+	RETURN_BOOL(function->function == NULL);
 }
 
 static PHP_METHOD(InspectorFile, isExpired)
 {
-	php_reflection_object_t *reflector =
-		php_reflection_object_fetch(getThis());
+	php_inspector_function_t *function =
+		php_inspector_function_from(getThis());
 
-	RETURN_BOOL(reflector->ref_type == PHP_REF_TYPE_EXPIRED);
+	RETURN_BOOL(function->expired);
 }
 
 static PHP_METHOD(InspectorFile, purge)
@@ -111,10 +109,10 @@ static PHP_METHOD(InspectorFile, purge)
 		}
 
 		ZEND_HASH_FOREACH_VAL(registered, object) {
-			php_reflection_object_t *reflection =
-				php_reflection_object_fetch(object);
+			php_inspector_function_t *function =
+				php_inspector_function_from(object);
 		
-			reflection->ref_type = PHP_REF_TYPE_PENDING;
+			function->function = NULL;
 
 			php_inspector_table_insert(
 				PHP_INSPECTOR_ROOT_PENDING, 	
@@ -158,19 +156,17 @@ static zend_function_entry php_inspector_file_methods[] = {
 };
 
 int php_inspector_file_resolve(zval *zv, zend_function *ops) {
-	php_reflection_object_t *reflector = 
-		php_reflection_object_fetch(zv);
+	php_inspector_function_t *function = 
+		php_inspector_function_from(zv);
 	zend_function *onResolve = zend_hash_find_ptr(
 		&Z_OBJCE_P(zv)->function_table, PHP_INSPECTOR_STRING_ONRESOLVE);
 
-	if (php_reflection_object_function(zv)) {
-		php_inspector_breaks_purge(
-			php_reflection_object_function(zv));
-		php_inspector_instruction_cache_flush(zv);
+	if (function->function) {
+		php_inspector_breaks_purge(function->function);
+		php_inspector_instruction_cache_flush(zv, NULL);
 	}
 
-	reflector->ptr = ops;
-	reflector->ref_type = PHP_REF_TYPE_OTHER;
+	function->function = ops;
 
 	if (ZEND_USER_CODE(onResolve->type)) {
 		zval rv;
@@ -189,7 +185,8 @@ int php_inspector_file_resolve(zval *zv, zend_function *ops) {
 			ops->op_array.filename, zv);
 	}
 
-	reflector->ref_type = PHP_REF_TYPE_EXPIRED;
+	function->expired = 1;
+	function->function = NULL;
 
 	return ZEND_HASH_APPLY_REMOVE;
 }

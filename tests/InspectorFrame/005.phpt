@@ -6,19 +6,19 @@ use Inspector\InspectorFunction;
 use Inspector\InspectorBreakPoint;
 use Inspector\InspectorFrame;
 
-$function = function($a, $b) {
+function foo($a, $b) {
 	$a + $b;
-};
+}
 
 $inspector = 
-	new InspectorFunction($function);
+	new InspectorFunction("foo");
 
 $opline = $inspector->getInstruction(2);
 
 $break = new class($opline) extends InspectorBreakPoint {
 	public function hit(InspectorFrame $frame){
 		$symbols = $frame->getPrevious()->getPrevious()->getSymbols();
-		if (isset($symbols["function"])) {
+		if (isset($symbols["inspector"])) {
 			echo "OK";
 		}
 	}
@@ -28,7 +28,7 @@ function test($function) {
 	$function(1, 2);
 }
 
-test($function);
+test("foo");
 ?>
 --EXPECT--
 OK

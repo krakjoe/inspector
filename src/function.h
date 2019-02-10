@@ -21,7 +21,25 @@
 
 extern zend_class_entry *php_inspector_function_ce;
 
-void php_inspector_function_factory(zend_function *function, zval *return_value, zend_bool replace);
+typedef struct _php_inspector_function_t {
+	zend_function *function;
+	zend_string *name;
+	zend_string *key;
+	zval cache;
+	zval reflector;
+	zend_bool expired;
+	zend_object std;
+} php_inspector_function_t;
+
+static zend_always_inline php_inspector_function_t* php_inspector_function_fetch(zend_object *o) {
+	return (php_inspector_function_t*) (((char*) o) - XtOffsetOf(php_inspector_function_t, std));
+}
+
+static zend_always_inline php_inspector_function_t* php_inspector_function_from(zval *z) {
+	return php_inspector_function_fetch(Z_OBJ_P(z));
+}
+
+void php_inspector_function_factory(zend_function *function, zval *return_value, zend_bool init, zend_bool map);
 int php_inspector_function_resolve(zval *function, zend_function *ops);
 
 #if PHP_VERSION_ID >= 70200
@@ -73,6 +91,7 @@ extern PHP_METHOD(InspectorFunction, getEntryInstruction);
 extern PHP_METHOD(InspectorFunction, findFirstInstruction);
 extern PHP_METHOD(InspectorFunction, findLastInstruction);
 extern PHP_METHOD(InspectorFunction, flushInstructionCache);
+extern PHP_METHOD(InspectorFunction, __call);
 
 extern PHP_MINIT_FUNCTION(inspector_function);
 

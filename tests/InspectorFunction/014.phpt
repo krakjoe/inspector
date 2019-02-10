@@ -5,9 +5,11 @@ InspectorFunction::findFirstInstruction negative
 use Inspector\InspectorFunction;
 use Inspector\InspectorInstruction;
 
-$inspector = new InspectorFunction(function($a, $b){
+function foo($a, $b){
 	return $a + $b;
-});
+}
+
+$inspector = new InspectorFunction("foo");
 
 try {
 	$inspector->findFirstInstruction(InspectorInstruction::ZEND_ADD, 42);

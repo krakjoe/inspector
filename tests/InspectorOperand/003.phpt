@@ -8,12 +8,11 @@ use Inspector\InspectorFrame;
 use Inspector\InspectorOperand;
 use Inspector\InspectorInstruction;
 
-$function = function($a, $b) {
+function foo($a, $b) {
 	$a + $b;
 };
 
-$inspector = 
-	new InspectorFunction($function);
+$inspector = new InspectorFunction("foo");
 
 $opline = $inspector->findFirstInstruction(InspectorInstruction::ZEND_ADD);
 

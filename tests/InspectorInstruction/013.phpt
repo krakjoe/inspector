@@ -5,15 +5,15 @@ InspectorInstruction getExtendedValue
 use Inspector\InspectorFunction;
 use Inspector\InspectorInstruction as Instruction;
 
-$func = function($thing) {
+function foo($thing) {
 	foreach ($thing as $k => $v) {
 		
 	}
 
 	$thing["dim"] += 2;
-};
+}
 
-$inspector = new InspectorFunction($func);
+$inspector = new InspectorFunction("foo");
 
 $opline = $inspector->findFirstInstruction(Instruction::ZEND_FE_FETCH_R);
 $end = $inspector->findFirstInstruction(Instruction::ZEND_FE_FREE, $opline->getOffset());

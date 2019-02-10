@@ -6,8 +6,9 @@ use Inspector\InspectorFunction;
 use Inspector\InspectorInstruction;
 use Inspector\InspectorOperand;
 
-$inspector = 
-	new InspectorFunction(function($a) {});
+function foo($a) {}
+
+$inspector = new InspectorFunction("foo");
 
 if ($inspector->getInstruction()->getOperand(InspectorOperand::OP1) instanceof InspectorOperand) {
 	echo "OK\n";
