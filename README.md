@@ -12,7 +12,7 @@ API
 
 The following API is provided:
 
-_Note that, because of restrictions around an extension extending Reflection classes, Inspector classes that extend Reflection do so virtually with a __call interface._
+*Note that, because of restrictions around an extension extending Reflection classes, Inspector classes that extend Reflection do so virtually with a __call interface.*
 
 ```php
 namespace Inspector
