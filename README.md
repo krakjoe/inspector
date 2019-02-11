@@ -29,8 +29,6 @@ namespace Inspector
 
 	class InspectorMethod extends \ReflectionMethod implements InspectorInstructionInterface {
 		public function getDeclaringClass() : InspectorClass;
-
-		protected $instructionCache;
 	}
 
 	class InspectorFunction extends \ReflectionFunction implements InspectorInstructionInterface {
@@ -39,8 +37,6 @@ namespace Inspector
 		public function onTrace(InspectorFrame $frame);
 
 		public static function purge(array filters = []);
-
-		protected $instructionCache;
 	}
 
 	abstract class InspectorFile extends InspectorFunction {
@@ -51,8 +47,6 @@ namespace Inspector
 		public function onTrace(InspectorFrame $frame);
 
 		public static function purge(array filters = []);
-
-		protected $instructionCache;
 	}
 
 	interface InspectorInstructionInterface {
