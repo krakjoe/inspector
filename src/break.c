@@ -337,7 +337,11 @@ static zend_always_inline zend_bool php_inspector_break_exception_caught(zend_ex
 				if (!ce) {
 					ce = zend_fetch_class_by_name(
 						Z_STR_P(RT_CONSTANT(ops, check->op1)), 
+# if PHP_VERSION_ID >= 70400
+						Z_STR_P(RT_CONSTANT(check, check->op1) + 1), ZEND_FETCH_CLASS_NO_AUTOLOAD);
+# else
 						RT_CONSTANT(check, check->op1) + 1, ZEND_FETCH_CLASS_NO_AUTOLOAD);
+# endif
 
 					CACHE_PTR(check->extended_value &~ ZEND_LAST_CATCH, ce);
 				}

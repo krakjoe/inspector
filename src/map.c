@@ -308,7 +308,12 @@ static void php_inspector_map_destruct(zend_op_array *mapped) {
 			(php_inspector_map_callback_t) php_inspector_map_arginfo_delref);
 	}
 
+#if PHP_VERSION_ID >= 70400
+	if (ZEND_MAP_PTR(mapped->run_time_cache))
+		efree(ZEND_MAP_PTR(mapped->run_time_cache));
+#else
 	efree(mapped->run_time_cache);
+#endif
 	efree(mapped->opcodes);
 	efree(mapped->refcount);
 }
@@ -391,9 +396,17 @@ static zend_always_inline void php_inspector_map_construct(zend_op_array *mapped
 		mapped->fn_flags &= ~ ZEND_ACC_CLOSURE;
 	}
 
+#if PHP_VERSION_ID >= 70400
+	{
+		void *rtc = ecalloc(1, mapped->cache_size);
+
+		ZEND_MAP_PTR_INIT(mapped->run_time_cache, rtc);
+	}
+#else
 	mapped->run_time_cache = emalloc(mapped->cache_size);
 
 	memset(mapped->run_time_cache, 0, mapped->cache_size);
+#endif
 
 	zend_hash_index_update_ptr(
 		&IMG(table), (zend_ulong) IMG(src), IMG(map));

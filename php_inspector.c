@@ -271,8 +271,12 @@ static void php_inspector_execute(zend_execute_data *execute_data) {
 				(EX(opline) - function->opcodes);
 
 #if ZEND_EX_USE_RUN_TIME_CACHE
+# if PHP_VERSION_ID >= 70400
+		EX_LOAD_RUN_TIME_CACHE(map);
+# else
 		if (map->run_time_cache)
 			EX(run_time_cache) = map->run_time_cache;
+# endif
 #endif
 
 #if ZEND_EX_USE_LITERALS
@@ -300,8 +304,12 @@ static void php_inspector_execute(zend_execute_data *execute_data) {
 				(EX(opline) - map->opcodes);
 
 #if ZEND_EX_USE_RUN_TIME_CACHE
+# if PHP_VERSION_ID >= 70400
+		EX_LOAD_RUN_TIME_CACHE(function);
+# else
 		if (map->run_time_cache)
 			EX(run_time_cache) = function->run_time_cache;
+# endif
 #endif
 
 #if ZEND_EX_USE_LITERALS

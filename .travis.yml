@@ -9,7 +9,7 @@ php:
   - 7.1
   - 7.2
   - 7.3
-  - nightly
+  - 7.4
 
 env:
   global:
@@ -26,21 +26,13 @@ env:
 
 matrix:
   allow_failures:
-    - php: nightly
+    - php: 7.4
       env: OPCACHE=0 TEST_PHP_ARGS="$DEF"
-    - php: nightly
+    - php: 7.4
       env: OPCACHE=1 TEST_PHP_ARGS="$DEF"
-    - php: nightly
+    - php: 7.4
       env: OPCACHE=0 TEST_PHP_ARGS="$DEF $MEMCHECK"
-    - php: nightly
-      env: OPCACHE=0 TEST_PHP_ARGS="$DEF" CONF="enable-inspector-coverage" RULE="inspector-test-coverage-travis"
-    - php: 7.3
-      env: OPCACHE=0 TEST_PHP_ARGS="$DEF"
-    - php: 7.3
-      env: OPCACHE=1 TEST_PHP_ARGS="$DEF"
-    - php: 7.3
-      env: OPCACHE=0 TEST_PHP_ARGS="$DEF $MEMCHECK"
-    - php: 7.3
+    - php: 7.4
       env: OPCACHE=0 TEST_PHP_ARGS="$DEF" CONF="enable-inspector-coverage" RULE="inspector-test-coverage-travis"
 
 before_install:

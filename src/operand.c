@@ -163,6 +163,7 @@ static zend_always_inline zend_bool php_inspector_operand_is_class(php_inspector
 			}
 		break;
 
+#if PHP_VERSION_ID < 70400
 		case ZEND_ADD_INTERFACE:
 		case ZEND_ADD_TRAIT:
 		case ZEND_BIND_TRAITS:
@@ -171,6 +172,7 @@ static zend_always_inline zend_bool php_inspector_operand_is_class(php_inspector
 				return 1;
 			}
 		break;
+#endif
 
 		case ZEND_DECLARE_INHERITED_CLASS_DELAYED:
 		case ZEND_INSTANCEOF:
