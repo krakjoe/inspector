@@ -163,10 +163,12 @@ int php_inspector_file_resolve(zval *zv, zend_function *ops) {
 
 	if (function->function) {
 		php_inspector_breaks_purge(function->function);
-		php_inspector_instruction_cache_flush(zv, NULL);
 	}
 
 	function->function = ops;
+	function->expired = 0;
+
+	php_inspector_instruction_cache_flush(zv, NULL);
 
 	if (ZEND_USER_CODE(onResolve->type)) {
 		zval rv;
@@ -186,7 +188,6 @@ int php_inspector_file_resolve(zval *zv, zend_function *ops) {
 	}
 
 	function->expired = 1;
-	function->function = NULL;
 
 	return ZEND_HASH_APPLY_REMOVE;
 }

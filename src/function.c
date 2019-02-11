@@ -298,8 +298,9 @@ int php_inspector_function_resolve(zval *zv, zend_function *ops) {
 
 	if (function->function) {
 		php_inspector_breaks_purge(function->function);
-		php_inspector_instruction_cache_flush(zv, NULL);
 	}
+
+	php_inspector_instruction_cache_flush(zv, NULL);
 
 	function->function = (zend_function*) php_inspector_map_create((zend_op_array*) ops);
 
