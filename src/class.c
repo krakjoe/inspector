@@ -29,6 +29,8 @@
 #include "reflection.h"
 #include "class.h"
 #include "function.h"
+#include "instruction.h"
+#include "break.h"
 
 zend_class_entry *php_inspector_class_ce;
 zend_object_handlers php_inspector_class_handlers;
