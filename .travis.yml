@@ -26,13 +26,13 @@ env:
 
 matrix:
   allow_failures:
-    - php: 7.4
+    - php: 7.4snapshot
       env: OPCACHE=0 TEST_PHP_ARGS="$DEF"
-    - php: 7.4
+    - php: 7.4snapshot
       env: OPCACHE=1 TEST_PHP_ARGS="$DEF"
-    - php: 7.4
+    - php: 7.4snapshot
       env: OPCACHE=0 TEST_PHP_ARGS="$DEF $MEMCHECK"
-    - php: 7.4
+    - php: 7.4snapshot
       env: OPCACHE=0 TEST_PHP_ARGS="$DEF" CONF="enable-inspector-coverage" RULE="inspector-test-coverage-travis"
 
 before_install:
