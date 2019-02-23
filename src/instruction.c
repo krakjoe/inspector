@@ -572,5 +572,7 @@ PHP_MINIT_FUNCTION(inspector_instruction_interface) {
 	INIT_NS_CLASS_ENTRY(ce, "Inspector", "InspectorInstructionInterface", php_inspector_instruction_interface_methods);
 
 	php_inspector_instruction_interface_ce = zend_register_internal_interface(&ce);
+
+  return SUCCESS;
 } /* }}} */
 #endif

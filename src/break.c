@@ -358,7 +358,7 @@ static zend_always_inline zend_bool php_inspector_break_exception_caught(zend_ex
 #endif
 
 				if (ce == exception->ce ||
-				    ce && instanceof_function(exception->ce, ce)) {
+				    (ce && instanceof_function(exception->ce, ce))) {
 					return 1;
 				}
 
@@ -406,7 +406,7 @@ static zend_always_inline zend_bool php_inspector_break_exception_handled(zend_e
 		if (php_inspector_break_exception_caught(execute_data, exception)) {
 			return 1;
 		}
-	} while (execute_data = EX(prev_execute_data));
+	} while ((execute_data = EX(prev_execute_data)) != NULL);
 
 	return 0;
 }
